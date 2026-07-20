@@ -89,10 +89,10 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto flex min-h-[calc(100vh-3.25rem)] w-full max-w-4xl flex-col px-4 pb-10 pt-6 sm:px-6">
       <button
         onClick={onBack}
-        className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-900"
+        className="self-start text-xs font-medium text-gray-400 transition-colors hover:text-gray-900"
       >
         ← Zurück
       </button>
@@ -205,26 +205,18 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
         </div>
       )}
 
-      <div className="mt-8 flex flex-wrap gap-6 border-b border-gray-200">
-        <button
+      <nav className="sticky top-12 z-10 mt-6 flex gap-5 overflow-x-auto border-b border-gray-200 bg-gray-50/85 backdrop-blur sm:gap-6 md:top-0">
+        <TabButton
+          active={aktiv === "uebersicht"}
           onClick={() => setAktiv("uebersicht")}
-          className={`-mb-px border-b-2 pb-2 text-sm transition-colors ${
-            aktiv === "uebersicht"
-              ? "border-gray-900 font-medium text-gray-900"
-              : "border-transparent text-gray-400 hover:text-gray-900"
-          }`}
         >
           Übersicht
-        </button>
+        </TabButton>
         {sichtbareModule.map((m) => (
-          <button
+          <TabButton
             key={m.key}
+            active={aktiv === m.key}
             onClick={() => setAktiv(m.key)}
-            className={`-mb-px border-b-2 pb-2 text-sm transition-colors ${
-              aktiv === m.key
-                ? "border-gray-900 font-medium text-gray-900"
-                : "border-transparent text-gray-400 hover:text-gray-900"
-            }`}
           >
             {m.label}
             {m.key === "workflow" && workflow.length > 0 && (
@@ -232,11 +224,11 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
                 {erledigt}/{workflow.length}
               </span>
             )}
-          </button>
+          </TabButton>
         ))}
-      </div>
+      </nav>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-1 flex-col">
         {aktiv === "uebersicht" && (
           <UebersichtModul
             projekt={projekt}
@@ -266,6 +258,34 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
             onUpdate={onUpdate}
           />
         )}
+      </div>
+    </div>
+  )
+}
+
+// Notion-artiger Tab oben in der Leiste.
+function TabButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-0.5 pb-2.5 pt-2 text-sm transition-colors ${
+        active
+          ? "border-gray-900 font-medium text-gray-900"
+          : "border-transparent text-gray-400 hover:text-gray-900"
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// Dokument-Blatt: weißes „Word“-Blatt, das die volle Höhe füllt. Alle
+// Schreibflächen sitzen darin, damit jeder Tab dasselbe Layout hat.
+function Dokument({ children }) {
+  return (
+    <div className="flex flex-1 flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex flex-1 flex-col px-6 py-8 sm:px-12 sm:py-10">
+        {children}
       </div>
     </div>
   )
@@ -329,13 +349,12 @@ function UebersichtModul({
   // Word-artiges Blatt: freie Schreibfläche, darunter verlinkte Seiten,
   // die beim Klick als Tab geöffnet werden.
   return (
-    <div className="mx-auto max-w-3xl rounded-xl border border-gray-200 bg-white px-8 py-8 shadow-sm sm:px-12 sm:py-10">
+    <Dokument>
       <textarea
         value={projekt.uebersicht ?? ""}
         onChange={(e) => onUpdate({ ...projekt, uebersicht: e.target.value })}
         placeholder="Schreib hier frei los – wie auf einem leeren Blatt. Notizen, Gedanken, worum es geht. Speichert automatisch."
-        rows={6}
-        className="w-full resize-y border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
+        className="min-h-[38vh] w-full resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
       />
 
       {sichtbareModule.length > 0 && (
@@ -418,7 +437,7 @@ function UebersichtModul({
           </div>
         )}
       </div>
-    </div>
+    </Dokument>
   )
 }
 
@@ -438,35 +457,33 @@ function EigenerModul({ projekt, modulKey, onUpdate }) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+    <Dokument>
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
         {modul.label}
       </p>
       <textarea
         value={modul.text ?? ""}
         onChange={(e) => setText(e.target.value)}
         placeholder="Freier Bereich – schreib hier, was du brauchst. Speichert automatisch."
-        rows={10}
-        className="mt-3 w-full resize-y rounded-md border border-gray-100 bg-gray-50 p-3 text-sm text-gray-800 outline-none focus:border-gray-900 focus:bg-white"
+        className="mt-3 min-h-[40vh] w-full flex-1 resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
       />
-    </div>
+    </Dokument>
   )
 }
 
 function ZielModul({ projekt, onUpdate }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+    <Dokument>
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
         Zieldefinition
       </p>
       <textarea
         value={projekt.ziel ?? ""}
         onChange={(e) => onUpdate({ ...projekt, ziel: e.target.value })}
         placeholder="Was soll dieses Projekt erreichen? Woran erkennst du, dass es fertig ist? Speichert automatisch."
-        rows={8}
-        className="mt-3 w-full resize-y rounded-md border border-gray-100 bg-gray-50 p-3 text-sm text-gray-800 outline-none focus:border-gray-900 focus:bg-white"
+        className="mt-3 min-h-[40vh] w-full flex-1 resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
       />
-    </div>
+    </Dokument>
   )
 }
 

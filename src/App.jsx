@@ -41,6 +41,77 @@ function migriereAlteKurse() {
   schreibeStore("kurse", [], [])
 }
 
+// Schlichtes Linien-Icon (24er-Raster, currentColor).
+function NavIcon({ children, className }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  )
+}
+
+// Hauptnavigation der App – als Sidebar (Desktop) und Tab-Leiste (Mobil).
+const NAV = [
+  {
+    key: "dashboard",
+    label: "Start",
+    icon: <path d="M3 10.75 12 3l9 7.75M5 9.5V21h14V9.5" />,
+  },
+  {
+    key: "kalender",
+    label: "Kalender",
+    icon: (
+      <>
+        <rect x="3" y="4.5" width="18" height="16" rx="2" />
+        <path d="M3 9.5h18M8 3v3M16 3v3" />
+      </>
+    ),
+  },
+  {
+    key: "todos",
+    label: "Todos",
+    icon: (
+      <>
+        <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+        <path d="m8 12 3 3 5-6" />
+      </>
+    ),
+  },
+  {
+    key: "habits",
+    label: "Habits",
+    icon: (
+      <path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1 .4-1.8.8-2.4.3 1 .9 1.6 1.7 1.6-.8-2 .5-5 1-7.2Z" />
+    ),
+  },
+  {
+    key: "deepwork",
+    label: "Fokus",
+    icon: (
+      <>
+        <circle cx="12" cy="13.5" r="7.5" />
+        <path d="M12 13.5V9.5M9.5 2h5" />
+      </>
+    ),
+  },
+  {
+    key: "projekte",
+    label: "Projekte",
+    icon: (
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+    ),
+  },
+]
+
 export default function App() {
   const [seite, setSeite] = useState("dashboard")
   const [param, setParam] = useState(null)
@@ -83,31 +154,78 @@ export default function App() {
   }
   if (cloudAktiv && !session) return <Login />
 
+  const abmelden = () => supabase.auth.signOut()
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-gray-50/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-          <button
-            onClick={zurueck}
-            className="flex items-center gap-2 text-sm font-semibold tracking-tight text-gray-900"
-          >
-            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gray-900 text-[11px] font-bold text-white">
-              O
-            </span>
-            OS
-          </button>
-          {cloudAktiv && session && (
+      {/* Sidebar – ab Tablet-Breite */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-200 bg-white/60 px-3 py-5 backdrop-blur md:flex">
+        <button
+          onClick={() => navigiere("dashboard")}
+          className="mb-6 flex items-center gap-2 px-2 text-sm font-semibold tracking-tight"
+        >
+          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-900 text-[12px] font-bold text-white">
+            O
+          </span>
+          OS
+        </button>
+        <nav className="flex flex-1 flex-col gap-0.5">
+          {NAV.map((item) => (
             <button
-              onClick={() => supabase.auth.signOut()}
-              className="rounded-md px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              key={item.key}
+              onClick={() => navigiere(item.key)}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                seite === item.key
+                  ? "bg-gray-100 font-medium text-gray-900"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+              }`}
             >
-              Abmelden
+              <NavIcon className="h-[18px] w-[18px] shrink-0">
+                {item.icon}
+              </NavIcon>
+              {item.label}
             </button>
-          )}
-        </div>
+          ))}
+        </nav>
+        {cloudAktiv && session && (
+          <button
+            onClick={abmelden}
+            className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
+          >
+            <NavIcon className="h-[18px] w-[18px] shrink-0">
+              <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
+            </NavIcon>
+            Abmelden
+          </button>
+        )}
+      </aside>
+
+      {/* Mobile-Kopfzeile */}
+      <header
+        className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-gray-50/80 px-4 py-3 backdrop-blur-md md:hidden"
+        style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+      >
+        <button
+          onClick={() => navigiere("dashboard")}
+          className="flex items-center gap-2 text-sm font-semibold tracking-tight"
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gray-900 text-[11px] font-bold text-white">
+            O
+          </span>
+          OS
+        </button>
+        {cloudAktiv && session && (
+          <button
+            onClick={abmelden}
+            className="rounded-md px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          >
+            Abmelden
+          </button>
+        )}
       </header>
 
-      <main>
+      {/* Inhalt */}
+      <main className="pb-24 md:pb-10 md:pl-60">
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite onBack={zurueck} />}
         {seite === "todos" && <TodosSeite onBack={zurueck} />}
@@ -117,6 +235,27 @@ export default function App() {
           <OrdnerSeite onBack={zurueck} startProjektId={param} />
         )}
       </main>
+
+      {/* Tab-Leiste – nur Mobil */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-gray-200 bg-white/90 backdrop-blur md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {NAV.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => navigiere(item.key)}
+            className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
+              seite === item.key
+                ? "font-medium text-gray-900"
+                : "text-gray-400 hover:text-gray-900"
+            }`}
+          >
+            <NavIcon className="h-5 w-5">{item.icon}</NavIcon>
+            {item.label}
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }
