@@ -205,7 +205,7 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
         </div>
       )}
 
-      <nav className="sticky top-12 z-10 mt-6 flex gap-5 overflow-x-auto border-b border-gray-200 bg-gray-50/85 backdrop-blur sm:gap-6">
+      <nav className="sticky top-12 z-10 mt-6 flex gap-5 overflow-x-auto border-b border-gray-200 bg-gray-50/85 backdrop-blur sm:gap-6 md:top-0">
         <TabButton
           active={aktiv === "uebersicht"}
           onClick={() => setAktiv("uebersicht")}
