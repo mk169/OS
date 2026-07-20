@@ -85,18 +85,21 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      <header className="border-b border-gray-200 bg-white">
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-gray-50/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
           <button
             onClick={zurueck}
-            className="text-sm font-semibold tracking-tight"
+            className="flex items-center gap-2 text-sm font-semibold tracking-tight text-gray-900"
           >
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gray-900 text-[11px] font-bold text-white">
+              O
+            </span>
             OS
           </button>
           {cloudAktiv && session && (
             <button
               onClick={() => supabase.auth.signOut()}
-              className="text-xs text-gray-400 transition-colors hover:text-gray-900"
+              className="rounded-md px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
             >
               Abmelden
             </button>

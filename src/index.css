@@ -1,6 +1,72 @@
 @import "tailwindcss";
 
+/*
+ * Notion-artiges Design-System.
+ * Die Tailwind-Graustufen sind hier zentral auf eine warme, neutrale
+ * Palette umgestellt (statt kühlem Blaugrau). Dadurch übernehmen alle
+ * bestehenden `gray-*`-Klassen automatisch den ruhigen, cleanen Look –
+ * ohne dass jede Komponente einzeln angefasst werden muss.
+ */
+@theme {
+  /* Warme neutrale Skala – angelehnt an Notions Textfarbe #37352f. */
+  --color-gray-50: #f7f6f3; /* Seitenhintergrund (warmes Off-White) */
+  --color-gray-100: #efedea; /* Chips, Trennlinien, Hover */
+  --color-gray-200: #e7e5e1; /* Ränder */
+  --color-gray-300: #d8d5cf; /* gestrichelte Ränder */
+  --color-gray-400: #9b9a97; /* Sekundärtext, Platzhalter */
+  --color-gray-500: #787672; /* Labels */
+  --color-gray-600: #5f5d59; /* Fließtext gedämpft */
+  --color-gray-700: #4a4842; /* Button-Hover */
+  --color-gray-800: #3f3d37; /* Fließtext */
+  --color-gray-900: #37352f; /* Überschriften, dunkle Buttons */
+
+  /* Font-Stack im Notion-Stil. */
+  --font-sans:
+    "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+html {
+  background: var(--color-gray-50);
+}
+
 body {
   margin: 0;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+  color: var(--color-gray-900);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.011em; /* leicht enger – wirkt gesetzter/ruhiger */
+}
+
+/* Textauswahl in dezentem, warmem Ton. */
+::selection {
+  background: rgba(35, 131, 226, 0.16);
+}
+
+/* Ruhige, schmale Scrollbar wie in Notion. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(55, 53, 47, 0.18) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(55, 53, 47, 0.18);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(55, 53, 47, 0.32);
+}
+
+/* Klarer, dezenter Fokus-Ring statt hartem Browser-Outline. */
+:focus-visible {
+  outline: 2px solid rgba(35, 131, 226, 0.5);
+  outline-offset: 1px;
+  border-radius: 4px;
 }
