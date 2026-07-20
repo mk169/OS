@@ -2,13 +2,14 @@
   "name": "OS",
   "short_name": "OS",
   "description": "Dein persönliches Betriebssystem für Studium und Projekte.",
-  "start_url": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
-  "background_color": "#f9fafb",
-  "theme_color": "#111827",
+  "background_color": "#f7f6f3",
+  "theme_color": "#f7f6f3",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
