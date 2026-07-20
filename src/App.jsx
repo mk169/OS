@@ -143,8 +143,6 @@ export default function App() {
     setParam(wert)
   }
 
-  const zurueck = () => navigiere("dashboard")
-
   if (cloudAktiv && !authBereit) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-400">
@@ -227,13 +225,11 @@ export default function App() {
       {/* Inhalt */}
       <main className="pb-24 md:pb-10 md:pl-60">
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
-        {seite === "kalender" && <KalenderSeite onBack={zurueck} />}
-        {seite === "todos" && <TodosSeite onBack={zurueck} />}
-        {seite === "habits" && <HabitsSeite onBack={zurueck} />}
-        {seite === "deepwork" && <DeepWorkSeite onBack={zurueck} />}
-        {seite === "projekte" && (
-          <OrdnerSeite onBack={zurueck} startProjektId={param} />
-        )}
+        {seite === "kalender" && <KalenderSeite />}
+        {seite === "todos" && <TodosSeite />}
+        {seite === "habits" && <HabitsSeite />}
+        {seite === "deepwork" && <DeepWorkSeite />}
+        {seite === "projekte" && <OrdnerSeite startProjektId={param} />}
       </main>
 
       {/* Tab-Leiste – nur Mobil */}

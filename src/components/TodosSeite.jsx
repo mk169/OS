@@ -42,7 +42,7 @@ export function TodoZeile({ todo, onToggle, onRemove, zuordnungsName }) {
   )
 }
 
-export default function TodosSeite({ onBack }) {
+export default function TodosSeite() {
   const [todos, setTodos] = useStored("todos", [])
   const [projekte] = useStored("projekte", [])
 
@@ -66,13 +66,6 @@ export default function TodosSeite({ onBack }) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <button
-        onClick={onBack}
-        className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-900"
-      >
-        ← Dashboard
-      </button>
-
       <div className="mt-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Todos</h1>

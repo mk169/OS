@@ -300,7 +300,7 @@ function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
   )
 }
 
-export default function HabitsSeite({ onBack }) {
+export default function HabitsSeite() {
   const { habits, setHabits, bereiche, setBereiche } = useHabitDaten()
   const toggle = nutzeHabitToggle(habits, setHabits)
   const heuteKey = heute()
@@ -319,13 +319,6 @@ export default function HabitsSeite({ onBack }) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <button
-        onClick={onBack}
-        className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-900"
-      >
-        ← Dashboard
-      </button>
-
       <div className="mt-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Habits</h1>
