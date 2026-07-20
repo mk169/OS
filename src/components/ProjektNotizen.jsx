@@ -103,7 +103,7 @@ export default function ProjektNotizen({ projekt }) {
                       placeholder="Schreib hier deine Zusammenfassung – speichert automatisch."
                       rows={8}
                       autoFocus
-                      className="w-full resize-y rounded-md border border-gray-100 bg-gray-50 p-3 text-sm text-gray-800 outline-none focus:border-gray-900 focus:bg-white"
+                      className="w-full resize-y rounded-md border border-gray-200 bg-transparent p-3 text-sm text-gray-800 outline-none focus:border-gray-900"
                     />
                   </div>
                 )}
