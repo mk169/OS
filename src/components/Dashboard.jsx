@@ -4,7 +4,11 @@ import { datumLang } from "./Kalender"
 import { KalenderPanel } from "./KalenderSeite"
 import TodoErstellen, { EINTEILUNGEN, einteilungVon } from "./TodoErstellen"
 import { useHabitDaten, HabitKacheln, nutzeHabitToggle } from "./HabitsSeite"
-import { projektFortschritt } from "./OrdnerSeite"
+import {
+  projektFortschrittWerte,
+  DeadlineChip,
+  Fortschrittsbalken,
+} from "./OrdnerSeite"
 
 function begruessung() {
   const stunde = new Date().getHours()
@@ -245,9 +249,7 @@ function ProjektBaum({ ordner, projekte, todos, onOeffnen, onProjekt }) {
             <tr className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
               <th className="px-4 py-2.5 font-semibold">Name</th>
               <th className="px-4 py-2.5 font-semibold">Deadline</th>
-              <th className="px-4 py-2.5 text-right font-semibold">
-                Fortschritt
-              </th>
+              <th className="px-4 py-2.5 font-semibold">Fortschritt</th>
             </tr>
           </thead>
           <tbody>
@@ -284,12 +286,16 @@ function ProjektBaum({ ordner, projekte, todos, onOeffnen, onProjekt }) {
                     )}
                   </td>
                   <td className="px-4 py-2.5 text-gray-500">
-                    {typ === "projekt" && obj.deadline
-                      ? `${new Date(obj.deadline).toLocaleDateString("de-DE")} (${tageBis(obj.deadline)})`
-                      : ""}
+                    {typ === "projekt" && obj.deadline && (
+                      <DeadlineChip datum={obj.deadline} />
+                    )}
                   </td>
-                  <td className="px-4 py-2.5 text-right text-gray-500">
-                    {typ === "projekt" ? projektFortschritt(obj, todos) : ""}
+                  <td className="w-44 px-4 py-2.5">
+                    {typ === "projekt" && (
+                      <Fortschrittsbalken
+                        {...projektFortschrittWerte(obj, todos)}
+                      />
+                    )}
                   </td>
                 </tr>
               ))
