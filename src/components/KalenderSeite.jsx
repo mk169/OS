@@ -90,7 +90,7 @@ export function KalenderPanel() {
       {formOffen && (
         <form
           onSubmit={addTermin}
-          className="mb-4 rounded-lg bg-gray-50 p-4"
+          className="mb-4 rounded-lg border border-gray-200 p-4"
         >
           <input
             value={formTitel}

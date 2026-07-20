@@ -256,7 +256,7 @@ function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
       </div>
 
       {neuerBereich && (
-        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 p-3">
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 p-3">
           <input
             value={bereichName}
             onChange={(e) => setBereichName(e.target.value)}

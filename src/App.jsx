@@ -145,7 +145,7 @@ export default function App() {
 
   if (cloudAktiv && !authBereit) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-400">
+      <div className="flex min-h-screen items-center justify-center bg-white text-sm text-gray-400">
         Lädt…
       </div>
     )
@@ -155,9 +155,9 @@ export default function App() {
   const abmelden = () => supabase.auth.signOut()
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-white text-gray-900">
       {/* Sidebar – ab Tablet-Breite */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-200 bg-white/60 px-3 py-5 backdrop-blur md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-200 bg-gray-100 px-3 py-5 md:flex">
         <button
           onClick={() => navigiere("dashboard")}
           className="mb-6 flex items-center gap-2 px-2 text-sm font-semibold tracking-tight"
@@ -174,8 +174,8 @@ export default function App() {
               onClick={() => navigiere(item.key)}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                 seite === item.key
-                  ? "bg-gray-100 font-medium text-gray-900"
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-white font-medium text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:bg-white/70 hover:text-gray-900"
               }`}
             >
               <NavIcon className="h-[18px] w-[18px] shrink-0">
@@ -188,7 +188,7 @@ export default function App() {
         {cloudAktiv && session && (
           <button
             onClick={abmelden}
-            className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
+            className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-white/70 hover:text-gray-900"
           >
             <NavIcon className="h-[18px] w-[18px] shrink-0">
               <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
@@ -200,7 +200,7 @@ export default function App() {
 
       {/* Mobile-Kopfzeile */}
       <header
-        className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-gray-50/80 px-4 py-3 backdrop-blur-md md:hidden"
+        className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-white/80 px-4 py-3 backdrop-blur-md md:hidden"
         style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
       >
         <button

@@ -31,7 +31,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
+    <div className="flex min-h-screen items-center justify-center bg-white px-6">
       <div className="w-full max-w-sm">
         <h1 className="text-center text-xl font-semibold tracking-tight">OS</h1>
         <p className="mt-1 text-center text-sm text-gray-400">
