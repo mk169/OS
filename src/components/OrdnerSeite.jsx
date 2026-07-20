@@ -80,7 +80,7 @@ function OrdnerIcon() {
   )
 }
 
-export default function OrdnerSeite({ onBack, startProjektId = null }) {
+export default function OrdnerSeite({ startProjektId = null }) {
   const [ordner, setOrdner] = useStored("ordner", [])
   const [projekte, setProjekte] = useStored("projekte", [])
   const [todos] = useStored("todos", [])
@@ -150,13 +150,6 @@ export default function OrdnerSeite({ onBack, startProjektId = null }) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <button
-        onClick={onBack}
-        className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-900"
-      >
-        ← Dashboard
-      </button>
-
       <div className="mt-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Projekte</h1>

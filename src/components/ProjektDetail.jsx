@@ -24,7 +24,72 @@ export const MODULE = [
 
 export const STANDARD_MODULE = ["ziel", "workflow", "todos", "kalender"]
 
+// Auswahlwerte für die Eigenschaften Priorität und Status (Notion-artige
+// Tags). Farbe pro Wert; leerer Wert = dezentes „Keine“.
+const PRIORITAETEN = [
+  { value: "", label: "Keine", tag: "bg-gray-100 text-gray-500" },
+  { value: "niedrig", label: "Niedrig", tag: "bg-gray-100 text-gray-600" },
+  { value: "mittel", label: "Mittel", tag: "bg-amber-50 text-amber-700" },
+  { value: "hoch", label: "Hoch", tag: "bg-red-50 text-red-600" },
+]
+
+const STATUS_OPTIONEN = [
+  { value: "offen", label: "Nicht begonnen", tag: "bg-gray-100 text-gray-600" },
+  { value: "aktiv", label: "In Arbeit", tag: "bg-blue-50 text-blue-700" },
+  { value: "fertig", label: "Erledigt", tag: "bg-emerald-50 text-emerald-700" },
+]
+
+// Kleines 16er-Linien-Icon.
+function PropIcon({ children }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  )
+}
+
+// Eine Eigenschaftszeile: Icon + Label links, Wert rechts.
+function EigenschaftsZeile({ icon, label, children }) {
+  return (
+    <div className="flex items-center gap-2 rounded-md py-0.5">
+      <span className="flex w-32 shrink-0 items-center gap-2 px-1 text-sm text-gray-400">
+        {icon}
+        {label}
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  )
+}
+
+// Wert als farbiger Tag, der zugleich ein Auswahlmenü ist.
+function TagSelect({ value, options, onChange }) {
+  const aktiv = options.find((o) => o.value === value) ?? options[0]
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`cursor-pointer appearance-none rounded px-2 py-0.5 text-xs font-medium outline-none ${aktiv.tag}`}
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value} className="bg-white text-gray-800">
+          {o.label}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 export default function ProjektDetail({ projekt, onUpdate, onBack }) {
+  const [ordner] = useStored("ordner", [])
   const module = projekt.module ?? STANDARD_MODULE
   const eigene = projekt.eigeneModule ?? []
   const [neuerBereichName, setNeuerBereichName] = useState("")
@@ -92,39 +157,106 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
     <div className="mx-auto flex min-h-[calc(100vh-3.25rem)] w-full max-w-4xl flex-col px-4 pb-10 pt-6 sm:px-6">
       <button
         onClick={onBack}
-        className="self-start text-xs font-medium text-gray-400 transition-colors hover:text-gray-900"
+        title="Zurück"
+        className="flex h-7 w-7 items-center justify-center self-start rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
       >
-        ← Zurück
+        <PropIcon>
+          <path d="m15 18-6-6 6-6" />
+        </PropIcon>
       </button>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {projekt.name}
-          </h1>
-          {projekt.beschreibung && (
-            <p className="mt-1 text-sm text-gray-400">{projekt.beschreibung}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-gray-400">
-            Deadline
-            <input
-              type="date"
-              value={projekt.deadline ?? ""}
-              onChange={(e) =>
-                onUpdate({ ...projekt, deadline: e.target.value })
-              }
-              className="rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-gray-900"
-            />
-          </label>
-          <button
-            onClick={() => setAnpassen(!anpassen)}
-            className="rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+      <h1 className="mt-3 text-3xl font-semibold tracking-tight">
+        {projekt.name}
+      </h1>
+      {projekt.beschreibung && (
+        <p className="mt-1 text-sm text-gray-400">{projekt.beschreibung}</p>
+      )}
+
+      {/* Notion-artige Eigenschaftsliste */}
+      <div className="mt-5 max-w-xl">
+        <EigenschaftsZeile
+          label="Bereich"
+          icon={
+            <PropIcon>
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+            </PropIcon>
+          }
+        >
+          <select
+            value={projekt.ordnerId ?? ""}
+            onChange={(e) =>
+              onUpdate({
+                ...projekt,
+                ordnerId: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+            className="w-full cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
           >
-            Bereiche anpassen
-          </button>
-        </div>
+            <option value="">Kein Ordner</option>
+            {ordner.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </EigenschaftsZeile>
+
+        <EigenschaftsZeile
+          label="Fälligkeit"
+          icon={
+            <PropIcon>
+              <rect x="3" y="4.5" width="18" height="16" rx="2" />
+              <path d="M3 9.5h18M8 3v3M16 3v3" />
+            </PropIcon>
+          }
+        >
+          <input
+            type="date"
+            value={projekt.deadline ?? ""}
+            onChange={(e) => onUpdate({ ...projekt, deadline: e.target.value })}
+            className="cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
+          />
+        </EigenschaftsZeile>
+
+        <EigenschaftsZeile
+          label="Priorität"
+          icon={
+            <PropIcon>
+              <path d="M5 21V4h11l-2 4 2 4H5" />
+            </PropIcon>
+          }
+        >
+          <TagSelect
+            value={projekt.prioritaet ?? ""}
+            options={PRIORITAETEN}
+            onChange={(v) => onUpdate({ ...projekt, prioritaet: v })}
+          />
+        </EigenschaftsZeile>
+
+        <EigenschaftsZeile
+          label="Status"
+          icon={
+            <PropIcon>
+              <circle cx="12" cy="12" r="8.5" strokeDasharray="3 3" />
+            </PropIcon>
+          }
+        >
+          <TagSelect
+            value={projekt.status ?? "offen"}
+            options={STATUS_OPTIONEN}
+            onChange={(v) => onUpdate({ ...projekt, status: v })}
+          />
+        </EigenschaftsZeile>
+
+        <button
+          onClick={() => setAnpassen(!anpassen)}
+          className="mt-1 flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
+        >
+          <PropIcon>
+            <path d="M12 5v14M5 12h14" />
+          </PropIcon>
+          Bereiche anpassen
+        </button>
       </div>
 
       {anpassen && (

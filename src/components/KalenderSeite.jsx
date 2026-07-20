@@ -222,16 +222,9 @@ export function KalenderPanel() {
   )
 }
 
-export default function KalenderSeite({ onBack }) {
+export default function KalenderSeite() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <button
-        onClick={onBack}
-        className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-900"
-      >
-        ← Dashboard
-      </button>
-
       <div className="mt-4">
         <h1 className="text-2xl font-semibold tracking-tight">Kalender</h1>
         <p className="mt-1 text-sm text-gray-400">

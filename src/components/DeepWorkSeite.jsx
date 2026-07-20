@@ -14,7 +14,7 @@ function alsUhr(sekunden) {
 // Sessions werden protokolliert; künftige Blöcke lassen sich als Termin
 // in den Kalender einplanen.
 
-export default function DeepWorkSeite({ onBack }) {
+export default function DeepWorkSeite() {
   const [sessions, setSessions] = useStored("deepwork", [])
   const [termine, setTermine] = useStored("termine", [])
   const [projekte] = useStored("projekte", [])
@@ -129,13 +129,6 @@ export default function DeepWorkSeite({ onBack }) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <button
-        onClick={onBack}
-        className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-900"
-      >
-        ← Dashboard
-      </button>
-
       <div className="mt-4">
         <h1 className="text-2xl font-semibold tracking-tight">Deep Work</h1>
         <p className="mt-1 text-sm text-gray-400">
