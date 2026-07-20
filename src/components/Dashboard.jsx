@@ -43,7 +43,7 @@ export default function Dashboard({ onNavigate }) {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <p className="text-sm text-gray-400">{datumLang(heute())}</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-        {begruessung()}, Matthias
+        {begruessung()}
       </h1>
 
       <TagesUeberblick termine={termine} todos={todos} projekte={projekte} />
