@@ -58,7 +58,9 @@ export default function Kalender({ eintraegeAm, legende = [], onNeu }) {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm font-medium text-gray-900">{titel}</p>
+        <p className="text-base font-semibold tracking-tight text-gray-900">
+          {titel}
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-md border border-gray-200 p-0.5 text-xs">
             {[
@@ -158,16 +160,16 @@ function MonatsAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick }) {
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-px text-center text-xs text-gray-400">
+      <div className="grid grid-cols-7 text-center text-[11px] font-medium uppercase tracking-wider text-gray-400">
         {WOCHENTAGE.map((w) => (
-          <div key={w} className="pb-1">
+          <div key={w} className="pb-2">
             {w}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200">
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
         {Array.from({ length: startOffset }).map((_, i) => (
-          <div key={`leer-${i}`} className="min-h-16 bg-gray-50" />
+          <div key={`leer-${i}`} className="min-h-20 bg-gray-50/50" />
         ))}
         {Array.from({ length: tageImMonat }).map((_, i) => {
           const tag = i + 1
@@ -178,10 +180,10 @@ function MonatsAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick }) {
             <button
               key={key}
               onClick={() => onTagKlick(key)}
-              className="flex min-h-16 flex-col items-stretch gap-0.5 bg-white p-1 text-left transition-colors hover:bg-gray-50"
+              className="flex min-h-20 flex-col items-stretch gap-1 bg-white p-1.5 text-left transition-colors hover:bg-gray-50"
             >
               <span
-                className={`self-start rounded px-1 text-xs ${
+                className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
                   istHeute
                     ? "bg-gray-900 font-semibold text-white"
                     : "text-gray-500"
@@ -189,17 +191,19 @@ function MonatsAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick }) {
               >
                 {tag}
               </span>
-              {eintraege.slice(0, 2).map((e, j) => (
-                <span
-                  key={j}
-                  className={`truncate rounded px-1 text-[10px] leading-4 ${EINTRAG_TYPEN[e.typ].chip}`}
-                >
-                  {e.label}
+              {eintraege.slice(0, 3).map((e, j) => (
+                <span key={j} className="flex items-center gap-1.5">
+                  <span
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${EINTRAG_TYPEN[e.typ].punkt}`}
+                  />
+                  <span className="truncate text-[11px] leading-tight text-gray-600">
+                    {e.label}
+                  </span>
                 </span>
               ))}
-              {eintraege.length > 2 && (
-                <span className="px-1 text-[10px] text-gray-400">
-                  +{eintraege.length - 2} weitere
+              {eintraege.length > 3 && (
+                <span className="pl-3 text-[10px] text-gray-400">
+                  +{eintraege.length - 3}
                 </span>
               )}
             </button>
@@ -210,7 +214,7 @@ function MonatsAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick }) {
           return rest === 0
             ? null
             : Array.from({ length: 7 - rest }).map((_, i) => (
-                <div key={`ende-${i}`} className="min-h-16 bg-gray-50" />
+                <div key={`ende-${i}`} className="min-h-20 bg-gray-50/50" />
               ))
         })()}
       </div>
