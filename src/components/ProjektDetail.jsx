@@ -27,14 +27,14 @@ export const STANDARD_MODULE = ["ziel", "workflow", "todos", "kalender"]
 
 // Auswahlwerte für die Eigenschaften Priorität und Status (Notion-artige
 // Tags). Farbe pro Wert; leerer Wert = dezentes „Keine“.
-const PRIORITAETEN = [
+export const PRIORITAETEN = [
   { value: "", label: "Keine", tag: "bg-gray-100 text-gray-500" },
   { value: "niedrig", label: "Niedrig", tag: "bg-gray-100 text-gray-600" },
   { value: "mittel", label: "Mittel", tag: "bg-amber-50 text-amber-700" },
   { value: "hoch", label: "Hoch", tag: "bg-red-50 text-red-600" },
 ]
 
-const STATUS_OPTIONEN = [
+export const STATUS_OPTIONEN = [
   { value: "offen", label: "Nicht begonnen", tag: "bg-gray-100 text-gray-600" },
   { value: "aktiv", label: "In Arbeit", tag: "bg-blue-50 text-blue-700" },
   { value: "fertig", label: "Erledigt", tag: "bg-emerald-50 text-emerald-700" },
