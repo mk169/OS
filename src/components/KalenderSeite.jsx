@@ -3,13 +3,13 @@ import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import { faelltAuf, WIEDERHOLUNGEN } from "../lib/wiederholung"
 import { alsICS, parseICS } from "../lib/ics"
-import Kalender from "./Kalender"
+import Kalender, { TagesAnsicht, datumLang } from "./Kalender"
 
 // Kalender-Panel: vollständiger Kalender (Tag/Woche/Monat, Timestacking)
 // mit Termin-Erstellung. Wird im Dashboard eingebettet und auf der
 // eigenen Kalender-Seite als Gesamtübersicht genutzt.
 
-export function KalenderPanel({ tagesdetail = false }) {
+export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
   const [termine, setTermine] = useStored("termine", [])
   const [todos] = useStored("todos", [])
   const [projekte] = useStored("projekte", [])
@@ -145,6 +145,18 @@ export function KalenderPanel({ tagesdetail = false }) {
     }
     reader.readAsText(datei)
     e.target.value = ""
+  }
+
+  function oeffneNeu(datum) {
+    setFormDatum(datum)
+    setFormOffen(true)
+  }
+  function oeffneNeuZeit(datum, zeit) {
+    setFormDatum(datum)
+    setFormZeit(zeit)
+    setFormGeburtstag(false)
+    setFormOffen(true)
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   return (
@@ -317,22 +329,35 @@ export function KalenderPanel({ tagesdetail = false }) {
         </form>
       )}
 
-      <Kalender
-        eintraegeAm={eintraegeAm}
-        legende={["termin", "fokus", "geburtstag", "aufgabe", "projekt"]}
-        tagesdetail={tagesdetail}
-        onNeu={(datum) => {
-          setFormDatum(datum)
-          setFormOffen(true)
-        }}
-        onNeuZeit={(datum, zeit) => {
-          setFormDatum(datum)
-          setFormZeit(zeit)
-          setFormGeburtstag(false)
-          setFormOffen(true)
-          window.scrollTo({ top: 0, behavior: "smooth" })
-        }}
-      />
+      {nurHeute ? (
+        <>
+          <div className="flex items-center justify-between pb-4">
+            <p className="text-base font-semibold tracking-tight text-gray-900">
+              {datumLang(heute())}
+            </p>
+            <button
+              onClick={() => oeffneNeu(heute())}
+              className="rounded-md bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700"
+            >
+              + Termin
+            </button>
+          </div>
+          <TagesAnsicht
+            cursor={heute()}
+            eintraegeAm={eintraegeAm}
+            onNeu={oeffneNeu}
+            onNeuZeit={oeffneNeuZeit}
+          />
+        </>
+      ) : (
+        <Kalender
+          eintraegeAm={eintraegeAm}
+          legende={["termin", "fokus", "geburtstag", "aufgabe", "projekt"]}
+          tagesdetail={tagesdetail}
+          onNeu={oeffneNeu}
+          onNeuZeit={oeffneNeuZeit}
+        />
+      )}
 
       {tagesdetail && (
         <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-gray-200 pt-3 text-xs text-gray-400">

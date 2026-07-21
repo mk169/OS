@@ -53,7 +53,7 @@ export default function Dashboard({ onNavigate }) {
       <TagesUeberblick termine={termine} todos={todos} projekte={projekte} />
 
       <Abschnitt titel="Kalender" onOeffnen={() => onNavigate("kalender")}>
-        <KalenderPanel />
+        <KalenderPanel nurHeute />
       </Abschnitt>
 
       <TodoVorschau
@@ -135,45 +135,46 @@ function TodoVorschau({ todos, setTodos, projekte, onOeffnen }) {
 
   return (
     <Abschnitt titel="Todos" onOeffnen={onOeffnen} aktion={<TodoErstellen />}>
-      <div className="rounded-xl border border-gray-200 bg-white px-4 py-2">
-        {offene.length === 0 ? (
-          <p className="py-4 text-center text-sm text-gray-400">
-            Keine offenen Todos.
-          </p>
-        ) : (
-          <ul className="divide-y divide-gray-100">
-            {offene.map((t) => {
-              const einteilung = einteilungVon(t)
-              return (
-                <li key={t.id} className="flex items-center gap-3 py-2">
-                  <span
-                    className={`h-2 w-2 shrink-0 rounded-full ${einteilung.punkt}`}
-                  />
+      {offene.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white py-6 text-center text-sm text-gray-400">
+          Keine offenen Todos.
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {offene.map((t) => {
+            const einteilung = einteilungVon(t)
+            return (
+              <li
+                key={t.id}
+                className="group flex items-stretch overflow-hidden rounded-lg border border-gray-200 bg-white transition-colors hover:border-gray-300"
+              >
+                <span className={`w-1 shrink-0 ${einteilung.punkt}`} />
+                <div className="flex flex-1 items-center gap-3 px-3.5 py-2.5">
                   <input
                     type="checkbox"
                     checked={false}
                     onChange={() => toggle(t.id)}
-                    className="h-4 w-4 accent-gray-900"
+                    className="h-4 w-4 shrink-0 accent-gray-900"
                   />
-                  <span className="flex-1 truncate text-sm text-gray-800">
+                  <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
                     {t.text}
                   </span>
                   {zuordnungsName(t) && (
-                    <span className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
                       {zuordnungsName(t)}
                     </span>
                   )}
                   {t.datum && (
-                    <span className="text-xs text-gray-400">
+                    <span className="shrink-0 text-xs text-gray-400">
                       {tageBis(t.datum)}
                     </span>
                   )}
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </div>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </Abschnitt>
   )
 }
@@ -182,18 +183,11 @@ function HabitVorschau({ onOeffnen }) {
   const { habits, setHabits, bereiche } = useHabitDaten()
   const toggle = nutzeHabitToggle(habits, setHabits)
 
+  if (habits.length === 0) return null
+
   return (
     <Abschnitt titel="Habits" onOeffnen={onOeffnen}>
-      {habits.length === 0 ? (
-        <button
-          onClick={onOeffnen}
-          className="w-full rounded-xl border border-dashed border-gray-300 py-6 text-center text-sm text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-600"
-        >
-          Noch keine Habits – hier anlegen.
-        </button>
-      ) : (
-        <HabitKacheln habits={habits} bereiche={bereiche} onToggle={toggle} />
-      )}
+      <HabitKacheln habits={habits} bereiche={bereiche} onToggle={toggle} />
     </Abschnitt>
   )
 }
