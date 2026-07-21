@@ -204,6 +204,7 @@ function Kachel({ label, children }) {
 function DashboardBlock({ projekt }) {
   const [todos] = useStored("todos", [])
   const [karten] = useStored("karten", [])
+  const [deepwork] = useStored("deepwork", [])
   const gehoert = (e) => e.projektId === projekt.id || e.kursId === projekt.id
 
   const eigene = todos.filter(gehoert)
@@ -212,6 +213,15 @@ function DashboardBlock({ projekt }) {
   const faellig = karten.filter(
     (k) => gehoert(k) && (!k.faellig || k.faellig <= heute())
   ).length
+  const fokusMin = deepwork
+    .filter((s) => s.projektId === projekt.id)
+    .reduce((summe, s) => summe + (s.minuten ?? 0), 0)
+  const fokusText =
+    fokusMin === 0
+      ? "—"
+      : fokusMin >= 60
+        ? `${Math.floor(fokusMin / 60)} Std ${fokusMin % 60} Min`
+        : `${fokusMin} Min`
 
   return (
     <div className="grid gap-3 py-1 sm:grid-cols-2">
@@ -239,6 +249,11 @@ function DashboardBlock({ projekt }) {
       <Kachel label="Fällige Karteikarten">
         <p className="text-2xl font-semibold tracking-tight text-gray-900">
           {faellig}
+        </p>
+      </Kachel>
+      <Kachel label="Fokuszeit">
+        <p className="text-2xl font-semibold tracking-tight text-gray-900">
+          {fokusText}
         </p>
       </Kachel>
     </div>
