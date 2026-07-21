@@ -495,14 +495,19 @@ function UebersichtModul({
               <button
                 key={m.key}
                 onClick={() => onOeffnen(m.key)}
-                className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-gray-50"
+                className="group flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-gray-50"
               >
-                <span className="text-gray-300">¶</span>
-                <span className="text-sm font-medium text-gray-900 underline decoration-gray-300 decoration-dotted underline-offset-2 group-hover:decoration-gray-900">
+                <span className="text-gray-400">
+                  <PropIcon>
+                    <path d="M7 3h7l5 5v11a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+                    <path d="M14 3v5h5" />
+                  </PropIcon>
+                </span>
+                <span className="text-sm font-medium text-gray-900 underline decoration-gray-300 underline-offset-[3px] group-hover:decoration-gray-500">
                   {m.label}
                 </span>
                 <span className="truncate text-xs text-gray-400">
-                  — {beschreibung(m.key)}
+                  {beschreibung(m.key)}
                 </span>
                 <span className="ml-auto text-xs text-gray-300 opacity-0 transition-opacity group-hover:opacity-100">
                   öffnen ↗
@@ -652,7 +657,7 @@ function WorkflowModul({ projekt, onUpdate }) {
     <div>
       <form
         onSubmit={addSchritt}
-        className="flex flex-wrap items-end gap-2 rounded-xl border border-gray-200 bg-white p-4"
+        className="flex flex-wrap items-end gap-2 border-b border-gray-100 pb-5"
       >
         <label className="flex min-w-0 flex-1 flex-col text-xs text-gray-500">
           Schritt
@@ -981,7 +986,7 @@ function KalenderModul({ projekt }) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="py-2">
       <p className="mb-4 text-xs text-gray-400">
         Zeigt Workflow-Schritte mit Termin, Todos mit Deadline und die
         Projekt-Deadline.

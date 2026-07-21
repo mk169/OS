@@ -40,7 +40,7 @@ export default function ProjektNotizen({ projekt }) {
     <div>
       <form
         onSubmit={addNotiz}
-        className="flex gap-2 rounded-xl border border-gray-200 bg-white p-4"
+        className="flex gap-2 border-b border-gray-100 pb-4"
       >
         <input
           value={titel}
