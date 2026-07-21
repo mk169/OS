@@ -1,41 +1,68 @@
 import { inTagen } from "./datum"
 
-// Spaced Repetition nach dem SM-2-Algorithmus (wie Anki, tagesbasiert).
+// Spaced Repetition nach einem optimierten SM-2 (tagesbasiert, wie Anki).
 // Jede Karte hat:
-//   intervall – Abstand in Tagen bis zur nächsten Wiederholung
-//   ease      – Leichtigkeitsfaktor (Start 2.5, nie unter 1.3)
-//   faellig   – Datum der nächsten Wiederholung
+//   intervall      – Abstand in Tagen bis zur nächsten Wiederholung
+//   ease           – Leichtigkeitsfaktor (Start 2.5, zwischen 1.3 und 2.7)
+//   faellig        – Datum der nächsten Wiederholung
+//   wiederholungen – Anzahl korrekter Wiederholungen in Folge
+//   lapses         – wie oft die Karte vergessen wurde
 //
 // Bewertungen:
 //   nochmal – vergessen: Karte kommt heute gleich wieder, ease sinkt
-//   schwer  – gerade so geschafft: kleiner Schritt, ease sinkt leicht
+//   schwer  – gerade so: kleiner Schritt, ease sinkt leicht
 //   gut     – normal gewusst: Abstand × ease
 //   einfach – mühelos: größerer Sprung, ease steigt
+
+const EASE_MIN = 1.3
+const EASE_MAX = 2.7
+
+function begrenzeEase(e) {
+  return Math.min(EASE_MAX, Math.max(EASE_MIN, Number(e.toFixed(2))))
+}
+
+// Kleine Streuung (±5%) ab 3 Tagen, damit sich Wiederholungen nicht an
+// einzelnen Tagen stapeln – der gespeicherte Basis-Intervall bleibt klar.
+function mitStreuung(tage) {
+  if (tage < 3) return tage
+  const spanne = Math.max(1, Math.round(tage * 0.05))
+  return tage + Math.floor(Math.random() * (2 * spanne + 1)) - spanne
+}
 
 export function bewerteKarte(karte, stufe) {
   const ease = karte.ease ?? 2.5
   const intervall = karte.intervall ?? 0
+  const wiederholungen = karte.wiederholungen ?? 0
+  const lapses = karte.lapses ?? 0
 
   let neuesIntervall = intervall
   let neueEase = ease
+  let neueWiederholungen = wiederholungen + 1
+  let neueLapses = lapses
 
   if (stufe === "nochmal") {
     neuesIntervall = 0
-    neueEase = Math.max(1.3, ease - 0.2)
+    neueEase = begrenzeEase(ease - 0.2)
+    neueWiederholungen = 0
+    neueLapses = lapses + 1
   } else if (stufe === "schwer") {
-    neuesIntervall = Math.max(1, Math.round(intervall * 1.2))
-    neueEase = Math.max(1.3, ease - 0.15)
+    // mindestens einen Tag Fortschritt, aber vorsichtiger als „gut"
+    neuesIntervall =
+      intervall === 0 ? 1 : Math.max(intervall + 1, Math.round(intervall * 1.2))
+    neueEase = begrenzeEase(ease - 0.15)
   } else if (stufe === "gut") {
     neuesIntervall = intervall === 0 ? 1 : Math.round(intervall * ease)
   } else if (stufe === "einfach") {
     neuesIntervall = intervall === 0 ? 4 : Math.round(intervall * ease * 1.3)
-    neueEase = ease + 0.15
+    neueEase = begrenzeEase(ease + 0.15)
   }
 
   return {
     intervall: neuesIntervall,
     ease: neueEase,
-    faellig: inTagen(neuesIntervall),
+    wiederholungen: neueWiederholungen,
+    lapses: neueLapses,
+    faellig: inTagen(mitStreuung(neuesIntervall)),
   }
 }
 
@@ -47,10 +74,10 @@ export function intervallText(tage) {
   return monate === 1 ? "1 Monat" : `${monate} Monate`
 }
 
-// Liest eine Anki-Textexport-Datei ein (Anki: Datei → Exportieren →
-// "Notizen als Textdatei"). Format: eine Karte pro Zeile,
-// Vorder- und Rückseite durch Tab getrennt, Kopfzeilen beginnen mit "#".
-export function parseAnkiExport(text) {
+// Liest eine Textdatei mit Karten ein. Format: eine Karte pro Zeile,
+// Vorder- und Rückseite durch Tab (oder ;, ,, |) getrennt. Kopfzeilen
+// beginnen mit „#" (z. B. #separator:tab).
+export function parseTxtImport(text) {
   let trenner = "\t"
   const karten = []
 
@@ -70,18 +97,27 @@ export function parseAnkiExport(text) {
       continue
     }
 
-    const teile = zeile.split(trenner)
+    // Fällt auf gängige Trennzeichen zurück, wenn kein Tab vorkommt.
+    let teile = zeile.split(trenner)
+    if (teile.length < 2 && trenner === "\t") {
+      for (const t of [";", ",", "|"]) {
+        if (zeile.includes(t)) {
+          teile = zeile.split(t)
+          break
+        }
+      }
+    }
     if (teile.length < 2) continue
 
     const vorne = bereinige(teile[0])
-    const hinten = bereinige(teile[1])
+    const hinten = bereinige(teile.slice(1).join(" "))
     if (vorne && hinten) karten.push({ vorne, hinten })
   }
 
   return karten
 }
 
-// Entfernt HTML-Reste und Anführungszeichen aus Anki-Feldern.
+// Entfernt HTML-Reste und Anführungszeichen aus importierten Feldern.
 function bereinige(feld) {
   return feld
     .replace(/<br\s*\/?>/gi, " ")
