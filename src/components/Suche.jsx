@@ -149,7 +149,7 @@ export default function Suche({ onNavigate, onClose }) {
           />
           <button
             onClick={onClose}
-            className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-400"
+            className="shrink-0 rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-400"
           >
             Esc
           </button>

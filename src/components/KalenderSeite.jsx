@@ -7,7 +7,7 @@ import Kalender from "./Kalender"
 // mit Termin-Erstellung. Wird im Dashboard eingebettet und auf der
 // eigenen Kalender-Seite als Gesamtübersicht genutzt.
 
-export function KalenderPanel() {
+export function KalenderPanel({ tagesdetail = false }) {
   const [termine, setTermine] = useStored("termine", [])
   const [todos] = useStored("todos", [])
   const [projekte] = useStored("projekte", [])
@@ -86,7 +86,11 @@ export function KalenderPanel() {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div
+      className={
+        tagesdetail ? "" : "rounded-xl border border-gray-200 bg-white p-5"
+      }
+    >
       {formOffen && (
         <form
           onSubmit={addTermin}
@@ -213,6 +217,7 @@ export function KalenderPanel() {
       <Kalender
         eintraegeAm={eintraegeAm}
         legende={["termin", "fokus", "aufgabe", "projekt"]}
+        tagesdetail={tagesdetail}
         onNeu={(datum) => {
           setFormDatum(datum)
           setFormOffen(true)
@@ -234,7 +239,7 @@ export default function KalenderSeite() {
       </div>
 
       <div className="mt-6">
-        <KalenderPanel />
+        <KalenderPanel tagesdetail />
       </div>
     </div>
   )

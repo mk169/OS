@@ -78,7 +78,7 @@ function TagSelect({ value, options, onChange }) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`cursor-pointer appearance-none rounded px-2 py-0.5 text-xs font-medium outline-none ${aktiv.tag}`}
+      className={`cursor-pointer appearance-none rounded-sm px-2 py-0.5 text-xs font-medium outline-none ${aktiv.tag}`}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value} className="bg-white text-gray-800">
@@ -312,14 +312,14 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
                   <button
                     onClick={() => verschiebeModul(m.key, -1)}
                     title="Nach vorne"
-                    className="rounded px-1 text-gray-400 hover:text-white"
+                    className="rounded-sm px-1 text-gray-400 hover:text-white"
                   >
                     ‹
                   </button>
                   <button
                     onClick={() => verschiebeModul(m.key, 1)}
                     title="Nach hinten"
-                    className="rounded px-1 text-gray-400 hover:text-white"
+                    className="rounded-sm px-1 text-gray-400 hover:text-white"
                   >
                     ›
                   </button>
@@ -330,7 +330,7 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
                     <button
                       onClick={() => removeEigenerBereich(m.key)}
                       title="Bereich endgültig löschen"
-                      className="ml-1 rounded px-1 text-gray-400 hover:text-red-400"
+                      className="ml-1 rounded-sm px-1 text-gray-400 hover:text-red-400"
                     >
                       ×
                     </button>

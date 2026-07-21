@@ -303,7 +303,7 @@ export default function ProjektKarten({ projekt }) {
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                  className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-medium ${
                     dran
                       ? "bg-amber-50 text-amber-700"
                       : "bg-gray-100 text-gray-500"

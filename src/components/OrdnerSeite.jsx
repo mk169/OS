@@ -417,7 +417,7 @@ function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
         {tags.slice(0, 2).map((label) => (
           <span
             key={label}
-            className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500"
+            className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500"
           >
             {label}
           </span>
@@ -668,7 +668,7 @@ function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
               <span className="hidden max-w-32 truncate text-xs text-gray-400 sm:inline">
                 {projektName(e.projektId)}
               </span>
-              <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+              <span className="shrink-0 rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
                 {e.typ}
               </span>
             </li>

@@ -34,9 +34,17 @@ function montagVon(d) {
 // Wiederverwendbarer Kalender mit Tages-, Wochen- und Monatsansicht.
 // eintraegeAm(key) liefert die Einträge eines Tages:
 //   { typ, label, zeit?, onRemove? }
-export default function Kalender({ eintraegeAm, legende = [], onNeu }) {
+// tagesdetail: Google-Stil – Tag im Monat antippen wählt ihn aus und
+// zeigt sein Zeitraster unter dem Monatsraster.
+export default function Kalender({
+  eintraegeAm,
+  legende = [],
+  onNeu,
+  tagesdetail = false,
+}) {
   const [ansicht, setAnsicht] = useState("monat")
   const [cursor, setCursor] = useState(heute())
+  const [auswahl, setAuswahl] = useState(heute())
   const heuteKey = heute()
   const cursorDate = new Date(cursor)
 
@@ -115,11 +123,24 @@ export default function Kalender({ eintraegeAm, legende = [], onNeu }) {
           <MonatsAnsicht
             cursorDate={cursorDate}
             heuteKey={heuteKey}
+            auswahl={tagesdetail ? auswahl : null}
             eintraegeAm={eintraegeAm}
             onTagKlick={(key) => {
-              setCursor(key)
-              setAnsicht("tag")
+              if (tagesdetail) {
+                setAuswahl(key)
+              } else {
+                setCursor(key)
+                setAnsicht("tag")
+              }
             }}
+          />
+        )}
+        {tagesdetail && ansicht === "monat" && (
+          <TagesDetail
+            auswahl={auswahl}
+            heuteKey={heuteKey}
+            eintraegeAm={eintraegeAm}
+            onNeu={onNeu}
           />
         )}
         {ansicht === "woche" && (
@@ -152,11 +173,19 @@ export default function Kalender({ eintraegeAm, legende = [], onNeu }) {
   )
 }
 
-function MonatsAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick }) {
+// Monatsraster im Google-Stil: keine Zellen-Boxen, nur feine Zeilen-
+// Hairlines; Tageszahl zentriert, Einträge als bis zu 3 farbige Punkte.
+function MonatsAnsicht({ cursorDate, heuteKey, auswahl, eintraegeAm, onTagKlick }) {
   const jahr = cursorDate.getFullYear()
   const monat = cursorDate.getMonth()
   const tageImMonat = new Date(jahr, monat + 1, 0).getDate()
   const startOffset = (new Date(jahr, monat, 1).getDay() + 6) % 7
+
+  const zellen = [
+    ...Array.from({ length: startOffset }, () => null),
+    ...Array.from({ length: tageImMonat }, (_, i) => i + 1),
+  ]
+  while (zellen.length % 7 !== 0) zellen.push(null)
 
   return (
     <div>
@@ -167,57 +196,80 @@ function MonatsAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick }) {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
-        {Array.from({ length: startOffset }).map((_, i) => (
-          <div key={`leer-${i}`} className="min-h-20 bg-gray-50/50" />
-        ))}
-        {Array.from({ length: tageImMonat }).map((_, i) => {
-          const tag = i + 1
+      <div className="grid grid-cols-7">
+        {zellen.map((tag, i) => {
+          const hairline = i >= 7 ? "border-t border-gray-100" : ""
+          if (tag == null)
+            return <div key={`leer-${i}`} className={`h-14 ${hairline}`} />
           const key = `${jahr}-${String(monat + 1).padStart(2, "0")}-${String(tag).padStart(2, "0")}`
           const eintraege = eintraegeAm(key)
           const istHeute = key === heuteKey
+          const istAuswahl = auswahl === key && !istHeute
           return (
             <button
               key={key}
               onClick={() => onTagKlick(key)}
-              className="flex min-h-20 flex-col items-stretch gap-1 bg-white p-1.5 text-left transition-colors hover:bg-gray-50"
+              className={`flex h-14 flex-col items-center justify-center gap-1 transition-colors hover:bg-gray-50 ${hairline}`}
             >
               <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-sm ${
                   istHeute
-                    ? "bg-gray-900 font-semibold text-white"
-                    : "text-gray-500"
+                    ? "bg-gray-900 font-medium text-white"
+                    : istAuswahl
+                      ? "bg-gray-100 font-medium text-gray-900"
+                      : "text-gray-700"
                 }`}
               >
                 {tag}
               </span>
-              {eintraege.slice(0, 3).map((e, j) => (
-                <span key={j} className="flex items-center gap-1.5">
+              <span className="flex h-1.5 items-center gap-0.5">
+                {eintraege.slice(0, 3).map((e, j) => (
                   <span
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${EINTRAG_TYPEN[e.typ].punkt}`}
+                    key={j}
+                    className={`h-1.5 w-1.5 rounded-full ${EINTRAG_TYPEN[e.typ].punkt}`}
                   />
-                  <span className="truncate text-[11px] leading-tight text-gray-600">
-                    {e.label}
-                  </span>
-                </span>
-              ))}
-              {eintraege.length > 3 && (
-                <span className="pl-3 text-[10px] text-gray-400">
-                  +{eintraege.length - 3}
-                </span>
-              )}
+                ))}
+              </span>
             </button>
           )
         })}
-        {(() => {
-          const rest = (startOffset + tageImMonat) % 7
-          return rest === 0
-            ? null
-            : Array.from({ length: 7 - rest }).map((_, i) => (
-                <div key={`ende-${i}`} className="min-h-20 bg-gray-50/50" />
-              ))
-        })()}
       </div>
+    </div>
+  )
+}
+
+// Kopf + Zeitraster des ausgewählten Tags unter dem Monat (Google-Stil).
+function TagesDetail({ auswahl, heuteKey, eintraegeAm, onNeu }) {
+  const d = new Date(auswahl)
+  const istHeute = auswahl === heuteKey
+  const eintraege = eintraegeAm(auswahl)
+
+  return (
+    <div className="mt-4 border-t border-gray-200 pt-4">
+      <div className="flex items-center gap-4 pb-2">
+        <div className="flex w-12 flex-col items-center gap-1">
+          <span
+            className={`text-[10px] font-semibold uppercase tracking-widest ${
+              istHeute ? "text-gray-900" : "text-gray-400"
+            }`}
+          >
+            {WOCHENTAGE[(d.getDay() + 6) % 7]}
+          </span>
+          <span
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-sm ${
+              istHeute
+                ? "bg-gray-900 font-medium text-white"
+                : "bg-gray-100 text-gray-900"
+            }`}
+          >
+            {d.getDate()}
+          </span>
+        </div>
+        {eintraege.length === 0 && (
+          <span className="text-sm text-gray-400">Nichts geplant.</span>
+        )}
+      </div>
+      <TagesAnsicht cursor={auswahl} eintraegeAm={eintraegeAm} onNeu={onNeu} />
     </div>
   )
 }
@@ -249,7 +301,7 @@ function WochenAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick }) {
             {eintraege.map((e, j) => (
               <span
                 key={j}
-                className={`truncate rounded px-1.5 py-0.5 text-xs ${EINTRAG_TYPEN[e.typ].chip}`}
+                className={`truncate rounded-sm px-1.5 py-0.5 text-xs ${EINTRAG_TYPEN[e.typ].chip}`}
               >
                 {e.zeit && <span className="font-medium">{e.zeit} </span>}
                 {e.label}
@@ -303,20 +355,40 @@ function TagesAnsicht({ cursor, eintraegeAm, onNeu }) {
       )}
 
       <div
-        className="relative overflow-hidden rounded-lg border border-gray-200"
+        className="relative"
         style={{ height: (TAG_ENDE - TAG_START) * PX_PRO_STUNDE }}
       >
         {Array.from({ length: TAG_ENDE - TAG_START }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute left-0 right-0 border-t border-gray-100"
-            style={{ top: i * PX_PRO_STUNDE }}
-          >
-            <span className="absolute left-2 top-0.5 text-[10px] text-gray-300">
+          <div key={i}>
+            <span
+              className="absolute w-10 -translate-y-1/2 text-right text-[10px] text-gray-400"
+              style={{ top: i * PX_PRO_STUNDE }}
+            >
               {String(TAG_START + i).padStart(2, "0")}:00
             </span>
+            <div
+              className="absolute left-12 right-0 border-t border-gray-100"
+              style={{ top: i * PX_PRO_STUNDE }}
+            />
           </div>
         ))}
+
+        {/* „Jetzt"-Linie mit Punkt (nur am heutigen Tag) */}
+        {cursor === heute() &&
+          (() => {
+            const jetzt = new Date()
+            const std = jetzt.getHours() + jetzt.getMinutes() / 60
+            if (std < TAG_START || std > TAG_ENDE) return null
+            return (
+              <div
+                className="pointer-events-none absolute left-12 right-0 z-10"
+                style={{ top: (std - TAG_START) * PX_PRO_STUNDE }}
+              >
+                <span className="absolute -left-[3px] -top-[3px] h-1.5 w-1.5 rounded-full bg-gray-900" />
+                <div className="h-px bg-gray-900" />
+              </div>
+            )
+          })()}
 
         {mitZeit.map((e, i) => {
           const [h, m] = e.zeit.split(":").map(Number)
@@ -327,8 +399,8 @@ function TagesAnsicht({ cursor, eintraegeAm, onNeu }) {
           return (
             <div
               key={i}
-              className={`group absolute left-14 right-2 overflow-hidden rounded-md border border-white px-2 py-1 text-xs ${EINTRAG_TYPEN[e.typ].chip}`}
-              style={{ top, height: hoehe }}
+              className={`group absolute right-0 overflow-hidden border-l-2 border-white px-2 py-1 text-xs ${EINTRAG_TYPEN[e.typ].chip}`}
+              style={{ top, height: hoehe, left: "3.25rem" }}
             >
               <span className="font-medium">
                 {e.zeit}
@@ -340,7 +412,7 @@ function TagesAnsicht({ cursor, eintraegeAm, onNeu }) {
                 <button
                   onClick={e.onRemove}
                   title="Eintrag löschen"
-                  className="absolute right-1.5 top-1 opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100"
+                  className="pointer-events-auto absolute right-1.5 top-1 opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100"
                 >
                   ×
                 </button>
