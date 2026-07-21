@@ -7,6 +7,7 @@ import { TodoZeile } from "./TodosSeite"
 import ProjektInhalte from "./ProjektInhalte"
 import ProjektNotizen from "./ProjektNotizen"
 import ProjektKarten from "./ProjektKarten"
+import BlockEditor, { bloeckeVon } from "./BlockEditor"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
 // jederzeit über „Bereiche anpassen“) wählbar – so wird aus demselben
@@ -151,6 +152,29 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
       module: module.filter((k) => k !== key),
     })
     if (aktiv === key) setAktiv(module.filter((k) => k !== key)[0] ?? "ziel")
+  }
+
+  // Rendert einen Bereich (Modul) inline – für Tabs und für eingebettete
+  // „bereich"-Blöcke im Block-Editor (dieselbe Logik, eine Quelle).
+  function bereichRenderer(key) {
+    if (key === "ziel") return <ZielModul projekt={projekt} onUpdate={onUpdate} />
+    if (key === "workflow")
+      return <WorkflowModul projekt={projekt} onUpdate={onUpdate} />
+    if (key === "todos") return <TodosModul projekt={projekt} />
+    if (key === "inhalte") return <ProjektInhalte projekt={projekt} />
+    if (key === "notizen") return <ProjektNotizen projekt={projekt} />
+    if (key === "karten") return <ProjektKarten projekt={projekt} />
+    if (key === "kalender") return <KalenderModul projekt={projekt} />
+    if (key.startsWith("eigen-"))
+      return (
+        <EigenerModul
+          projekt={projekt}
+          modulKey={key}
+          onUpdate={onUpdate}
+          bereichRenderer={bereichRenderer}
+        />
+      )
+    return null
   }
 
   return (
@@ -361,34 +385,14 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
       </nav>
 
       <div className="mt-6 flex flex-1 flex-col">
-        {aktiv === "uebersicht" && (
+        {aktiv === "uebersicht" ? (
           <UebersichtModul
             projekt={projekt}
             onUpdate={onUpdate}
-            sichtbareModule={sichtbareModule}
-            verfuegbar={verfuegbar}
-            onOeffnen={setAktiv}
-            onEinblenden={toggleModul}
-            onEigenerBereich={addEigenerBereich}
-            neuerBereichName={neuerBereichName}
-            setNeuerBereichName={setNeuerBereichName}
+            bereichRenderer={bereichRenderer}
           />
-        )}
-        {aktiv === "ziel" && <ZielModul projekt={projekt} onUpdate={onUpdate} />}
-        {aktiv === "workflow" && (
-          <WorkflowModul projekt={projekt} onUpdate={onUpdate} />
-        )}
-        {aktiv === "todos" && <TodosModul projekt={projekt} />}
-        {aktiv === "inhalte" && <ProjektInhalte projekt={projekt} />}
-        {aktiv === "notizen" && <ProjektNotizen projekt={projekt} />}
-        {aktiv === "karten" && <ProjektKarten projekt={projekt} />}
-        {aktiv === "kalender" && <KalenderModul projekt={projekt} />}
-        {aktiv.startsWith("eigen-") && (
-          <EigenerModul
-            projekt={projekt}
-            modulKey={aktiv}
-            onUpdate={onUpdate}
-          />
+        ) : (
+          bereichRenderer(aktiv)
         )}
       </div>
     </div>
@@ -419,186 +423,47 @@ function Dokument({ children }) {
   )
 }
 
-// Hauptseite des Projekts – wie ein Notion-Blatt: oben freier Text,
-// darunter Kacheln, die auf die eingefügten Bereiche verlinken. Über
-// „+ Seite“ lassen sich weitere Bereiche einfügen oder neu erstellen.
-function UebersichtModul({
-  projekt,
-  onUpdate,
-  sichtbareModule,
-  verfuegbar,
-  onOeffnen,
-  onEinblenden,
-  onEigenerBereich,
-  neuerBereichName,
-  setNeuerBereichName,
-}) {
-  const [alleTodos] = useStored("todos", [])
-  const [ablage] = useStored("ablage", [])
-  const [notizen] = useStored("notizen", [])
-  const [karten] = useStored("karten", [])
-  const [seiteHinzu, setSeiteHinzu] = useState(false)
-
-  const gehoert = (e) =>
-    e.projektId === projekt.id || e.kursId === projekt.id
-
-  function beschreibung(key) {
-    if (key === "ziel")
-      return projekt.ziel?.trim()
-        ? projekt.ziel.slice(0, 60)
-        : "Noch kein Ziel definiert"
-    if (key === "workflow") {
-      const wf = projekt.workflow ?? []
-      return wf.length
-        ? `${wf.filter((s) => s.erledigt).length}/${wf.length} Schritte erledigt`
-        : "Noch keine Schritte"
-    }
-    if (key === "todos") {
-      const offen = alleTodos.filter((t) => gehoert(t) && !t.erledigt).length
-      return `${offen} offene ${offen === 1 ? "Aufgabe" : "Aufgaben"}`
-    }
-    if (key === "inhalte") {
-      const n = ablage.filter(gehoert).length
-      return `${n} ${n === 1 ? "Inhalt" : "Inhalte"}`
-    }
-    if (key === "notizen") {
-      const n = notizen.filter(gehoert).length
-      return `${n} ${n === 1 ? "Notiz" : "Notizen"}`
-    }
-    if (key === "karten") {
-      const n = karten.filter(gehoert).length
-      return `${n} ${n === 1 ? "Karte" : "Karten"}`
-    }
-    if (key === "kalender") return "Termine & Deadlines"
-    const eigen = (projekt.eigeneModule ?? []).find((m) => m.key === key)
-    return eigen?.text?.trim() ? eigen.text.slice(0, 60) : "Leere Seite"
-  }
-
-  // Word-artiges Blatt: freie Schreibfläche, darunter verlinkte Seiten,
-  // die beim Klick als Tab geöffnet werden.
+// Hauptseite des Projekts als Block-Editor: Text/Überschrift, Tabellen,
+// Dashboards und eingebettete Bereiche. Alter Freitext wird migriert.
+function UebersichtModul({ projekt, onUpdate, bereichRenderer }) {
   return (
     <Dokument>
-      <textarea
-        value={projekt.uebersicht ?? ""}
-        onChange={(e) => onUpdate({ ...projekt, uebersicht: e.target.value })}
-        placeholder="Schreib hier frei los – wie auf einem leeren Blatt. Notizen, Gedanken, worum es geht. Speichert automatisch."
-        className="min-h-[38vh] w-full resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
+      <BlockEditor
+        bloecke={bloeckeVon(projekt, "uebersicht")}
+        onChange={(bloecke) => onUpdate({ ...projekt, bloecke })}
+        bereichRenderer={bereichRenderer}
+        projekt={projekt}
       />
-
-      {sichtbareModule.length > 0 && (
-        <div className="mt-6 border-t border-gray-100 pt-4">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-            Verlinkte Seiten
-          </p>
-          <div className="mt-2 space-y-0.5">
-            {sichtbareModule.map((m) => (
-              <button
-                key={m.key}
-                onClick={() => onOeffnen(m.key)}
-                className="group flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-gray-50"
-              >
-                <span className="text-gray-400">
-                  <PropIcon>
-                    <path d="M7 3h7l5 5v11a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
-                    <path d="M14 3v5h5" />
-                  </PropIcon>
-                </span>
-                <span className="text-sm font-medium text-gray-900 underline decoration-gray-300 underline-offset-[3px] group-hover:decoration-gray-500">
-                  {m.label}
-                </span>
-                <span className="truncate text-xs text-gray-400">
-                  {beschreibung(m.key)}
-                </span>
-                <span className="ml-auto text-xs text-gray-300 opacity-0 transition-opacity group-hover:opacity-100">
-                  öffnen ↗
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="mt-4">
-        {!seiteHinzu ? (
-          <button
-            onClick={() => setSeiteHinzu(true)}
-            className="rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:text-gray-900"
-          >
-            + Seite einfügen
-          </button>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white p-3">
-            {verfuegbar.map((m) => (
-              <button
-                key={m.key}
-                onClick={() => {
-                  onEinblenden(m.key)
-                  onOeffnen(m.key)
-                  setSeiteHinzu(false)
-                }}
-                className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-900"
-              >
-                + {m.label}
-              </button>
-            ))}
-            <form
-              onSubmit={(e) => {
-                onEigenerBereich(e)
-                setSeiteHinzu(false)
-              }}
-              className="flex gap-1.5"
-            >
-              <input
-                value={neuerBereichName}
-                onChange={(e) => setNeuerBereichName(e.target.value)}
-                placeholder="Eigene Seite, z.B. Recherche"
-                className="w-44 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-900 outline-none focus:border-gray-900"
-              />
-              <button
-                type="submit"
-                className="rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700"
-              >
-                Erstellen
-              </button>
-            </form>
-            <button
-              onClick={() => setSeiteHinzu(false)}
-              className="px-1.5 py-1 text-xs text-gray-400 hover:text-gray-900"
-            >
-              Fertig
-            </button>
-          </div>
-        )}
-      </div>
     </Dokument>
   )
 }
 
-// Individueller Bereich: Freitextfläche, speichert beim Tippen.
-function EigenerModul({ projekt, modulKey, onUpdate }) {
+// Eigener Bereich – ebenfalls eine Block-Seite.
+function EigenerModul({ projekt, modulKey, onUpdate, bereichRenderer }) {
   const eigene = projekt.eigeneModule ?? []
   const modul = eigene.find((m) => m.key === modulKey)
   if (!modul) return null
 
-  function setText(text) {
+  function setBloecke(bloecke) {
     onUpdate({
       ...projekt,
       eigeneModule: eigene.map((m) =>
-        m.key === modulKey ? { ...m, text } : m
+        m.key === modulKey ? { ...m, bloecke } : m
       ),
     })
   }
 
   return (
     <Dokument>
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
         {modul.label}
       </p>
-      <textarea
-        value={modul.text ?? ""}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Freier Bereich – schreib hier, was du brauchst. Speichert automatisch."
-        className="mt-3 min-h-[40vh] w-full flex-1 resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
+      <BlockEditor
+        bloecke={bloeckeVon(modul, "text")}
+        onChange={setBloecke}
+        bereichRenderer={bereichRenderer}
+        projekt={projekt}
+        ausschluss={[modulKey]}
       />
     </Dokument>
   )
