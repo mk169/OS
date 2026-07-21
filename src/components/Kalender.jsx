@@ -444,7 +444,7 @@ function zeitAusOffset(offsetY) {
   return `${String(h).padStart(2, "0")}:${m}`
 }
 
-function TagesAnsicht({ cursor, eintraegeAm, onNeu, onNeuZeit }) {
+export function TagesAnsicht({ cursor, eintraegeAm, onNeu, onNeuZeit }) {
   const eintraege = eintraegeAm(cursor)
   const ohneZeit = eintraege.filter((e) => !e.zeit)
   const mitZeit = eintraege.filter((e) => e.zeit)
