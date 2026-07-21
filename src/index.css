@@ -42,7 +42,7 @@ body {
 
 /* Textauswahl in dezentem, warmem Ton. */
 ::selection {
-  background: rgba(35, 131, 226, 0.16);
+  background: rgba(55, 53, 47, 0.12);
 }
 
 /* Ruhige, schmale Scrollbar wie in Notion. */
@@ -64,9 +64,19 @@ body {
   background-color: rgba(55, 53, 47, 0.32);
 }
 
-/* Klarer, dezenter Fokus-Ring statt hartem Browser-Outline. */
+/* Dezenter, neutraler Fokus-Ring für Buttons/Links – kein hartes
+   Browser-Outline. Textfelder bekommen bewusst keinen Ring (der Cursor
+   zeigt den Fokus), damit beim Schreiben keine Umrandung erscheint. */
 :focus-visible {
-  outline: 2px solid rgba(35, 131, 226, 0.5);
+  outline: 2px solid rgba(55, 53, 47, 0.22);
   outline-offset: 1px;
   border-radius: 4px;
+}
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
 }

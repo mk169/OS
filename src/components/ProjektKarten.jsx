@@ -93,7 +93,7 @@ export default function ProjektKarten({ projekt }) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-4">
         <div>
           <p className="text-sm font-medium text-gray-900">
             {karten.length} {karten.length === 1 ? "Karte" : "Karten"}
@@ -138,7 +138,7 @@ export default function ProjektKarten({ projekt }) {
 
       <form
         onSubmit={addKarte}
-        className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-gray-200 bg-white p-4"
+        className="mt-4 flex flex-wrap items-end gap-2 border-b border-gray-100 pb-4"
       >
         <label className="flex min-w-0 flex-1 flex-col text-xs text-gray-500">
           Vorderseite
