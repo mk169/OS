@@ -3,6 +3,7 @@ import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import { schluessel } from "./Kalender"
 import { Fortschrittsbalken } from "./OrdnerSeite"
+import Seitenkopf from "./Seitenkopf"
 
 // Habits nach dem Atomic-Habits-Prinzip, dargestellt als kleine farbige
 // Kacheln (Farbe = Bereich). Stacking-Ketten erscheinen als verbundene
@@ -351,22 +352,22 @@ export default function HabitsSeite() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="mt-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Habits</h1>
-          <p className="mt-1 text-sm text-gray-400">
-            {habits.length === 0
-              ? "Baue Gewohnheiten in Ketten auf – ein Habit knüpft an das nächste an."
-              : `Heute ${heuteErledigt} von ${habits.length} erledigt.`}
-          </p>
-        </div>
-        <HabitErstellen
-          habits={habits}
-          setHabits={setHabits}
-          bereiche={bereiche}
-          setBereiche={setBereiche}
-        />
-      </div>
+      <Seitenkopf
+        titel="Habits"
+        unterzeile={
+          habits.length === 0
+            ? "Baue Gewohnheiten in Ketten auf – ein Habit knüpft an das nächste an."
+            : `Heute ${heuteErledigt} von ${habits.length} erledigt.`
+        }
+        aktion={
+          <HabitErstellen
+            habits={habits}
+            setHabits={setHabits}
+            bereiche={bereiche}
+            setBereiche={setBereiche}
+          />
+        }
+      />
 
       {habits.length > 0 && (
         <div className="mt-4 max-w-sm">
@@ -390,7 +391,7 @@ export default function HabitsSeite() {
       )}
 
       <section className="mt-10">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
           Bereiche
         </h2>
         <div className="mt-3 flex flex-wrap gap-2">

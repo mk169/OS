@@ -9,7 +9,7 @@
  */
 @theme {
   /* Warme neutrale Skala – angelehnt an Notions Textfarbe #37352f. */
-  --color-gray-50: #f7f6f3; /* Seitenhintergrund (warmes Off-White) */
+  --color-gray-50: #faf8f3; /* Seitenhintergrund (warmer Cremeton) */
   --color-gray-100: #efedea; /* Chips, Trennlinien, Hover */
   --color-gray-200: #e7e5e1; /* Ränder */
   --color-gray-300: #d8d5cf; /* gestrichelte Ränder */
@@ -24,6 +24,12 @@
   --font-sans:
     "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, Helvetica, Arial, sans-serif;
+
+  /* Editorial-Serif für Überschriften (systembasiert, kein Web-Font).
+     Der Kontrast Serif-Titel ↔ Sans-Fließtext gibt der App Charakter. */
+  --font-serif:
+    ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino,
+    "Book Antiqua", Georgia, Cambria, "Times New Roman", serif;
 
   /* Präzises Design: keine Rundungen an Kästen/Karten/Buttons.
      rounded-full (Kreise, Punkte, Pillen) bleibt bewusst erhalten. */
@@ -49,6 +55,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   letter-spacing: -0.011em; /* leicht enger – wirkt gesetzter/ruhiger */
+}
+
+/* Editorial-Look: alle Seitentitel in der Serifenschrift. Zentral hier,
+   damit jeder h1 (Seitenkopf, ProjektDetail, Login) den Ton übernimmt,
+   ohne enge Sans-Laufweite. Fließtext & Labels bleiben Sans. */
+h1 {
+  font-family: var(--font-serif);
+  letter-spacing: -0.005em;
 }
 
 /* Textauswahl in dezentem, warmem Ton. */

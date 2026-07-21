@@ -450,7 +450,7 @@ function LernModus({ faellig, onBewerte, onEnde }) {
               title="Klicken zum Umdrehen"
               className="mt-4 flex flex-1 cursor-pointer flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm sm:p-12"
             >
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
                 Frage
               </p>
               {karte.vorne && (
@@ -469,7 +469,7 @@ function LernModus({ faellig, onBewerte, onEnde }) {
               {zeigeAntwort && (
                 <>
                   <hr className="mx-auto my-6 w-24 border-gray-200" />
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
                     Antwort
                   </p>
                   {karte.hinten && (

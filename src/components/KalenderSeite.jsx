@@ -4,6 +4,7 @@ import { heute } from "../lib/datum"
 import { faelltAuf, WIEDERHOLUNGEN } from "../lib/wiederholung"
 import { alsICS, parseICS } from "../lib/ics"
 import Kalender, { TagesAnsicht, datumLang } from "./Kalender"
+import Seitenkopf from "./Seitenkopf"
 
 // Kalender-Panel: vollständiger Kalender (Tag/Woche/Monat, Timestacking)
 // mit Termin-Erstellung. Wird im Dashboard eingebettet und auf der
@@ -390,17 +391,12 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
 export default function KalenderSeite() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="mt-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Kalender</h1>
-        <p className="mt-1 text-sm text-gray-400">
-          Gesamtübersicht – Termine mit Dauer stapeln sich in der Tagesansicht
-          zu deinem Tagesplan.
-        </p>
-      </div>
+      <Seitenkopf
+        titel="Kalender"
+        unterzeile="Gesamtübersicht – Termine mit Dauer stapeln sich in der Tagesansicht zu deinem Tagesplan."
+      />
 
-      <div className="mt-6">
-        <KalenderPanel tagesdetail />
-      </div>
+      <KalenderPanel tagesdetail />
     </div>
   )
 }

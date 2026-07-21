@@ -2,6 +2,7 @@ import useStored from "../lib/useStored"
 import { heute, tageBis } from "../lib/datum"
 import { datumLang } from "./Kalender"
 import { KalenderPanel } from "./KalenderSeite"
+import Seitenkopf from "./Seitenkopf"
 import TodoErstellen, { EINTEILUNGEN, einteilungVon } from "./TodoErstellen"
 import { useHabitDaten, HabitKacheln, nutzeHabitToggle } from "./HabitsSeite"
 import {
@@ -23,7 +24,7 @@ function Abschnitt({ titel, onOeffnen, aktion, children }) {
       <div className="flex items-center justify-between">
         <button
           onClick={onOeffnen}
-          className="group flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400 transition-colors hover:text-gray-900"
+          className="group flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-500 transition-colors hover:text-gray-900"
         >
           {titel}
           <span className="text-gray-300 transition-colors group-hover:text-gray-900">
@@ -45,10 +46,7 @@ export default function Dashboard({ onNavigate }) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <p className="text-sm text-gray-400">{datumLang(heute())}</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-        {begruessung()}
-      </h1>
+      <Seitenkopf eyebrow={datumLang(heute())} titel={begruessung()} />
 
       <TagesUeberblick termine={termine} todos={todos} projekte={projekte} />
 
@@ -242,7 +240,7 @@ function ProjektBaum({ ordner, projekte, todos, onOeffnen, onProjekt }) {
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            <tr className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
               <th className="px-4 py-2.5 font-semibold">Name</th>
               <th className="px-4 py-2.5 font-semibold">Deadline</th>
               <th className="px-4 py-2.5 font-semibold">Fortschritt</th>

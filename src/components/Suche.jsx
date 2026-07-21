@@ -167,7 +167,7 @@ export default function Suche({ onNavigate, onClose }) {
           ) : (
             gruppen.map((g) => (
               <div key={g.typ} className="mb-2">
-                <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
                   {g.typ}
                 </p>
                 {g.treffer.map((t, i) => (
