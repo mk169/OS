@@ -1,6 +1,8 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
+import { faelltAuf, WIEDERHOLUNGEN } from "../lib/wiederholung"
+import { alsICS, parseICS } from "../lib/ics"
 import Kalender from "./Kalender"
 
 // Kalender-Panel: vollständiger Kalender (Tag/Woche/Monat, Timestacking)
@@ -20,6 +22,11 @@ export function KalenderPanel({ tagesdetail = false }) {
   const [formDauer, setFormDauer] = useState("60")
   const [formFokus, setFormFokus] = useState(false)
   const [formProjektId, setFormProjektId] = useState("")
+  const [formWiederholung, setFormWiederholung] = useState("")
+  const [formBis, setFormBis] = useState("")
+  const [formGeburtstag, setFormGeburtstag] = useState(false)
+  const [icsMeldung, setIcsMeldung] = useState("")
+  const icsInput = useRef(null)
 
   // Minuten zwischen zwei Uhrzeiten "HH:MM" (nur wenn Ende nach Start liegt).
   function minutenZwischen(start, ende) {
@@ -36,14 +43,21 @@ export function KalenderPanel({ tagesdetail = false }) {
   function eintraegeAm(key) {
     return [
       ...termine
-        .filter((t) => t.datum === key)
+        .filter((t) => faelltAuf(t, key))
         .map((t) => ({
-          typ: t.fokus ? "fokus" : "termin",
+          typ:
+            t.art === "geburtstag"
+              ? "geburtstag"
+              : t.fokus
+                ? "fokus"
+                : "termin",
           label:
-            t.fokus && t.projektId
-              ? `${t.titel} · ${projektName(t.projektId) ?? ""}`
-              : t.titel,
-          zeit: t.zeit,
+            t.art === "geburtstag"
+              ? `🎂 ${t.titel}`
+              : t.fokus && t.projektId
+                ? `${t.titel} · ${projektName(t.projektId) ?? ""}`
+                : t.titel,
+          zeit: t.ganztags ? "" : t.zeit,
           bis: t.endeZeit,
           dauer: t.dauer,
           onRemove: () => setTermine(termine.filter((x) => x.id !== t.id)),
@@ -69,11 +83,18 @@ export function KalenderPanel({ tagesdetail = false }) {
         id: Date.now(),
         titel: formTitel.trim(),
         datum: formDatum,
-        zeit: formZeit,
-        endeZeit: ausEnde ? formEnde : "",
-        dauer,
-        fokus: formFokus,
-        projektId: formFokus && formProjektId ? Number(formProjektId) : null,
+        zeit: formGeburtstag ? "" : formZeit,
+        endeZeit: !formGeburtstag && ausEnde ? formEnde : "",
+        dauer: formGeburtstag ? null : dauer,
+        fokus: !formGeburtstag && formFokus,
+        projektId:
+          !formGeburtstag && formFokus && formProjektId
+            ? Number(formProjektId)
+            : null,
+        ganztags: formGeburtstag,
+        art: formGeburtstag ? "geburtstag" : "",
+        wiederholung: formGeburtstag ? "jaehrlich" : formWiederholung,
+        bis: formGeburtstag ? "" : formBis,
       },
     ])
     setFormTitel("")
@@ -82,7 +103,48 @@ export function KalenderPanel({ tagesdetail = false }) {
     setFormDauer("60")
     setFormFokus(false)
     setFormProjektId("")
+    setFormWiederholung("")
+    setFormBis("")
+    setFormGeburtstag(false)
     setFormOffen(false)
+  }
+
+  // ICS-Export: .ics-Datei, die Google Kalender direkt importieren kann.
+  function exportiereICS() {
+    const blob = new Blob([alsICS(termine)], {
+      type: "text/calendar;charset=utf-8",
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "kalender.ics"
+    a.click()
+    URL.revokeObjectURL(url)
+    setIcsMeldung("kalender.ics exportiert – in Google Kalender importierbar.")
+  }
+
+  // ICS-Import: liest .ics-Exporte (z. B. aus Google Kalender) ein.
+  function importiereICS(e) {
+    const datei = e.target.files?.[0]
+    if (!datei) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const importiert = parseICS(String(reader.result))
+      if (importiert.length === 0) {
+        setIcsMeldung("Keine Termine in der Datei gefunden.")
+        return
+      }
+      const basisId = Date.now()
+      setTermine([
+        ...termine,
+        ...importiert.map((t, i) => ({ id: basisId + i, ...t })),
+      ])
+      setIcsMeldung(
+        `${importiert.length} ${importiert.length === 1 ? "Termin" : "Termine"} importiert.`
+      )
+    }
+    reader.readAsText(datei)
+    e.target.value = ""
   }
 
   return (
@@ -141,46 +203,87 @@ export function KalenderPanel({ tagesdetail = false }) {
                 className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
               />
             </label>
+            {!formGeburtstag && (
+              <>
+                <label className="flex flex-col text-xs text-gray-500">
+                  Von
+                  <input
+                    type="time"
+                    value={formZeit}
+                    onChange={(e) => setFormZeit(e.target.value)}
+                    className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+                  />
+                </label>
+                <label className="flex flex-col text-xs text-gray-500">
+                  Bis (optional)
+                  <input
+                    type="time"
+                    value={formEnde}
+                    onChange={(e) => setFormEnde(e.target.value)}
+                    className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+                  />
+                </label>
+                <label className="flex flex-col text-xs text-gray-500">
+                  Dauer (Min.)
+                  <input
+                    type="number"
+                    min="15"
+                    step="15"
+                    value={formEnde ? (minutenZwischen(formZeit, formEnde) ?? "") : formDauer}
+                    onChange={(e) => setFormDauer(e.target.value)}
+                    disabled={!!formEnde}
+                    className="mt-1 w-24 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-400"
+                  />
+                </label>
+              </>
+            )}
             <label className="flex flex-col text-xs text-gray-500">
-              Von
-              <input
-                type="time"
-                value={formZeit}
-                onChange={(e) => setFormZeit(e.target.value)}
-                className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-              />
+              Wiederholen
+              <select
+                value={formGeburtstag ? "jaehrlich" : formWiederholung}
+                onChange={(e) => setFormWiederholung(e.target.value)}
+                disabled={formGeburtstag}
+                className="mt-1 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-sm text-gray-900 outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-400"
+              >
+                {WIEDERHOLUNGEN.map((w) => (
+                  <option key={w.value} value={w.value}>
+                    {w.label}
+                  </option>
+                ))}
+              </select>
             </label>
-            <label className="flex flex-col text-xs text-gray-500">
-              Bis (optional)
-              <input
-                type="time"
-                value={formEnde}
-                onChange={(e) => setFormEnde(e.target.value)}
-                className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-              />
-            </label>
-            <label className="flex flex-col text-xs text-gray-500">
-              Dauer (Min.)
-              <input
-                type="number"
-                min="15"
-                step="15"
-                value={formEnde ? (minutenZwischen(formZeit, formEnde) ?? "") : formDauer}
-                onChange={(e) => setFormDauer(e.target.value)}
-                disabled={!!formEnde}
-                className="mt-1 w-24 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-400"
-              />
-            </label>
+            {!formGeburtstag && formWiederholung && (
+              <label className="flex flex-col text-xs text-gray-500">
+                Wiederholen bis (optional)
+                <input
+                  type="date"
+                  value={formBis}
+                  onChange={(e) => setFormBis(e.target.value)}
+                  className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+                />
+              </label>
+            )}
             <label className="flex items-center gap-2 pb-2 text-sm text-gray-700">
               <input
                 type="checkbox"
-                checked={formFokus}
-                onChange={(e) => setFormFokus(e.target.checked)}
-                className="h-4 w-4 accent-violet-600"
+                checked={formGeburtstag}
+                onChange={(e) => setFormGeburtstag(e.target.checked)}
+                className="h-4 w-4 accent-rose-500"
               />
-              Fokuszeit
+              Geburtstag 🎂
             </label>
-            {formFokus && (
+            {!formGeburtstag && (
+              <label className="flex items-center gap-2 pb-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formFokus}
+                  onChange={(e) => setFormFokus(e.target.checked)}
+                  className="h-4 w-4 accent-violet-600"
+                />
+                Fokuszeit
+              </label>
+            )}
+            {!formGeburtstag && formFokus && (
               <label className="flex flex-col text-xs text-gray-500">
                 Projekt
                 <select
@@ -216,13 +319,45 @@ export function KalenderPanel({ tagesdetail = false }) {
 
       <Kalender
         eintraegeAm={eintraegeAm}
-        legende={["termin", "fokus", "aufgabe", "projekt"]}
+        legende={["termin", "fokus", "geburtstag", "aufgabe", "projekt"]}
         tagesdetail={tagesdetail}
         onNeu={(datum) => {
           setFormDatum(datum)
           setFormOffen(true)
         }}
+        onNeuZeit={(datum, zeit) => {
+          setFormDatum(datum)
+          setFormZeit(zeit)
+          setFormGeburtstag(false)
+          setFormOffen(true)
+          window.scrollTo({ top: 0, behavior: "smooth" })
+        }}
       />
+
+      {tagesdetail && (
+        <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-gray-200 pt-3 text-xs text-gray-400">
+          <button
+            onClick={exportiereICS}
+            className="border border-gray-200 px-2.5 py-1 text-gray-600 hover:bg-gray-50"
+          >
+            Exportieren (.ics)
+          </button>
+          <button
+            onClick={() => icsInput.current?.click()}
+            className="border border-gray-200 px-2.5 py-1 text-gray-600 hover:bg-gray-50"
+          >
+            Importieren (.ics)
+          </button>
+          <input
+            ref={icsInput}
+            type="file"
+            accept=".ics,text/calendar"
+            onChange={importiereICS}
+            className="hidden"
+          />
+          <span>{icsMeldung || "Kompatibel mit Google Kalender."}</span>
+        </div>
+      )}
     </div>
   )
 }
