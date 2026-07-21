@@ -21,6 +21,41 @@ const BEREICH_LABELS = {
   kalender: "Kalender",
 }
 
+// Einfügbare Basis-Blöcke. `neu()` liefert je Aufruf frische Inhalte,
+// damit eingefügte Blöcke keine Datenstrukturen teilen.
+const BASIS_BLOECKE = [
+  { label: "Text", typ: "text", neu: () => ({ text: "" }) },
+  { label: "Überschrift", typ: "ueberschrift", neu: () => ({ text: "" }) },
+  {
+    label: "Tabelle",
+    typ: "tabelle",
+    neu: () => ({
+      zeilen: [
+        ["", ""],
+        ["", ""],
+      ],
+    }),
+  },
+  { label: "Dashboard", typ: "dashboard", neu: () => ({}) },
+]
+
+// Alle einfügbaren Optionen: Basis-Blöcke + einbettbare Bereiche.
+function optionenFuer(projekt, ausschluss = []) {
+  const bereiche = [
+    ...Object.keys(BEREICH_LABELS),
+    ...(projekt.eigeneModule ?? []).map((m) => m.key),
+  ]
+    .filter((key) => !ausschluss.includes(key))
+    .map((key) => {
+      const label =
+        BEREICH_LABELS[key] ??
+        (projekt.eigeneModule ?? []).find((m) => m.key === key)?.label ??
+        key
+      return { label, typ: "bereich", neu: () => ({ key }) }
+    })
+  return [...BASIS_BLOECKE, ...bereiche]
+}
+
 // Liefert die Blockliste einer Quelle (Projekt oder eigener Bereich).
 // Migration: ein altes Freitext-Feld wird zu einem einzelnen Text-Block.
 export function bloeckeVon(quelle, textFeld = "uebersicht") {
@@ -39,7 +74,7 @@ function neueId() {
 }
 
 // Randlose, automatisch mitwachsende Schreibfläche.
-function AutoTextarea({ value, onChange, placeholder, className }) {
+function AutoTextarea({ value, onChange, onKeyDown, placeholder, className }) {
   const ref = useRef(null)
   useEffect(() => {
     const el = ref.current
@@ -52,6 +87,7 @@ function AutoTextarea({ value, onChange, placeholder, className }) {
       ref={ref}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
       placeholder={placeholder}
       rows={1}
       className={`w-full resize-none border-none bg-transparent outline-none placeholder:text-gray-300 ${className}`}
@@ -59,22 +95,24 @@ function AutoTextarea({ value, onChange, placeholder, className }) {
   )
 }
 
-function TextBlock({ block, onChange }) {
+function TextBlock({ block, onChange, onKeyDown }) {
   return (
     <AutoTextarea
       value={block.text ?? ""}
       onChange={(text) => onChange({ ...block, text })}
-      placeholder="Schreib etwas, oder füge unten einen Block ein …"
+      onKeyDown={onKeyDown}
+      placeholder="Schreib etwas, oder tippe / für einen Block …"
       className="text-[15px] leading-relaxed text-gray-800"
     />
   )
 }
 
-function UeberschriftBlock({ block, onChange }) {
+function UeberschriftBlock({ block, onChange, onKeyDown }) {
   return (
     <AutoTextarea
       value={block.text ?? ""}
       onChange={(text) => onChange({ ...block, text })}
+      onKeyDown={onKeyDown}
       placeholder="Überschrift"
       className="text-xl font-semibold tracking-tight text-gray-900"
     />
@@ -236,6 +274,9 @@ function MenuBtn({ onClick, children }) {
   )
 }
 
+const SLASH_ERKENNEN = /(?:^|\s)\/([^\s/]*)$/
+const SLASH_ENTFERNEN = /(?:^|\s)\/[^\s/]*$/
+
 export default function BlockEditor({
   bloecke,
   onChange,
@@ -245,6 +286,17 @@ export default function BlockEditor({
 }) {
   const [menuOffen, setMenuOffen] = useState(false)
   const [bereichMenu, setBereichMenu] = useState(false)
+  // Slash-Menü: { blockId, query } | null, plus markierter Eintrag.
+  const [slash, setSlash] = useState(null)
+  const [slashIndex, setSlashIndex] = useState(0)
+
+  const optionen = optionenFuer(projekt, ausschluss)
+  const bereichOptionen = optionen.filter((o) => o.typ === "bereich")
+  const slashOptionen = slash
+    ? optionen.filter((o) =>
+        o.label.toLowerCase().includes(slash.query.toLowerCase())
+      )
+    : []
 
   const updateBlock = (id, neu) =>
     onChange(bloecke.map((b) => (b.id === id ? neu : b)))
@@ -256,16 +308,64 @@ export default function BlockEditor({
     ;[neu[i], neu[j]] = [neu[j], neu[i]]
     onChange(neu)
   }
-  function addBlock(typ, extra = {}) {
-    onChange([...bloecke, { id: neueId(), typ, ...extra }])
+  function addBlock(option) {
+    onChange([...bloecke, { id: neueId(), typ: option.typ, ...option.neu() }])
     setMenuOffen(false)
     setBereichMenu(false)
   }
 
-  const verfuegbareBereiche = [
-    ...Object.keys(BEREICH_LABELS),
-    ...(projekt.eigeneModule ?? []).map((m) => m.key),
-  ].filter((key) => !ausschluss.includes(key))
+  // Änderung in einem Text-/Überschrift-Block: speichern und prüfen, ob
+  // ein „/…" am Ende steht (Slash-Menü öffnen/filtern).
+  function textOnChange(block, neu) {
+    updateBlock(block.id, neu)
+    const m = SLASH_ERKENNEN.exec(neu.text ?? "")
+    if (m) {
+      setSlash({ blockId: block.id, query: m[1] })
+      setSlashIndex(0)
+    } else if (slash?.blockId === block.id) {
+      setSlash(null)
+    }
+  }
+
+  // Auswahl aus dem Slash-Menü: „/…" entfernen; ist die Zeile danach
+  // leer, den Block ersetzen, sonst neuen Block dahinter einfügen.
+  function waehle(option) {
+    if (!slash) return
+    const block = bloecke.find((b) => b.id === slash.blockId)
+    setSlash(null)
+    if (!block) return
+    const rest = (block.text ?? "").replace(SLASH_ENTFERNEN, "")
+    const neuerBlock = { id: neueId(), typ: option.typ, ...option.neu() }
+    if (rest.trim() === "") {
+      onChange(bloecke.map((b) => (b.id === block.id ? neuerBlock : b)))
+    } else {
+      const neu = []
+      for (const b of bloecke) {
+        neu.push(b.id === block.id ? { ...b, text: rest } : b)
+        if (b.id === block.id) neu.push(neuerBlock)
+      }
+      onChange(neu)
+    }
+  }
+
+  function slashKeyDown(block, e) {
+    if (!slash || slash.blockId !== block.id) return
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setSlashIndex((i) => Math.min(i + 1, slashOptionen.length - 1))
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setSlashIndex((i) => Math.max(i - 1, 0))
+    } else if (e.key === "Enter") {
+      if (slashOptionen[slashIndex]) {
+        e.preventDefault()
+        waehle(slashOptionen[slashIndex])
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      setSlash(null)
+    }
+  }
 
   return (
     <div>
@@ -302,13 +402,15 @@ export default function BlockEditor({
             {block.typ === "text" && (
               <TextBlock
                 block={block}
-                onChange={(n) => updateBlock(block.id, n)}
+                onChange={(n) => textOnChange(block, n)}
+                onKeyDown={(e) => slashKeyDown(block, e)}
               />
             )}
             {block.typ === "ueberschrift" && (
               <UeberschriftBlock
                 block={block}
-                onChange={(n) => updateBlock(block.id, n)}
+                onChange={(n) => textOnChange(block, n)}
+                onKeyDown={(e) => slashKeyDown(block, e)}
               />
             )}
             {block.typ === "tabelle" && (
@@ -325,6 +427,32 @@ export default function BlockEditor({
                 projekt={projekt}
               />
             )}
+
+            {slash && slash.blockId === block.id && (
+              <div className="absolute left-2 top-full z-30 mt-1 w-56 rounded-lg border border-gray-200 bg-white p-1 shadow-md">
+                {slashOptionen.length === 0 ? (
+                  <p className="px-2 py-1.5 text-sm text-gray-400">
+                    Keine Treffer
+                  </p>
+                ) : (
+                  slashOptionen.map((o, idx) => (
+                    <button
+                      key={o.label + idx}
+                      onMouseEnter={() => setSlashIndex(idx)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => waehle(o)}
+                      className={`block w-full rounded px-2 py-1.5 text-left text-sm transition-colors ${
+                        idx === slashIndex
+                          ? "bg-gray-100 text-gray-900"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -339,41 +467,24 @@ export default function BlockEditor({
           </button>
         ) : (
           <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-gray-200 p-2">
-            <MenuBtn onClick={() => addBlock("text", { text: "" })}>
-              Text
-            </MenuBtn>
-            <MenuBtn onClick={() => addBlock("ueberschrift", { text: "" })}>
-              Überschrift
-            </MenuBtn>
-            <MenuBtn
-              onClick={() =>
-                addBlock("tabelle", {
-                  zeilen: [
-                    ["", ""],
-                    ["", ""],
-                  ],
-                })
-              }
-            >
-              Tabelle
-            </MenuBtn>
-            <MenuBtn onClick={() => addBlock("dashboard")}>Dashboard</MenuBtn>
+            {BASIS_BLOECKE.map((o) => (
+              <MenuBtn key={o.typ} onClick={() => addBlock(o)}>
+                {o.label}
+              </MenuBtn>
+            ))}
             <div className="relative">
               <MenuBtn onClick={() => setBereichMenu(!bereichMenu)}>
                 Bereich einbetten ▾
               </MenuBtn>
               {bereichMenu && (
                 <div className="absolute left-0 z-20 mt-1 flex w-44 flex-col rounded-lg border border-gray-200 bg-white p-1 shadow-md">
-                  {verfuegbareBereiche.map((key) => (
+                  {bereichOptionen.map((o) => (
                     <button
-                      key={key}
-                      onClick={() => addBlock("bereich", { key })}
+                      key={o.label}
+                      onClick={() => addBlock(o)}
                       className="rounded px-2 py-1.5 text-left text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     >
-                      {BEREICH_LABELS[key] ??
-                        (projekt.eigeneModule ?? []).find((m) => m.key === key)
-                          ?.label ??
-                        key}
+                      {o.label}
                     </button>
                   ))}
                 </div>
