@@ -95,6 +95,18 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
   const eigene = projekt.eigeneModule ?? []
   const [neuerBereichName, setNeuerBereichName] = useState("")
 
+  // Ordnerpfad als Eyebrow – zeigt, wo das Projekt liegt. Läuft von der
+  // Projekt-Zuordnung über parentId nach oben (wie in OrdnerSeite).
+  const ordnerPfad = []
+  let pfadZeiger = projekt.ordnerId ?? null
+  while (pfadZeiger != null) {
+    const o = ordner.find((x) => x.id === pfadZeiger)
+    if (!o) break
+    ordnerPfad.unshift(o.name)
+    pfadZeiger = o.parentId ?? null
+  }
+  const eyebrow = ordnerPfad.length > 0 ? ordnerPfad.join(" / ") : "Projekt"
+
   function modulInfo(key) {
     return (
       MODULE.find((m) => m.key === key) ?? eigene.find((m) => m.key === key)
@@ -189,11 +201,16 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
         </PropIcon>
       </button>
 
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight">
+      <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-gray-500">
+        {eyebrow}
+      </p>
+      <h1 className="mt-2 text-3xl font-medium text-gray-900">
         {projekt.name}
       </h1>
       {projekt.beschreibung && (
-        <p className="mt-1 text-sm text-gray-400">{projekt.beschreibung}</p>
+        <p className="mt-1.5 font-serif text-[15px] italic text-gray-500">
+          {projekt.beschreibung}
+        </p>
       )}
 
       {/* Notion-artige Eigenschaftsliste */}
@@ -534,6 +551,9 @@ function WorkflowModul({ projekt, onUpdate }) {
 
   return (
     <div>
+      <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+        Ablauf & Termine
+      </p>
       <form
         onSubmit={addSchritt}
         className="flex flex-wrap items-end gap-2 border-b border-gray-100 pb-5"
@@ -866,7 +886,10 @@ function KalenderModul({ projekt }) {
 
   return (
     <div className="py-2">
-      <p className="mb-4 text-xs text-gray-400">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+        Termine im Projekt
+      </p>
+      <p className="mb-4 mt-1 text-xs text-gray-400">
         Zeigt Workflow-Schritte mit Termin, Todos mit Deadline und die
         Projekt-Deadline.
       </p>
