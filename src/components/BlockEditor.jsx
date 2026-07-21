@@ -37,6 +37,15 @@ const BASIS_BLOECKE = [
     }),
   },
   { label: "Dashboard", typ: "dashboard", neu: () => ({}) },
+  {
+    label: "Checkliste",
+    typ: "checkliste",
+    neu: () => ({ items: [{ id: neueId(), text: "", erledigt: false }] }),
+  },
+  { label: "Trenner", typ: "trenner", neu: () => ({}) },
+  { label: "Callout", typ: "callout", neu: () => ({ text: "", emoji: "💡" }) },
+  { label: "Link", typ: "link", neu: () => ({ url: "", titel: "" }) },
+  { label: "Bild", typ: "bild", neu: () => ({ url: "", alt: "" }) },
 ]
 
 // Alle einfügbaren Optionen: Basis-Blöcke + einbettbare Bereiche.
@@ -260,6 +269,160 @@ function DashboardBlock({ projekt }) {
   )
 }
 
+function ChecklisteBlock({ block, onChange }) {
+  const items = block.items ?? []
+  const setItem = (id, patch) =>
+    onChange({
+      ...block,
+      items: items.map((it) => (it.id === id ? { ...it, ...patch } : it)),
+    })
+  const addItem = () =>
+    onChange({
+      ...block,
+      items: [...items, { id: neueId(), text: "", erledigt: false }],
+    })
+  const removeItem = (id) =>
+    onChange({ ...block, items: items.filter((it) => it.id !== id) })
+
+  return (
+    <ul className="space-y-1 py-1">
+      {items.map((it) => (
+        <li key={it.id} className="group/z flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={it.erledigt}
+            onChange={(e) => setItem(it.id, { erledigt: e.target.checked })}
+            className="h-4 w-4 accent-gray-900"
+          />
+          <input
+            value={it.text}
+            onChange={(e) => setItem(it.id, { text: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                addItem()
+              }
+            }}
+            placeholder="Listenpunkt"
+            className={`flex-1 border-none bg-transparent text-sm outline-none placeholder:text-gray-300 ${
+              it.erledigt ? "text-gray-400 line-through" : "text-gray-800"
+            }`}
+          />
+          <button
+            onClick={() => removeItem(it.id)}
+            title="Punkt löschen"
+            className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover/z:opacity-100"
+          >
+            ×
+          </button>
+        </li>
+      ))}
+      <li>
+        <button
+          onClick={addItem}
+          className="text-xs text-gray-400 transition-colors hover:text-gray-900"
+        >
+          + Punkt
+        </button>
+      </li>
+    </ul>
+  )
+}
+
+function TrennerBlock() {
+  return <hr className="my-3 border-gray-200" />
+}
+
+function CalloutBlock({ block, onChange }) {
+  return (
+    <div className="flex gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
+      <input
+        value={block.emoji ?? "💡"}
+        onChange={(e) => onChange({ ...block, emoji: e.target.value })}
+        maxLength={2}
+        className="w-6 shrink-0 border-none bg-transparent text-center text-base outline-none"
+      />
+      <AutoTextarea
+        value={block.text ?? ""}
+        onChange={(text) => onChange({ ...block, text })}
+        placeholder="Hinweis, Merksatz, Warnung …"
+        className="text-sm leading-relaxed text-gray-700"
+      />
+    </div>
+  )
+}
+
+function LinkBlock({ block, onChange }) {
+  const [bearbeiten, setBearbeiten] = useState(!block.url)
+  if (bearbeiten) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 p-2">
+        <input
+          value={block.url ?? ""}
+          onChange={(e) => onChange({ ...block, url: e.target.value })}
+          placeholder="https://…"
+          className="min-w-40 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-900 outline-none focus:border-gray-900"
+        />
+        <input
+          value={block.titel ?? ""}
+          onChange={(e) => onChange({ ...block, titel: e.target.value })}
+          placeholder="Titel (optional)"
+          className="w-40 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-900 outline-none focus:border-gray-900"
+        />
+        <button
+          onClick={() => block.url && setBearbeiten(false)}
+          className="rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700"
+        >
+          OK
+        </button>
+      </div>
+    )
+  }
+  return (
+    <a
+      href={block.url}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="flex items-center gap-2 rounded-lg border border-gray-200 p-3 transition-colors hover:border-gray-400"
+    >
+      <span className="text-gray-400">🔗</span>
+      <span className="flex-1 truncate text-sm font-medium text-gray-900">
+        {block.titel || block.url}
+      </span>
+      <button
+        onClick={(e) => {
+          e.preventDefault()
+          setBearbeiten(true)
+        }}
+        className="text-xs text-gray-400 hover:text-gray-900"
+      >
+        bearbeiten
+      </button>
+    </a>
+  )
+}
+
+function BildBlock({ block, onChange }) {
+  return (
+    <div className="py-1">
+      {block.url && (
+        <img
+          src={block.url}
+          alt={block.alt ?? ""}
+          className="max-h-96 max-w-full rounded-lg border border-gray-200"
+        />
+      )}
+      <input
+        value={block.url ?? ""}
+        onChange={(e) => onChange({ ...block, url: e.target.value })}
+        placeholder="Bild-URL (https://…)"
+        className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-900 outline-none focus:border-gray-900"
+      />
+    </div>
+  )
+}
+
 function BereichBlock({ block, bereichRenderer, projekt }) {
   const label =
     BEREICH_LABELS[block.key] ??
@@ -304,6 +467,8 @@ export default function BlockEditor({
   // Slash-Menü: { blockId, query } | null, plus markierter Eintrag.
   const [slash, setSlash] = useState(null)
   const [slashIndex, setSlashIndex] = useState(0)
+  // Index des gerade gezogenen Blocks (Drag&Drop-Reihenfolge).
+  const [ziehIndex, setZiehIndex] = useState(null)
 
   const optionen = optionenFuer(projekt, ausschluss)
   const bereichOptionen = optionen.filter((o) => o.typ === "bereich")
@@ -322,6 +487,14 @@ export default function BlockEditor({
     const neu = [...bloecke]
     ;[neu[i], neu[j]] = [neu[j], neu[i]]
     onChange(neu)
+  }
+  function dropAuf(zielIndex) {
+    if (ziehIndex == null || ziehIndex === zielIndex) return
+    const neu = [...bloecke]
+    const [gezogen] = neu.splice(ziehIndex, 1)
+    neu.splice(zielIndex, 0, gezogen)
+    onChange(neu)
+    setZiehIndex(null)
   }
   function addBlock(option) {
     onChange([...bloecke, { id: neueId(), typ: option.typ, ...option.neu() }])
@@ -388,9 +561,22 @@ export default function BlockEditor({
         {bloecke.map((block, i) => (
           <div
             key={block.id}
-            className="group relative rounded-md px-1 py-0.5 transition-colors hover:bg-gray-50/60"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => dropAuf(i)}
+            className={`group relative rounded-md px-1 py-0.5 transition-colors hover:bg-gray-50/60 ${
+              ziehIndex === i ? "opacity-40" : ""
+            }`}
           >
             <div className="absolute right-0 top-0.5 z-10 flex items-center gap-0.5 rounded-md bg-white/80 px-1 text-sm opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
+              <span
+                draggable
+                onDragStart={() => setZiehIndex(i)}
+                onDragEnd={() => setZiehIndex(null)}
+                title="Zum Verschieben ziehen"
+                className="cursor-grab select-none px-1 text-gray-300 hover:text-gray-600"
+              >
+                ⠿
+              </span>
               <button
                 onClick={() => moveBlock(i, -1)}
                 title="Nach oben"
@@ -435,6 +621,31 @@ export default function BlockEditor({
               />
             )}
             {block.typ === "dashboard" && <DashboardBlock projekt={projekt} />}
+            {block.typ === "checkliste" && (
+              <ChecklisteBlock
+                block={block}
+                onChange={(n) => updateBlock(block.id, n)}
+              />
+            )}
+            {block.typ === "trenner" && <TrennerBlock />}
+            {block.typ === "callout" && (
+              <CalloutBlock
+                block={block}
+                onChange={(n) => updateBlock(block.id, n)}
+              />
+            )}
+            {block.typ === "link" && (
+              <LinkBlock
+                block={block}
+                onChange={(n) => updateBlock(block.id, n)}
+              />
+            )}
+            {block.typ === "bild" && (
+              <BildBlock
+                block={block}
+                onChange={(n) => updateBlock(block.id, n)}
+              />
+            )}
             {block.typ === "bereich" && (
               <BereichBlock
                 block={block}
