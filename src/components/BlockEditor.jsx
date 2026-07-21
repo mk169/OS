@@ -189,7 +189,7 @@ function TabelleBlock({ block, onChange }) {
           <button
             key={label}
             onClick={fn}
-            className="rounded px-1.5 py-0.5 hover:bg-gray-100 hover:text-gray-900"
+            className="rounded-sm px-1.5 py-0.5 hover:bg-gray-100 hover:text-gray-900"
           >
             {label}
           </button>
@@ -580,21 +580,21 @@ export default function BlockEditor({
               <button
                 onClick={() => moveBlock(i, -1)}
                 title="Nach oben"
-                className="rounded px-1 text-gray-300 hover:text-gray-900"
+                className="rounded-sm px-1 text-gray-300 hover:text-gray-900"
               >
                 ↑
               </button>
               <button
                 onClick={() => moveBlock(i, 1)}
                 title="Nach unten"
-                className="rounded px-1 text-gray-300 hover:text-gray-900"
+                className="rounded-sm px-1 text-gray-300 hover:text-gray-900"
               >
                 ↓
               </button>
               <button
                 onClick={() => removeBlock(block.id)}
                 title="Block löschen"
-                className="rounded px-1 text-gray-300 hover:text-red-500"
+                className="rounded-sm px-1 text-gray-300 hover:text-red-500"
               >
                 ×
               </button>
@@ -667,7 +667,7 @@ export default function BlockEditor({
                       onMouseEnter={() => setSlashIndex(idx)}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => waehle(o)}
-                      className={`block w-full rounded px-2 py-1.5 text-left text-sm transition-colors ${
+                      className={`block w-full rounded-sm px-2 py-1.5 text-left text-sm transition-colors ${
                         idx === slashIndex
                           ? "bg-gray-100 text-gray-900"
                           : "text-gray-600"
@@ -708,7 +708,7 @@ export default function BlockEditor({
                     <button
                       key={o.label}
                       onClick={() => addBlock(o)}
-                      className="rounded px-2 py-1.5 text-left text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      className="rounded-sm px-2 py-1.5 text-left text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     >
                       {o.label}
                     </button>

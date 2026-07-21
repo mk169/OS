@@ -249,7 +249,7 @@ function WochenAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick }) {
             {eintraege.map((e, j) => (
               <span
                 key={j}
-                className={`truncate rounded px-1.5 py-0.5 text-xs ${EINTRAG_TYPEN[e.typ].chip}`}
+                className={`truncate rounded-sm px-1.5 py-0.5 text-xs ${EINTRAG_TYPEN[e.typ].chip}`}
               >
                 {e.zeit && <span className="font-medium">{e.zeit} </span>}
                 {e.label}

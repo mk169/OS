@@ -159,7 +159,7 @@ function TodoVorschau({ todos, setTodos, projekte, onOeffnen }) {
                     {t.text}
                   </span>
                   {zuordnungsName(t) && (
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                    <span className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
                       {zuordnungsName(t)}
                     </span>
                   )}
@@ -274,7 +274,7 @@ function ProjektBaum({ ordner, projekte, todos, onOeffnen, onProjekt }) {
                   >
                     {typ === "ordner" ? (
                       <span className="flex items-center gap-2">
-                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                        <span className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                           Ordner
                         </span>
                         <span className="font-medium text-gray-500">
