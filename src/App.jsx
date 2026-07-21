@@ -8,6 +8,7 @@ import TodosSeite from "./components/TodosSeite"
 import HabitsSeite from "./components/HabitsSeite"
 import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
+import Suche from "./components/Suche"
 
 // Einmalige Migration: alte Kurse werden zu Projekten in einem
 // „Uni“-Ordner. Die IDs bleiben erhalten, damit Todos, Karten und
@@ -115,6 +116,7 @@ const NAV = [
 export default function App() {
   const [seite, setSeite] = useState("dashboard")
   const [param, setParam] = useState(null)
+  const [sucheOffen, setSucheOffen] = useState(false)
   // Ohne Cloud gibt es keinen Login – dann gilt die App sofort als bereit.
   const [session, setSession] = useState(null)
   const [authBereit, setAuthBereit] = useState(!cloudAktiv)
@@ -143,6 +145,18 @@ export default function App() {
     setParam(wert)
   }
 
+  // Ctrl/Cmd+K öffnet die globale Suche.
+  useEffect(() => {
+    function taste(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        setSucheOffen((offen) => !offen)
+      }
+    }
+    window.addEventListener("keydown", taste)
+    return () => window.removeEventListener("keydown", taste)
+  }, [])
+
   if (cloudAktiv && !authBereit) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white text-sm text-gray-400">
@@ -166,6 +180,19 @@ export default function App() {
             O
           </span>
           OS
+        </button>
+        <button
+          onClick={() => setSucheOffen(true)}
+          className="mb-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white/70 px-3 py-2 text-sm text-gray-400 transition-colors hover:text-gray-900"
+        >
+          <NavIcon className="h-[18px] w-[18px] shrink-0">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </NavIcon>
+          Suchen
+          <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-400">
+            ⌘K
+          </span>
         </button>
         <nav className="flex flex-1 flex-col gap-0.5">
           {NAV.map((item) => (
@@ -212,14 +239,26 @@ export default function App() {
           </span>
           OS
         </button>
-        {cloudAktiv && session && (
+        <div className="flex items-center gap-1">
           <button
-            onClick={abmelden}
-            className="rounded-md px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            onClick={() => setSucheOffen(true)}
+            title="Suchen"
+            className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
           >
-            Abmelden
+            <NavIcon className="h-[18px] w-[18px]">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </NavIcon>
           </button>
-        )}
+          {cloudAktiv && session && (
+            <button
+              onClick={abmelden}
+              className="rounded-md px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            >
+              Abmelden
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Inhalt */}
@@ -231,6 +270,10 @@ export default function App() {
         {seite === "deepwork" && <DeepWorkSeite />}
         {seite === "projekte" && <OrdnerSeite startProjektId={param} />}
       </main>
+
+      {sucheOffen && (
+        <Suche onNavigate={navigiere} onClose={() => setSucheOffen(false)} />
+      )}
 
       {/* Tab-Leiste – nur Mobil */}
       <nav

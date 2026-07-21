@@ -231,7 +231,9 @@ function ProjektBaum({ ordner, projekte, todos, onOeffnen, onProjekt }) {
   const zeilen = []
 
   function sammle(parentId, ebene) {
-    for (const p of projekte.filter((x) => (x.ordnerId ?? null) === parentId)) {
+    for (const p of projekte.filter(
+      (x) => !x.archiviert && (x.ordnerId ?? null) === parentId
+    )) {
       zeilen.push({ typ: "projekt", obj: p, ebene })
     }
     for (const o of ordner.filter((x) => (x.parentId ?? null) === parentId)) {

@@ -2,6 +2,7 @@ import { useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import { schluessel } from "./Kalender"
+import { Fortschrittsbalken } from "./OrdnerSeite"
 
 // Habits nach dem Atomic-Habits-Prinzip, dargestellt als kleine farbige
 // Kacheln (Farbe = Bereich). Stacking-Ketten erscheinen als verbundene
@@ -72,52 +73,83 @@ export function alsKettenListe(habits) {
   return ketten
 }
 
-// Kompakte Kachel-Ansicht: pro Kette eine Reihe kleiner farbiger Felder.
+// Die letzten 7 Tage (älteste zuerst) als Datums-Schlüssel.
+function letzte7Tage() {
+  const tage = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    tage.push(schluessel(d))
+  }
+  return tage
+}
+
+// Cleane Zeilenliste: Checkbox, Bereichs-Punkt, Name, 7-Tage-Verlauf
+// und Streak. Stacking-Ketten als Gruppe mit dezentem ↳-Einzug.
 export function HabitKacheln({ habits, bereiche, onToggle, onRemove }) {
   const heuteKey = heute()
+  const woche = letzte7Tage()
   const ketten = alsKettenListe(habits)
 
   return (
-    <div className="space-y-2">
-      {ketten.map((kette) => (
-        <div key={kette[0].id} className="flex flex-wrap items-center gap-1.5">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      {ketten.map((kette, ki) => (
+        <div key={kette[0].id} className={ki > 0 ? "border-t border-gray-100" : ""}>
           {kette.map((habit, i) => {
             const erledigt = habit.erledigtAn.includes(heuteKey)
             const farbe =
               FARBEN[bereichVon(habit, bereiche).farbe] ?? FARBEN.gray
             const s = streakVon(habit)
             return (
-              <span key={habit.id} className="flex items-center gap-1.5">
-                {i > 0 && <span className="text-xs text-gray-300">→</span>}
-                <button
-                  onClick={() => onToggle(habit)}
-                  title={
-                    erledigt ? "Heute erledigt – klicken zum Zurücksetzen" : "Als erledigt markieren"
-                  }
-                  className={`group relative rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    erledigt ? farbe.voll : `${farbe.zart} hover:opacity-80`
+              <div
+                key={habit.id}
+                className={`group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50 ${
+                  i > 0 ? "pl-9" : ""
+                }`}
+              >
+                {i > 0 && (
+                  <span className="-ml-4 text-xs text-gray-300">↳</span>
+                )}
+                <input
+                  type="checkbox"
+                  checked={erledigt}
+                  onChange={() => onToggle(habit)}
+                  className="h-4 w-4 shrink-0 accent-gray-900"
+                />
+                <span className={`h-2 w-2 shrink-0 rounded-full ${farbe.punkt}`} />
+                <span
+                  className={`min-w-0 flex-1 truncate text-sm ${
+                    erledigt ? "text-gray-400" : "text-gray-800"
                   }`}
                 >
                   {habit.name}
-                  {s > 0 && (
-                    <span className={erledigt ? "ml-1.5 opacity-80" : "ml-1.5 opacity-60"}>
-                      {s}
-                    </span>
-                  )}
-                  {onRemove && (
+                </span>
+                <span className="hidden items-center gap-0.5 sm:flex">
+                  {woche.map((tag) => (
                     <span
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onRemove(habit.id)
-                      }}
-                      title="Habit löschen"
-                      className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-gray-900 text-[10px] leading-none text-white group-hover:flex"
-                    >
-                      ×
-                    </span>
-                  )}
-                </button>
-              </span>
+                      key={tag}
+                      title={new Date(tag).toLocaleDateString("de-DE")}
+                      className={`h-2.5 w-2.5 rounded-sm ${
+                        habit.erledigtAn.includes(tag)
+                          ? farbe.punkt
+                          : "bg-gray-100"
+                      }`}
+                    />
+                  ))}
+                </span>
+                <span className="w-10 shrink-0 text-right text-xs text-gray-400">
+                  {s > 0 ? `🔥 ${s}` : ""}
+                </span>
+                {onRemove && (
+                  <button
+                    onClick={() => onRemove(habit.id)}
+                    title="Habit löschen"
+                    className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             )
           })}
         </div>
@@ -325,7 +357,7 @@ export default function HabitsSeite() {
           <p className="mt-1 text-sm text-gray-400">
             {habits.length === 0
               ? "Baue Gewohnheiten in Ketten auf – ein Habit knüpft an das nächste an."
-              : `Heute ${heuteErledigt} von ${habits.length} erledigt. Klicken zum Abhaken.`}
+              : `Heute ${heuteErledigt} von ${habits.length} erledigt.`}
           </p>
         </div>
         <HabitErstellen
@@ -335,6 +367,12 @@ export default function HabitsSeite() {
           setBereiche={setBereiche}
         />
       </div>
+
+      {habits.length > 0 && (
+        <div className="mt-4 max-w-sm">
+          <Fortschrittsbalken erledigt={heuteErledigt} gesamt={habits.length} />
+        </div>
+      )}
 
       {habits.length === 0 ? (
         <p className="mt-8 rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
@@ -362,7 +400,7 @@ export default function HabitsSeite() {
             return (
               <span
                 key={b.id}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${farbe.zart}`}
+                className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600"
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${farbe.punkt}`} />
                 {b.name} ({anzahl})

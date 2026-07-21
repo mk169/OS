@@ -29,11 +29,28 @@ function mitStreuung(tage) {
   return tage + Math.floor(Math.random() * (2 * spanne + 1)) - spanne
 }
 
-export function bewerteKarte(karte, stufe) {
+// Adaptive Faktoren: Antwort-Tempo und Konsistenz der Karte fließen in
+// das nächste Intervall ein.
+//   Tempo:      schnelle richtige Antwort (< 6 s) → Intervall ×1.1,
+//               zähe Antwort (> 20 s) → ×0.85 (nur bei „gut"/„einfach").
+//   Konsistenz: Fehlerquote > 30 % → ×0.9 und kein Ease-Anstieg;
+//               Streak ≥ 5 ohne hohe Fehlerquote → ×1.05.
+function tempoFaktor(sekunden) {
+  if (sekunden == null) return 1
+  if (sekunden < 6) return 1.1
+  if (sekunden > 20) return 0.85
+  return 1
+}
+
+export function bewerteKarte(karte, stufe, antwortSekunden = null) {
   const ease = karte.ease ?? 2.5
   const intervall = karte.intervall ?? 0
   const wiederholungen = karte.wiederholungen ?? 0
   const lapses = karte.lapses ?? 0
+
+  const versuche = wiederholungen + lapses
+  const fehlerquote = versuche > 0 ? lapses / versuche : 0
+  const wacklig = fehlerquote > 0.3
 
   let neuesIntervall = intervall
   let neueEase = ease
@@ -50,20 +67,45 @@ export function bewerteKarte(karte, stufe) {
     neuesIntervall =
       intervall === 0 ? 1 : Math.max(intervall + 1, Math.round(intervall * 1.2))
     neueEase = begrenzeEase(ease - 0.15)
-  } else if (stufe === "gut") {
-    neuesIntervall = intervall === 0 ? 1 : Math.round(intervall * ease)
-  } else if (stufe === "einfach") {
-    neuesIntervall = intervall === 0 ? 4 : Math.round(intervall * ease * 1.3)
-    neueEase = begrenzeEase(ease + 0.15)
+  } else if (stufe === "gut" || stufe === "einfach") {
+    const basisEase = stufe === "einfach" ? ease * 1.3 : ease
+    const start = stufe === "einfach" ? 4 : 1
+    let faktor = tempoFaktor(antwortSekunden)
+    if (wacklig) faktor *= 0.9
+    else if (wiederholungen >= 5) faktor *= 1.05
+    neuesIntervall =
+      intervall === 0
+        ? start
+        : Math.max(intervall + 1, Math.round(intervall * basisEase * faktor))
+    if (stufe === "einfach" && !wacklig) neueEase = begrenzeEase(ease + 0.15)
   }
+
+  // Gleitender Schnitt der Antwortzeiten (fürs Lerntempo der Karte).
+  const dauerSchnitt =
+    antwortSekunden == null
+      ? karte.dauerSchnitt
+      : karte.dauerSchnitt == null
+        ? antwortSekunden
+        : Math.round((karte.dauerSchnitt * 2 + antwortSekunden) / 3)
 
   return {
     intervall: neuesIntervall,
     ease: neueEase,
     wiederholungen: neueWiederholungen,
     lapses: neueLapses,
+    dauerSchnitt,
     faellig: inTagen(mitStreuung(neuesIntervall)),
   }
+}
+
+// Mischt eine Liste (Fisher-Yates) ohne das Original zu verändern.
+export function mische(liste) {
+  const kopie = [...liste]
+  for (let i = kopie.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[kopie[i], kopie[j]] = [kopie[j], kopie[i]]
+  }
+  return kopie
 }
 
 export function intervallText(tage) {

@@ -5,6 +5,7 @@ import {
   bewerteKarte,
   intervallText,
   parseTxtImport,
+  mische,
 } from "../lib/spacedRepetition"
 
 // Bild einlesen und auf max. 900px herunterskalieren (als komprimierte
@@ -124,8 +125,8 @@ export default function ProjektKarten({ projekt }) {
     setAlleKarten(alleKarten.filter((k) => k.id !== id))
   }
 
-  function bewerte(karte, stufe) {
-    const neu = bewerteKarte(karte, stufe)
+  function bewerte(karte, stufe, sekunden = null) {
+    const neu = bewerteKarte(karte, stufe, sekunden)
     setAlleKarten(
       alleKarten.map((k) => (k.id === karte.id ? { ...k, ...neu } : k))
     )
@@ -358,11 +359,24 @@ const STUFEN = [
 function LernModus({ faellig, onBewerte, onEnde }) {
   const [zeigeAntwort, setZeigeAntwort] = useState(false)
   const [start] = useState(faellig.length)
-  const karte = faellig[0]
+  // Gemischte Warteschlange der Karten-IDs; „Nochmal" reiht hinten ein,
+  // damit die Karte später in derselben Session erneut kommt.
+  const [queue, setQueue] = useState(() => mische(faellig.map((k) => k.id)))
+  const anzeigeSeit = useRef(Date.now())
+
+  const karte = queue
+    .map((id) => faellig.find((k) => k.id === id))
+    .find(Boolean)
 
   function antwortUndWeiter(stufe) {
+    const sekunden = Math.round((Date.now() - anzeigeSeit.current) / 1000)
     setZeigeAntwort(false)
-    onBewerte(karte, stufe)
+    setQueue((q) => {
+      const rest = q.filter((id) => id !== karte.id)
+      return stufe === "nochmal" ? [...rest, karte.id] : rest
+    })
+    onBewerte(karte, stufe, sekunden)
+    anzeigeSeit.current = Date.now()
   }
 
   // Tastatursteuerung: Leertaste/Enter deckt auf, 1–4 bewerten.
@@ -431,7 +445,11 @@ function LernModus({ faellig, onBewerte, onEnde }) {
               />
             </div>
 
-            <div className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm sm:p-12">
+            <div
+              onClick={() => setZeigeAntwort(!zeigeAntwort)}
+              title="Klicken zum Umdrehen"
+              className="mt-4 flex flex-1 cursor-pointer flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm sm:p-12"
+            >
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                 Frage
               </p>

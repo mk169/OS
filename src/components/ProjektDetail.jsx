@@ -272,15 +272,29 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
           />
         </EigenschaftsZeile>
 
-        <button
-          onClick={() => setAnpassen(!anpassen)}
-          className="mt-1 flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
-        >
-          <PropIcon>
-            <path d="M12 5v14M5 12h14" />
-          </PropIcon>
-          Bereiche anpassen
-        </button>
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          <button
+            onClick={() => setAnpassen(!anpassen)}
+            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
+          >
+            <PropIcon>
+              <path d="M12 5v14M5 12h14" />
+            </PropIcon>
+            Bereiche anpassen
+          </button>
+          <button
+            onClick={() => {
+              onUpdate({ ...projekt, archiviert: !projekt.archiviert })
+              if (!projekt.archiviert) onBack()
+            }}
+            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
+          >
+            <PropIcon>
+              <path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4" />
+            </PropIcon>
+            {projekt.archiviert ? "Wiederherstellen" : "Archivieren"}
+          </button>
+        </div>
       </div>
 
       {anpassen && (

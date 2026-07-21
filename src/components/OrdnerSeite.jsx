@@ -114,10 +114,15 @@ export default function OrdnerSeite({ startProjektId = null }) {
     )
   }
 
+  // Archivierte Projekte bleiben gespeichert, tauchen aber nur in der
+  // Archiv-Ansicht auf.
+  const aktive = projekte.filter((p) => !p.archiviert)
+  const archivierte = projekte.filter((p) => p.archiviert)
+
   const unterordner = ordner.filter(
     (o) => (o.parentId ?? null) === aktuellerOrdnerId
   )
-  const hiesigeProjekte = projekte.filter(
+  const hiesigeProjekte = aktive.filter(
     (p) => (p.ordnerId ?? null) === aktuellerOrdnerId
   )
 
@@ -214,7 +219,7 @@ export default function OrdnerSeite({ startProjektId = null }) {
 
       {ansicht === "alle" && (
         <AlleAnsicht
-          projekte={projekte}
+          projekte={aktive}
           todos={todos}
           onOeffnen={setOffenesProjektId}
           onRemove={removeProjekt}
@@ -229,8 +234,16 @@ export default function OrdnerSeite({ startProjektId = null }) {
       )}
       {ansicht === "anstehend" && (
         <AnstehendAnsicht
-          projekte={projekte}
+          projekte={aktive}
           todos={todos}
+          onOeffnen={setOffenesProjektId}
+        />
+      )}
+      {ansicht === "archiv" && (
+        <ArchivAnsicht
+          archivierte={archivierte}
+          projekte={projekte}
+          setProjekte={setProjekte}
           onOeffnen={setOffenesProjektId}
         />
       )}
@@ -342,6 +355,7 @@ const ANSICHTEN = [
   { key: "alle", label: "Alle" },
   { key: "board", label: "Board" },
   { key: "anstehend", label: "Anstehend" },
+  { key: "archiv", label: "Archiv" },
 ]
 
 const PRIO_RANG = { hoch: 3, mittel: 2, niedrig: 1, "": 0 }
@@ -528,7 +542,9 @@ function BoardAnsicht({ projekte, setProjekte, onOeffnen }) {
   return (
     <div className="mt-4 grid gap-3 sm:grid-cols-3">
       {STATUS_OPTIONEN.map((sp) => {
-        const spalte = projekte.filter((p) => (p.status ?? "offen") === sp.value)
+        const spalte = projekte.filter(
+          (p) => !p.archiviert && (p.status ?? "offen") === sp.value
+        )
         return (
           <div
             key={sp.value}
@@ -616,7 +632,7 @@ function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
   }
   for (const t of todos) {
     const pid = t.projektId ?? t.kursId
-    if (t.datum && !t.erledigt && pid)
+    if (t.datum && !t.erledigt && pid && projekte.some((p) => p.id === pid))
       eintraege.push({
         datum: t.datum,
         label: t.text,
@@ -655,6 +671,59 @@ function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
               <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
                 {e.typ}
               </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// Archivierte Projekte: wiederherstellen oder endgültig löschen.
+function ArchivAnsicht({ archivierte, projekte, setProjekte, onOeffnen }) {
+  function wiederherstellen(id) {
+    setProjekte(
+      projekte.map((p) => (p.id === id ? { ...p, archiviert: false } : p))
+    )
+  }
+  function loeschen(id) {
+    setProjekte(projekte.filter((p) => p.id !== id))
+  }
+
+  return (
+    <div className="mt-4">
+      {archivierte.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
+          Kein archiviertes Projekt. Archivieren kannst du im geöffneten
+          Projekt.
+        </p>
+      ) : (
+        <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+          {archivierte.map((p) => (
+            <li
+              key={p.id}
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50"
+            >
+              <button
+                onClick={() => onOeffnen(p.id)}
+                className="min-w-0 flex-1 truncate text-left text-sm font-medium text-gray-900"
+              >
+                {p.name}
+              </button>
+              {p.deadline && <DeadlineChip datum={p.deadline} />}
+              <button
+                onClick={() => wiederherstellen(p.id)}
+                className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                Wiederherstellen
+              </button>
+              <button
+                onClick={() => loeschen(p.id)}
+                title="Endgültig löschen"
+                className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
+              >
+                ×
+              </button>
             </li>
           ))}
         </ul>
