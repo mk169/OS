@@ -131,6 +131,25 @@ export default function ProjektKarten({ projekt }) {
     )
   }
 
+  function starteLernen() {
+    setLernModus(true)
+    // Echtes Vollbild (falls erlaubt) – innerhalb der Klick-Geste.
+    try {
+      document.documentElement.requestFullscreen?.()
+    } catch {
+      /* nicht unterstützt – Overlay reicht */
+    }
+  }
+
+  function beendeLernen() {
+    setLernModus(false)
+    try {
+      if (document.fullscreenElement) document.exitFullscreen?.()
+    } catch {
+      /* egal */
+    }
+  }
+
   function importiereDatei(e) {
     const datei = e.target.files?.[0]
     if (!datei) return
@@ -168,11 +187,7 @@ export default function ProjektKarten({ projekt }) {
 
   if (lernModus) {
     return (
-      <LernModus
-        faellig={faellig}
-        onBewerte={bewerte}
-        onEnde={() => setLernModus(false)}
-      />
+      <LernModus faellig={faellig} onBewerte={bewerte} onEnde={beendeLernen} />
     )
   }
 
@@ -211,7 +226,7 @@ export default function ProjektKarten({ projekt }) {
             className="hidden"
           />
           <button
-            onClick={() => setLernModus(true)}
+            onClick={starteLernen}
             disabled={faellig.length === 0}
             className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
           >
@@ -371,107 +386,120 @@ function LernModus({ faellig, onBewerte, onEnde }) {
     return () => window.removeEventListener("keydown", taste)
   }, [karte, zeigeAntwort])
 
-  if (!karte) {
-    return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-        <p className="text-2xl">🎉</p>
-        <h3 className="mt-2 text-sm font-medium text-gray-900">
-          Fertig für heute.
-        </h3>
-        <p className="mt-1 text-xs text-gray-400">
-          Alle fälligen Karten sind wiederholt.
-        </p>
-        <button
-          onClick={onEnde}
-          className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
-        >
-          Zurück zur Übersicht
-        </button>
-      </div>
-    )
-  }
-
   const erledigt = start - faellig.length
 
   return (
-    <div>
-      <div className="flex items-center justify-between text-xs text-gray-400">
-        <span>
-          {faellig.length} {faellig.length === 1 ? "Karte" : "Karten"} übrig
-        </span>
-        <button onClick={onEnde} className="hover:text-gray-900">
-          Beenden ×
-        </button>
-      </div>
-      <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-100">
-        <div
-          className="h-full rounded-full bg-gray-900 transition-all"
-          style={{ width: `${start ? (erledigt / start) * 100 : 0}%` }}
-        />
-      </div>
-
-      <div className="mt-3 flex min-h-64 flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm sm:p-12">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-          Frage
-        </p>
-        {karte.vorne && (
-          <p className="mt-3 text-xl font-medium text-gray-900">{karte.vorne}</p>
-        )}
-        {karte.vorneBild && (
-          <img
-            src={karte.vorneBild}
-            alt=""
-            className="mt-4 max-h-56 max-w-full rounded-lg border border-gray-200"
-          />
-        )}
-
-        {zeigeAntwort && (
-          <>
-            <hr className="mx-auto my-6 w-24 border-gray-200" />
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-              Antwort
+    <div
+      className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-5 sm:py-8">
+        {!karte ? (
+          <div className="m-auto rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+            <p className="text-2xl">🎉</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              Fertig für heute.
+            </h3>
+            <p className="mt-1 text-xs text-gray-400">
+              Alle fälligen Karten sind wiederholt.
             </p>
-            {karte.hinten && (
-              <p className="mt-3 text-xl text-gray-700">{karte.hinten}</p>
-            )}
-            {karte.hintenBild && (
-              <img
-                src={karte.hintenBild}
-                alt=""
-                className="mt-4 max-h-56 max-w-full rounded-lg border border-gray-200"
-              />
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="mt-4 flex flex-wrap justify-center gap-2">
-        {!zeigeAntwort ? (
-          <button
-            onClick={() => setZeigeAntwort(true)}
-            className="rounded-md bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
-          >
-            Antwort zeigen{" "}
-            <span className="ml-1 text-xs text-gray-400">Leertaste</span>
-          </button>
-        ) : (
-          STUFEN.map((stufe) => (
             <button
-              key={stufe.key}
-              onClick={() => antwortUndWeiter(stufe.key)}
-              className={`flex min-w-20 flex-col items-center rounded-md border bg-white px-4 py-2 text-sm font-medium transition-colors ${stufe.stil}`}
+              onClick={onEnde}
+              className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
             >
-              <span>
-                {stufe.label}
-                <span className="ml-1 text-[10px] font-normal text-gray-400">
-                  {stufe.taste}
-                </span>
-              </span>
-              <span className="text-[10px] font-normal text-gray-400">
-                {intervallText(bewerteKarte(karte, stufe.key).intervall)}
-              </span>
+              Zurück zur Übersicht
             </button>
-          ))
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <span>
+                {faellig.length} {faellig.length === 1 ? "Karte" : "Karten"}{" "}
+                übrig
+              </span>
+              <button onClick={onEnde} className="hover:text-gray-900">
+                Beenden ×
+              </button>
+            </div>
+            <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full rounded-full bg-gray-900 transition-all"
+                style={{ width: `${start ? (erledigt / start) * 100 : 0}%` }}
+              />
+            </div>
+
+            <div className="mt-4 flex flex-1 flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm sm:p-12">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                Frage
+              </p>
+              {karte.vorne && (
+                <p className="mt-3 text-2xl font-medium text-gray-900">
+                  {karte.vorne}
+                </p>
+              )}
+              {karte.vorneBild && (
+                <img
+                  src={karte.vorneBild}
+                  alt=""
+                  className="mt-4 max-h-[40vh] max-w-full rounded-lg border border-gray-200"
+                />
+              )}
+
+              {zeigeAntwort && (
+                <>
+                  <hr className="mx-auto my-6 w-24 border-gray-200" />
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                    Antwort
+                  </p>
+                  {karte.hinten && (
+                    <p className="mt-3 text-2xl text-gray-700">
+                      {karte.hinten}
+                    </p>
+                  )}
+                  {karte.hintenBild && (
+                    <img
+                      src={karte.hintenBild}
+                      alt=""
+                      className="mt-4 max-h-[40vh] max-w-full rounded-lg border border-gray-200"
+                    />
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {!zeigeAntwort ? (
+                <button
+                  onClick={() => setZeigeAntwort(true)}
+                  className="rounded-md bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
+                >
+                  Antwort zeigen{" "}
+                  <span className="ml-1 text-xs text-gray-400">Leertaste</span>
+                </button>
+              ) : (
+                STUFEN.map((stufe) => (
+                  <button
+                    key={stufe.key}
+                    onClick={() => antwortUndWeiter(stufe.key)}
+                    className={`flex min-w-20 flex-col items-center rounded-md border bg-white px-4 py-2 text-sm font-medium transition-colors ${stufe.stil}`}
+                  >
+                    <span>
+                      {stufe.label}
+                      <span className="ml-1 text-[10px] font-normal text-gray-400">
+                        {stufe.taste}
+                      </span>
+                    </span>
+                    <span className="text-[10px] font-normal text-gray-400">
+                      {intervallText(bewerteKarte(karte, stufe.key).intervall)}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
