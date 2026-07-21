@@ -415,11 +415,7 @@ function TabButton({ active, onClick, children }) {
 // Schreibflächen sitzen darin, damit jeder Tab dasselbe Layout hat.
 function Dokument({ children }) {
   return (
-    <div className="flex flex-1 flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-1 flex-col px-6 py-8 sm:px-12 sm:py-10">
-        {children}
-      </div>
-    </div>
+    <div className="flex flex-1 flex-col py-6">{children}</div>
   )
 }
 
