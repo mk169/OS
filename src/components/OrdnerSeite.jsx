@@ -7,6 +7,7 @@ import ProjektDetail, {
   STATUS_OPTIONEN,
   PRIORITAETEN,
 } from "./ProjektDetail"
+import Seitenkopf from "./Seitenkopf"
 
 // Ordnersystem: Projekte liegen in beliebig verschachtelbaren Ordnern
 // (z.B. Uni → 4. Semester → Statistik). Jedes Projekt wird individuell
@@ -161,24 +162,27 @@ export default function OrdnerSeite({ startProjektId = null }) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Projekte</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <AnsichtToggle ansicht={ansicht} setAnsicht={setAnsicht} />
-          <button
-            onClick={() => setOrdnerFormOffen(!ordnerFormOffen)}
-            className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            + Ordner
-          </button>
-          <button
-            onClick={() => setProjektFormOffen(!projektFormOffen)}
-            className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
-          >
-            + Projekt
-          </button>
-        </div>
-      </div>
+      <Seitenkopf
+        titel="Projekte"
+        unterzeile="Ordner und Projekte im Überblick."
+        aktion={
+          <div className="flex flex-wrap items-center gap-2">
+            <AnsichtToggle ansicht={ansicht} setAnsicht={setAnsicht} />
+            <button
+              onClick={() => setOrdnerFormOffen(!ordnerFormOffen)}
+              className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              + Ordner
+            </button>
+            <button
+              onClick={() => setProjektFormOffen(!projektFormOffen)}
+              className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              + Projekt
+            </button>
+          </div>
+        }
+      />
 
       {ordnerFormOffen && (
         <form
@@ -280,7 +284,7 @@ export default function OrdnerSeite({ startProjektId = null }) {
 
       {unterordner.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
             Ordner
           </h2>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -322,7 +326,7 @@ export default function OrdnerSeite({ startProjektId = null }) {
 
       {hiesigeProjekte.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
             Projekte
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

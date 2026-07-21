@@ -1,5 +1,6 @@
 import useStored from "../lib/useStored"
 import { tageBis } from "../lib/datum"
+import Seitenkopf from "./Seitenkopf"
 import TodoErstellen, { EINTEILUNGEN, einteilungVon } from "./TodoErstellen"
 
 export function TodoZeile({ todo, onToggle, onRemove, zuordnungsName }) {
@@ -66,15 +67,11 @@ export default function TodosSeite() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="mt-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Todos</h1>
-          <p className="mt-1 text-sm text-gray-400">
-            Sortiert nach wichtig und dringend.
-          </p>
-        </div>
-        <TodoErstellen />
-      </div>
+      <Seitenkopf
+        titel="Todos"
+        unterzeile="Sortiert nach wichtig und dringend."
+        aktion={<TodoErstellen />}
+      />
 
       <div className="mt-8 space-y-8">
         {EINTEILUNGEN.map((gruppe) => {
@@ -83,7 +80,7 @@ export default function TodosSeite() {
             .sort((a, b) => (a.datum || "9999").localeCompare(b.datum || "9999"))
           return (
             <section key={gruppe.key}>
-              <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400">
+              <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-500">
                 <span className={`h-2 w-2 rounded-full ${gruppe.punkt}`} />
                 {gruppe.label} ({eintraege.length})
               </h2>
@@ -108,7 +105,7 @@ export default function TodosSeite() {
 
         {erledigte.length > 0 && (
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
               Erledigt ({erledigte.length})
             </h2>
             <ul className="mt-2 space-y-1.5">

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
+import Seitenkopf from "./Seitenkopf"
 
 const VORGABEN = [25, 50, 90]
 
@@ -129,19 +130,20 @@ export default function DeepWorkSeite() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="mt-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Deep Work</h1>
-        <p className="mt-1 text-sm text-gray-400">
-          Ein Block, eine Aufgabe, keine Ablenkung.
-          {heutigeMinuten > 0 && ` Heute bereits ${heutigeMinuten} Minuten fokussiert.`}
-        </p>
-      </div>
+      <Seitenkopf
+        titel="Deep Work"
+        unterzeile={`Ein Block, eine Aufgabe, keine Ablenkung.${
+          heutigeMinuten > 0
+            ? ` Heute bereits ${heutigeMinuten} Minuten fokussiert.`
+            : ""
+        }`}
+      />
 
       {/* Timer */}
       <div className="mt-8 rounded-xl border border-gray-200 bg-white p-10 text-center">
         {restSekunden == null ? (
           <>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
               Dauer wählen
             </p>
             <div className="mt-4 flex items-center justify-center gap-2">
@@ -220,7 +222,7 @@ export default function DeepWorkSeite() {
 
       {/* In den Kalender einplanen */}
       <section className="mt-8">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
           Block einplanen
         </h2>
         <form
@@ -285,7 +287,7 @@ export default function DeepWorkSeite() {
 
       {/* Verlauf */}
       <section className="mt-8">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
           Letzte Sessions
         </h2>
         {letzte.length === 0 ? (

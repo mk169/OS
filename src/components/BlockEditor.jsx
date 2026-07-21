@@ -202,7 +202,7 @@ function TabelleBlock({ block, onChange }) {
 function Kachel({ label, children }) {
   return (
     <div className="rounded-xl border border-gray-200 p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
         {label}
       </p>
       <div className="mt-2">{children}</div>
@@ -431,7 +431,7 @@ function BereichBlock({ block, bereichRenderer, projekt }) {
   const inhalt = bereichRenderer?.(block.key)
   return (
     <div className="rounded-xl border border-gray-200 p-4">
-      <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+      <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
         {label}
       </p>
       {inhalt ?? (

@@ -300,7 +300,7 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
       {anpassen && (
         <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
               Aktive Bereiche – mit ‹ › verschieben
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -341,7 +341,7 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
           </div>
 
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
               Verfügbar – klicken zum Einblenden
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -469,7 +469,7 @@ function EigenerModul({ projekt, modulKey, onUpdate, bereichRenderer }) {
 
   return (
     <Dokument>
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
         {modul.label}
       </p>
       <BlockEditor
@@ -486,7 +486,7 @@ function EigenerModul({ projekt, modulKey, onUpdate, bereichRenderer }) {
 function ZielModul({ projekt, onUpdate }) {
   return (
     <Dokument>
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
         Zieldefinition
       </p>
       <textarea
@@ -758,7 +758,7 @@ function WorkflowTimeline({ workflow, onToggle, onRemove }) {
 
       {ohneDatum.length > 0 && (
         <div className="mt-3">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
             Ohne Termin
           </p>
           <ul className="mt-1.5 space-y-1.5">
