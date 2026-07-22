@@ -207,6 +207,7 @@ function InboxAnsicht() {
 function WissenAnsicht({ onNavigate }) {
   const [wissen, setWissen] = useStored("wissen", [])
   const [projekte] = useStored("projekte", [])
+  const [notizen] = useStored("notizen", [])
   const [titel, setTitel] = useState("")
   const [bearbeiteId, setBearbeiteId] = useState(null)
 
@@ -231,9 +232,12 @@ function WissenAnsicht({ onNavigate }) {
   }
 
   // Wissen-Ziel öffnet sich inline im selben Overlay, Projekt-Ziel
-  // navigiert auf App-Ebene zur Projektseite.
+  // navigiert auf App-Ebene zur Projektseite, Notiz-Ziel zusätzlich mit
+  // der genauen Notiz (siehe App.jsx/OrdnerSeite.jsx).
   function zielKlick(ziel) {
     if (ziel.typ === "wissen") setBearbeiteId(ziel.id)
+    else if (ziel.typ === "notiz")
+      onNavigate?.("projekte", { projektId: ziel.projektId, notizId: ziel.id })
     else onNavigate?.("projekte", ziel.id)
   }
 
@@ -262,11 +266,13 @@ function WissenAnsicht({ onNavigate }) {
 
       {bearbeiteteNotiz && (
         <NotizBearbeiten
+          key={bearbeiteteNotiz.id}
           notiz={bearbeiteteNotiz}
           onChange={updateWissen}
           onClose={() => setBearbeiteId(null)}
           wissen={wissen}
           projekte={projekte}
+          notizen={notizen}
           onZielKlick={zielKlick}
         />
       )}

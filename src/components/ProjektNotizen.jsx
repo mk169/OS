@@ -1,25 +1,47 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useStored from "../lib/useStored"
 import { WIKILINK_REGEX, findeZiel, sammleBacklinks } from "../lib/wikilinks"
 
 // Lehrinhalte: eigene Notizen und Zusammenfassungen zum Projekt, als
 // Karten-Raster zum Sammeln und Stapeln. Klick öffnet die Notiz groß in
 // einem eigenen Schreib-Overlay (wie ein offenes Dokument). Der Overlay
-// unterstützt "[[Titel]]"-Verlinkung zu Wissen/Projekten samt Rückverlinkung
-// (siehe NotizBearbeiten) – dieselbe Komponente wird auch von der
-// projektfreien Wissensbasis (SammelnSeite) genutzt.
-
-export default function ProjektNotizen({ projekt }) {
+// unterstützt "[[Titel]]"-Verlinkung zu Wissen/Projekten/anderen
+// Projekt-Notizen samt Rückverlinkung (siehe NotizBearbeiten) – dieselbe
+// Komponente wird auch von der projektfreien Wissensbasis (SammelnSeite)
+// genutzt. startNotizId/onOeffneZiel/onNavigate ermöglichen das direkte
+// Anspringen einer Notiz von außen (z.B. per Link-Klick aus einem anderen
+// Projekt oder aus dem Graphen).
+export default function ProjektNotizen({
+  projekt,
+  startNotizId = null,
+  onOeffneZiel,
+  onNavigate,
+}) {
   const [alleNotizen, setAlleNotizen] = useStored("notizen", [])
   const [wissen] = useStored("wissen", [])
   const [projekte] = useStored("projekte", [])
   const [titel, setTitel] = useState("")
-  const [bearbeiteId, setBearbeiteId] = useState(null)
+  const [bearbeiteId, setBearbeiteId] = useState(startNotizId)
+
+  useEffect(() => {
+    if (startNotizId != null) setBearbeiteId(startNotizId)
+  }, [startNotizId])
 
   const notizen = alleNotizen.filter(
     (n) => n.projektId === projekt.id || n.kursId === projekt.id
   )
-  const bearbeiteteNotiz = notizen.find((n) => n.id === bearbeiteId)
+  // Volle Liste durchsuchen statt nur der projekt-eigenen: eine von außen
+  // angesprungene Notiz kann kurzzeitig noch nicht in `notizen` auftauchen
+  // (z.B. während OrdnerSeite gerade erst das Projekt wechselt).
+  const bearbeiteteNotiz = alleNotizen.find((n) => n.id === bearbeiteId)
+
+  // Verlinkungsziel öffnen: Wissen springt auf die Sammeln-Seite (kein
+  // Deep-Link auf die genaue Notiz dort, bewusste Scope-Grenze), Projekt/
+  // Notiz werden über den durchgereichten Handler direkt angesprungen.
+  function zielKlick(ziel) {
+    if (ziel.typ === "wissen") onNavigate?.("sammeln")
+    else onOeffneZiel?.(ziel)
+  }
 
   function addNotiz(e) {
     e.preventDefault()
@@ -72,11 +94,14 @@ export default function ProjektNotizen({ projekt }) {
 
       {bearbeiteteNotiz && (
         <NotizBearbeiten
+          key={bearbeiteteNotiz.id}
           notiz={bearbeiteteNotiz}
           onChange={updateNotiz}
           onClose={() => setBearbeiteId(null)}
           wissen={wissen}
           projekte={projekte}
+          notizen={alleNotizen}
+          onZielKlick={zielKlick}
         />
       )}
     </div>
@@ -131,7 +156,7 @@ const MENTION_ENTFERNEN = /(?:^|\s)@[^\s@]*$/
 
 // Text mit "[[Titel]]"-Vorkommen als klickbare Chips gerendert (Ansicht-
 // Modus). Unbekannte Ziele bleiben dezent und nicht klickbar.
-function TextMitLinks({ text, wissen, projekte, onZielKlick }) {
+function TextMitLinks({ text, wissen, projekte, notizen, onZielKlick }) {
   if (!text) return null
   const teile = text.split(WIKILINK_REGEX)
   return (
@@ -143,6 +168,7 @@ function TextMitLinks({ text, wissen, projekte, onZielKlick }) {
             titel={teil}
             wissen={wissen}
             projekte={projekte}
+            notizen={notizen}
             onZielKlick={onZielKlick}
           />
         ) : (
@@ -153,8 +179,8 @@ function TextMitLinks({ text, wissen, projekte, onZielKlick }) {
   )
 }
 
-function LinkChip({ titel, wissen, projekte, onZielKlick }) {
-  const ziel = findeZiel(titel, wissen, projekte)
+function LinkChip({ titel, wissen, projekte, notizen, onZielKlick }) {
+  const ziel = findeZiel(titel, wissen, projekte, notizen)
   return (
     <button
       type="button"
@@ -185,6 +211,7 @@ export function NotizBearbeiten({
   onClose,
   wissen = [],
   projekte = [],
+  notizen = [],
   onZielKlick,
 }) {
   const [bearbeiten, setBearbeiten] = useState(false)
@@ -198,6 +225,14 @@ export function NotizBearbeiten({
     ...projekte
       .filter((p) => !p.archiviert)
       .map((p) => ({ typ: "projekt", titel: p.name })),
+    ...notizen
+      .filter((n) => n.id !== notiz.id)
+      .map((n) => ({
+        typ: "notiz",
+        titel: n.titel,
+        projektName: projekte.find((p) => p.id === (n.projektId ?? n.kursId))
+          ?.name,
+      })),
   ]
   const mentionOptionen = mention
     ? zielOptionen
@@ -205,9 +240,16 @@ export function NotizBearbeiten({
         .slice(0, 8)
     : []
 
-  const backlinks = sammleBacklinks(notiz.titel, wissen, projekte).filter(
-    (b) => !(b.typ === "wissen" && b.id === notiz.id)
-  )
+  // Eigener Typ der gerade bearbeiteten Notiz – Projekt-Notizen tragen
+  // projektId/kursId, projektfreie Wissens-Einträge nicht. Bestimmt, welcher
+  // Backlink-Treffer als "verweist auf sich selbst" auszuschließen ist.
+  const eigenerTyp = notiz.projektId ?? notiz.kursId ? "notiz" : "wissen"
+  const backlinks = sammleBacklinks(
+    notiz.titel,
+    wissen,
+    projekte,
+    notizen
+  ).filter((b) => !(b.typ === eigenerTyp && b.id === notiz.id))
 
   function inhaltOnChange(text) {
     onChange({ ...notiz, inhalt: text })
@@ -295,7 +337,7 @@ export function NotizBearbeiten({
               <div className="absolute bottom-4 left-0 w-64 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
                 {mentionOptionen.map((o, i) => (
                   <button
-                    key={`${o.typ}-${o.titel}`}
+                    key={`${o.typ}-${o.titel}-${i}`}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => waehleMention(o)}
@@ -306,9 +348,18 @@ export function NotizBearbeiten({
                     }`}
                   >
                     <span className="rounded-sm bg-gray-100 px-1 text-[10px] uppercase tracking-wide text-gray-400">
-                      {o.typ === "wissen" ? "Wissen" : "Projekt"}
+                      {o.typ === "wissen"
+                        ? "Wissen"
+                        : o.typ === "notiz"
+                          ? "Notiz"
+                          : "Projekt"}
                     </span>
-                    {o.titel}
+                    <span className="min-w-0 flex-1 truncate">{o.titel}</span>
+                    {o.typ === "notiz" && o.projektName && (
+                      <span className="shrink-0 text-[10px] text-gray-400">
+                        {o.projektName}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -324,6 +375,7 @@ export function NotizBearbeiten({
                 text={notiz.inhalt}
                 wissen={wissen}
                 projekte={projekte}
+                notizen={notizen}
                 onZielKlick={onZielKlick}
               />
             ) : (
@@ -348,6 +400,11 @@ export function NotizBearbeiten({
                   className="rounded-sm bg-gray-100 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200 disabled:cursor-default disabled:hover:bg-gray-100"
                 >
                   {b.titel}
+                  {b.typ === "notiz" && (
+                    <span className="ml-1 text-gray-400">
+                      · {projekte.find((p) => p.id === b.projektId)?.name}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

@@ -315,7 +315,17 @@ export default function App() {
         {seite === "sammeln" && <SammelnSeite onNavigate={navigiere} />}
         {seite === "habits" && <HabitsSeite />}
         {seite === "deepwork" && <DeepWorkSeite />}
-        {seite === "projekte" && <OrdnerSeite startProjektId={param} />}
+        {seite === "projekte" && (
+          <OrdnerSeite
+            startProjektId={
+              param && typeof param === "object" ? param.projektId : param
+            }
+            startNotizId={
+              param && typeof param === "object" ? param.notizId : null
+            }
+            onNavigate={navigiere}
+          />
+        )}
         {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
       </main>
 

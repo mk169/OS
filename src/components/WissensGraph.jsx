@@ -3,15 +3,24 @@ import useStored from "../lib/useStored"
 import { extrahiereWikilinks, findeZiel } from "../lib/wikilinks"
 import { NotizBearbeiten } from "./ProjektNotizen"
 
-// Visuelle Übersicht aller "[[Titel]]"-Verlinkungen zwischen Wissen und
-// Projekten/Areas. Layout per einfacher, selbstgeschriebener Kräfte-
-// Simulation (keine neue Abhängigkeit nötig für die Notizmenge einer
-// persönlichen App): Abstoßung zwischen allen Knotenpaaren, Federkraft
-// entlang der Kanten, leichte Zentrierung.
+// Visuelle Übersicht aller "[[Titel]]"-Verlinkungen zwischen Wissen,
+// Projekten/Areas und einzelnen Projekt-Notizen (auch über Projekte
+// hinweg). Layout per einfacher, selbstgeschriebener Kräfte-Simulation
+// (keine neue Abhängigkeit nötig für die Notizmenge einer persönlichen
+// App): Abstoßung zwischen allen Knotenpaaren, Federkraft entlang der
+// Kanten, leichte Zentrierung. O(n²) pro Iteration × 200 Iterationen –
+// bei sehr vielen verlinkten Notizen irgendwann ein Punkt für eine
+// spätere Perf-Überarbeitung, für den Umfang einer persönlichen
+// Notizsammlung aber unproblematisch.
 
 const BREITE = 760
 const HOEHE = 480
-const FARBE = { wissen: "#3b82f6", projekt: "#10b981", area: "#8b5cf6" }
+const FARBE = {
+  wissen: "#3b82f6",
+  projekt: "#10b981",
+  area: "#8b5cf6",
+  notiz: "#f59e0b",
+}
 
 function berechneLayout(knoten, kanten, iterationen = 200) {
   const pos = new Map(
@@ -78,7 +87,58 @@ function berechneLayout(knoten, kanten, iterationen = 200) {
 export default function WissensGraph({ onNavigate }) {
   const [wissen, setWissen] = useStored("wissen", [])
   const [projekte] = useStored("projekte", [])
+  const [notizen] = useStored("notizen", [])
   const [bearbeiteId, setBearbeiteId] = useState(null)
+
+  // Nur Notizen aus nicht-archivierten Projekten überhaupt berücksichtigen –
+  // konsistent mit der Archiv-Filterung der Projekt-Knoten unten. Gilt nur
+  // für diese Graph-Darstellung, nicht für Verlinkung/Navigation anderswo
+  // (dort sollen auch Links in archivierte Projekte weiter auflösen).
+  const notizenSichtbar = useMemo(() => {
+    const nichtArchiviert = new Set(
+      projekte.filter((pr) => !pr.archiviert).map((pr) => pr.id)
+    )
+    return notizen.filter((n) =>
+      nichtArchiviert.has(n.projektId ?? n.kursId)
+    )
+  }, [notizen, projekte])
+
+  const kanten = useMemo(() => {
+    const liste = []
+    for (const n of wissen) {
+      for (const titel of extrahiereWikilinks(n.inhalt)) {
+        const ziel = findeZiel(titel, wissen, projekte, notizenSichtbar)
+        if (!ziel) continue
+        liste.push({
+          von: `wissen-${n.id}`,
+          nach: `${ziel.typ}-${ziel.id}`,
+        })
+      }
+    }
+    for (const n of notizenSichtbar) {
+      for (const titel of extrahiereWikilinks(n.inhalt)) {
+        const ziel = findeZiel(titel, wissen, projekte, notizenSichtbar)
+        if (!ziel) continue
+        liste.push({
+          von: `notiz-${n.id}`,
+          nach: `${ziel.typ}-${ziel.id}`,
+        })
+      }
+    }
+    return liste
+  }, [wissen, projekte, notizenSichtbar])
+
+  // Notizen fluten sonst schnell den Graphen (jedes Projekt kann viele
+  // belanglose Notizen haben) – nur wer per Verlinkung tatsächlich Teil des
+  // Netzwerks ist, wird als eigener Knoten angezeigt.
+  const verlinkteNotizIds = useMemo(() => {
+    const ids = new Set()
+    for (const k of kanten) {
+      if (k.von.startsWith("notiz-")) ids.add(Number(k.von.slice(6)))
+      if (k.nach.startsWith("notiz-")) ids.add(Number(k.nach.slice(6)))
+    }
+    return ids
+  }, [kanten])
 
   const knoten = useMemo(() => {
     const w = wissen.map((n) => ({
@@ -95,23 +155,17 @@ export default function WissensGraph({ onNavigate }) {
         refId: pr.id,
         titel: pr.name,
       }))
-    return [...w, ...p]
-  }, [wissen, projekte])
-
-  const kanten = useMemo(() => {
-    const liste = []
-    for (const n of wissen) {
-      for (const titel of extrahiereWikilinks(n.inhalt)) {
-        const ziel = findeZiel(titel, wissen, projekte)
-        if (!ziel) continue
-        liste.push({
-          von: `wissen-${n.id}`,
-          nach: `${ziel.typ}-${ziel.id}`,
-        })
-      }
-    }
-    return liste
-  }, [wissen, projekte])
+    const n = notizenSichtbar
+      .filter((notiz) => verlinkteNotizIds.has(notiz.id))
+      .map((notiz) => ({
+        id: `notiz-${notiz.id}`,
+        typ: "notiz",
+        refId: notiz.id,
+        titel: notiz.titel,
+        projektId: notiz.projektId ?? notiz.kursId,
+      }))
+    return [...w, ...p, ...n]
+  }, [wissen, projekte, notizenSichtbar, verlinkteNotizIds])
 
   const positionen = useMemo(
     () => berechneLayout(knoten, kanten),
@@ -122,11 +176,18 @@ export default function WissensGraph({ onNavigate }) {
 
   function klick(k) {
     if (k.typ === "wissen") setBearbeiteId(k.refId)
+    else if (k.typ === "notiz")
+      onNavigate?.("projekte", { projektId: k.projektId, notizId: k.refId })
     else onNavigate?.("projekte", k.refId)
   }
 
   function zielKlick(ziel) {
     if (ziel.typ === "wissen") setBearbeiteId(ziel.id)
+    else if (ziel.typ === "notiz")
+      onNavigate?.("projekte", {
+        projektId: ziel.projektId,
+        notizId: ziel.id,
+      })
     else onNavigate?.("projekte", ziel.id)
   }
 
@@ -206,15 +267,24 @@ export default function WissensGraph({ onNavigate }) {
           />
           Area
         </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: FARBE.notiz }}
+          />
+          Notiz (nur verlinkte werden angezeigt)
+        </span>
       </div>
 
       {bearbeiteteNotiz && (
         <NotizBearbeiten
+          key={bearbeiteteNotiz.id}
           notiz={bearbeiteteNotiz}
           onChange={updateWissen}
           onClose={() => setBearbeiteId(null)}
           wissen={wissen}
           projekte={projekte}
+          notizen={notizen}
           onZielKlick={zielKlick}
         />
       )}

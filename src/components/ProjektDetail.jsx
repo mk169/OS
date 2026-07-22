@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import Kalender from "./Kalender"
@@ -91,7 +91,14 @@ function TagSelect({ value, options, onChange }) {
   )
 }
 
-export default function ProjektDetail({ projekt, onUpdate, onBack }) {
+export default function ProjektDetail({
+  projekt,
+  onUpdate,
+  onBack,
+  startNotizId = null,
+  onOeffneZiel,
+  onNavigate,
+}) {
   const [ordner] = useStored("ordner", [])
   const module = projekt.module ?? STANDARD_MODULE
   const eigene = projekt.eigeneModule ?? []
@@ -117,8 +124,15 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
 
   // Reihenfolge der Tabs folgt der Reihenfolge in projekt.module
   const sichtbareModule = module.map(modulInfo).filter(Boolean)
-  const [aktiv, setAktiv] = useState("uebersicht")
+  const [aktiv, setAktiv] = useState(startNotizId ? "notizen" : "uebersicht")
   const [anpassen, setAnpassen] = useState(false)
+
+  // Von außen angesprungene Notiz (z.B. Link-Klick aus einem anderen
+  // Projekt): Notizen-Tab erzwingen, auch wenn bereits ein anderer Tab aktiv
+  // ist (kein Remount, da dasselbe Projekt geöffnet bleibt).
+  useEffect(() => {
+    if (startNotizId != null) setAktiv("notizen")
+  }, [startNotizId])
 
   const verfuegbar = [...MODULE, ...eigene].filter(
     (m) => !module.includes(m.key)
@@ -177,7 +191,15 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
     if (key === "board") return <ProjektBoard projekt={projekt} />
     if (key === "todos") return <TodosModul projekt={projekt} />
     if (key === "inhalte") return <ProjektInhalte projekt={projekt} />
-    if (key === "notizen") return <ProjektNotizen projekt={projekt} />
+    if (key === "notizen")
+      return (
+        <ProjektNotizen
+          projekt={projekt}
+          startNotizId={startNotizId}
+          onOeffneZiel={onOeffneZiel}
+          onNavigate={onNavigate}
+        />
+      )
     if (key === "karten") return <ProjektKarten projekt={projekt} />
     if (key === "kalender") return <KalenderModul projekt={projekt} />
     if (key.startsWith("eigen-"))
