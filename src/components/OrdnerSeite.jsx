@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useStored from "../lib/useStored"
 import { tageBis, tageBisZahl } from "../lib/datum"
 import ProjektDetail, {
@@ -86,17 +86,31 @@ function OrdnerIcon() {
   )
 }
 
-export default function OrdnerSeite({ startProjektId = null }) {
+export default function OrdnerSeite({
+  startProjektId = null,
+  startNotizId = null,
+  onNavigate,
+}) {
   const [ordner, setOrdner] = useStored("ordner", [])
   const [projekte, setProjekte] = useStored("projekte", [])
   const [todos] = useStored("todos", [])
 
   const [aktuellerOrdnerId, setAktuellerOrdnerId] = useState(null)
   const [offenesProjektId, setOffenesProjektId] = useState(startProjektId)
+  const [offeneNotizId, setOffeneNotizId] = useState(startNotizId)
   const [ordnerFormOffen, setOrdnerFormOffen] = useState(false)
   const [ordnerName, setOrdnerName] = useState("")
   const [projektFormOffen, setProjektFormOffen] = useState(false)
   const [ansicht, setAnsicht] = useState("ordner")
+
+  // Von außen (App.jsx) angestoßene Navigation nachziehen – OrdnerSeite
+  // bleibt bei aktiver "projekte"-Seite dauerhaft gemountet, ein bloßer
+  // Prop-Wechsel würde die obigen useState-Initialwerte sonst nicht
+  // erneut greifen lassen.
+  useEffect(() => {
+    if (startProjektId != null) setOffenesProjektId(startProjektId)
+    setOffeneNotizId(startNotizId)
+  }, [startProjektId, startNotizId])
 
   function updateProjekt(aktualisiert) {
     setProjekte(
@@ -104,13 +118,28 @@ export default function OrdnerSeite({ startProjektId = null }) {
     )
   }
 
+  // Verlinkungsziel aus einer Projekt-Notiz öffnen: Projekt wechselt direkt
+  // innerhalb dieser Seite, eine Notiz öffnet zusätzlich das Notizen-Tab.
+  function oeffneZiel(ziel) {
+    if (ziel.typ === "notiz") {
+      setOffenesProjektId(ziel.projektId)
+      setOffeneNotizId(ziel.id)
+    } else if (ziel.typ === "projekt") {
+      setOffenesProjektId(ziel.id)
+    }
+  }
+
   const offenesProjekt = projekte.find((p) => p.id === offenesProjektId)
   if (offenesProjekt) {
     return (
       <ProjektDetail
+        key={offenesProjekt.id}
         projekt={offenesProjekt}
         onUpdate={updateProjekt}
         onBack={() => setOffenesProjektId(null)}
+        startNotizId={offeneNotizId}
+        onOeffneZiel={oeffneZiel}
+        onNavigate={onNavigate}
       />
     )
   }
