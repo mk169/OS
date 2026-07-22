@@ -15,6 +15,8 @@ export default function Suche({ onNavigate, onClose }) {
   const [karten] = useStored("karten", [])
   const [termine] = useStored("termine", [])
   const [habits] = useStored("habits", [])
+  const [inbox] = useStored("inbox", [])
+  const [wissen] = useStored("wissen", [])
 
   const [frage, setFrage] = useState("")
   const feld = useRef(null)
@@ -108,6 +110,18 @@ export default function Suche({ onNavigate, onClose }) {
             .filter((h) => passt(h.name))
             .map((h) => ({ label: h.name, detail: "", ziel: ["habits", null] })),
         },
+        {
+          typ: "Inbox",
+          treffer: inbox
+            .filter((i) => passt(i.text))
+            .map((i) => ({ label: i.text, detail: "", ziel: ["sammeln", null] })),
+        },
+        {
+          typ: "Wissen",
+          treffer: wissen
+            .filter((w) => passt(w.titel, w.inhalt))
+            .map((w) => ({ label: w.titel, detail: "", ziel: ["sammeln", null] })),
+        },
       ]
         .map((g) => ({ ...g, treffer: g.treffer.slice(0, MAX_JE_GRUPPE) }))
         .filter((g) => g.treffer.length > 0)
@@ -144,7 +158,7 @@ export default function Suche({ onNavigate, onClose }) {
             ref={feld}
             value={frage}
             onChange={(e) => setFrage(e.target.value)}
-            placeholder="Suchen … (Projekte, Todos, Notizen, Karten, Termine, Habits)"
+            placeholder="Suchen … (Projekte, Todos, Notizen, Karten, Termine, Habits, Inbox, Wissen)"
             className="w-full border-none bg-transparent py-3.5 text-sm text-gray-900 outline-none placeholder:text-gray-300"
           />
           <button

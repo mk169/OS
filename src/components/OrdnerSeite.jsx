@@ -119,11 +119,15 @@ export default function OrdnerSeite({ startProjektId = null }) {
   // Archiv-Ansicht auf.
   const aktive = projekte.filter((p) => !p.archiviert)
   const archivierte = projekte.filter((p) => p.archiviert)
+  // Areas bekommen eine eigene Ansicht – Ordner/Alle/Board zeigen nur
+  // echte Projekte. Anstehend/Dashboard filtern bewusst nicht nach typ,
+  // damit Areas' datierte Todos/Deadlines dort trotzdem auftauchen.
+  const aktiveProjekte = aktive.filter((p) => (p.typ ?? "projekt") !== "area")
 
   const unterordner = ordner.filter(
     (o) => (o.parentId ?? null) === aktuellerOrdnerId
   )
-  const hiesigeProjekte = aktive.filter(
+  const hiesigeProjekte = aktiveProjekte.filter(
     (p) => (p.ordnerId ?? null) === aktuellerOrdnerId
   )
 
@@ -222,7 +226,7 @@ export default function OrdnerSeite({ startProjektId = null }) {
 
       {ansicht === "alle" && (
         <AlleAnsicht
-          projekte={aktive}
+          projekte={aktiveProjekte}
           todos={todos}
           onOeffnen={setOffenesProjektId}
           onRemove={removeProjekt}
@@ -230,9 +234,17 @@ export default function OrdnerSeite({ startProjektId = null }) {
       )}
       {ansicht === "board" && (
         <BoardAnsicht
-          projekte={projekte}
+          projekte={projekte.filter((p) => (p.typ ?? "projekt") !== "area")}
           setProjekte={setProjekte}
           onOeffnen={setOffenesProjektId}
+        />
+      )}
+      {ansicht === "areas" && (
+        <AreasAnsicht
+          projekte={aktive}
+          todos={todos}
+          onOeffnen={setOffenesProjektId}
+          onRemove={removeProjekt}
         />
       )}
       {ansicht === "anstehend" && (
@@ -356,6 +368,7 @@ export default function OrdnerSeite({ startProjektId = null }) {
 const ANSICHTEN = [
   { key: "ordner", label: "Ordner" },
   { key: "alle", label: "Alle" },
+  { key: "areas", label: "Areas" },
   { key: "board", label: "Board" },
   { key: "anstehend", label: "Anstehend" },
   { key: "archiv", label: "Archiv" },
@@ -534,6 +547,33 @@ function AlleAnsicht({ projekte, todos, onOeffnen, onRemove }) {
   )
 }
 
+// Areas: dauerhafte Lebensbereiche – dieselbe Projekt-Infrastruktur, nur
+// ohne Fälligkeit/Status. ProjektKarte bleibt unverändert wiederverwendet.
+function AreasAnsicht({ projekte, todos, onOeffnen, onRemove }) {
+  const areas = projekte.filter((p) => (p.typ ?? "projekt") === "area")
+  return (
+    <div className="mt-4">
+      {areas.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
+          Noch keine Areas. Lege über „+ Projekt" eine an und wähle „Area".
+        </p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {areas.map((p) => (
+            <ProjektKarte
+              key={p.id}
+              p={p}
+              todos={todos}
+              onOeffnen={onOeffnen}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Kanban-Board nach Status, Projekte per Drag&Drop verschiebbar.
 function BoardAnsicht({ projekte, setProjekte, onOeffnen }) {
   const [ziehId, setZiehId] = useState(null)
@@ -611,9 +651,10 @@ function BoardAnsicht({ projekte, setProjekte, onOeffnen }) {
   )
 }
 
-// Projektübergreifend: nächste Deadlines, terminierte Schritte, Todos.
-function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
-  const projektName = (id) => projekte.find((p) => p.id === id)?.name ?? ""
+// Rohliste aller terminierten Einträge (Projekt-Deadlines, Workflow-
+// Schritte mit Datum, Todos mit Datum) – unsortiert, ungekürzt. Gemeinsam
+// genutzt von AnstehendAnsicht und dem Wochen-Review (ReviewSeite).
+export function sammleTermine(projekte, todos) {
   const eintraege = []
   for (const p of projekte) {
     if (p.deadline)
@@ -643,7 +684,13 @@ function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
         typ: "Todo",
       })
   }
-  const liste = eintraege
+  return eintraege
+}
+
+// Projektübergreifend: nächste Deadlines, terminierte Schritte, Todos.
+function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
+  const projektName = (id) => projekte.find((p) => p.id === id)?.name ?? ""
+  const liste = sammleTermine(projekte, todos)
     .sort((a, b) => a.datum.localeCompare(b.datum))
     .slice(0, 25)
 
@@ -736,6 +783,7 @@ function ArchivAnsicht({ archivierte, projekte, setProjekte, onOeffnen }) {
 }
 
 function ProjektErstellen({ ordnerId, projekte, setProjekte, onFertig }) {
+  const [typ, setTyp] = useState("projekt")
   const [name, setName] = useState("")
   const [beschreibung, setBeschreibung] = useState("")
   const [deadline, setDeadline] = useState("")
@@ -752,7 +800,8 @@ function ProjektErstellen({ ordnerId, projekte, setProjekte, onFertig }) {
         name: name.trim(),
         beschreibung: beschreibung.trim(),
         ordnerId,
-        deadline,
+        deadline: typ === "area" ? "" : deadline,
+        typ,
         module: [],
         ziel: "",
         workflow: [],
@@ -766,13 +815,32 @@ function ProjektErstellen({ ordnerId, projekte, setProjekte, onFertig }) {
       onSubmit={speichern}
       className="mt-4 rounded-xl border border-gray-300 bg-white p-4"
     >
+      <div className="mb-3 flex w-fit rounded-md border border-gray-200 p-0.5 text-xs">
+        {[
+          { key: "projekt", label: "Projekt" },
+          { key: "area", label: "Area" },
+        ].map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            onClick={() => setTyp(o.key)}
+            className={`rounded px-2.5 py-1 font-medium transition-colors ${
+              typ === o.key
+                ? "bg-gray-900 text-white"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col text-xs text-gray-500">
           Name
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="z.B. Statistik I"
+            placeholder={typ === "area" ? "z.B. Finanzen" : "z.B. Statistik I"}
             autoFocus
             className="mt-1 w-52 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
           />
@@ -786,15 +854,17 @@ function ProjektErstellen({ ordnerId, projekte, setProjekte, onFertig }) {
             className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
           />
         </label>
-        <label className="flex flex-col text-xs text-gray-500">
-          Deadline / Prüfung
-          <input
-            type="date"
-            value={deadline}
-            onChange={(e) => setDeadline(e.target.value)}
-            className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-          />
-        </label>
+        {typ === "projekt" && (
+          <label className="flex flex-col text-xs text-gray-500">
+            Deadline / Prüfung
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+            />
+          </label>
+        )}
       </div>
 
       <div className="mt-4 flex justify-end gap-2">

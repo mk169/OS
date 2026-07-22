@@ -70,18 +70,18 @@ function wochenSpalten(n) {
   return spalten
 }
 
-function wochenZielVon(habit) {
+export function wochenZielVon(habit) {
   return habit.wochenZiel ?? STANDARD_WOCHENZIEL
 }
 
-function erledigtInWoche(habit, wocheMontag) {
+export function erledigtInWoche(habit, wocheMontag) {
   const zielSchluessel = schluessel(wocheMontag)
   return habit.erledigtAn.filter(
     (tag) => wochenSchluessel(new Date(tag)) === zielSchluessel
   ).length
 }
 
-function wochenZielErreicht(habit, wocheMontag) {
+export function wochenZielErreicht(habit, wocheMontag) {
   return erledigtInWoche(habit, wocheMontag) >= wochenZielVon(habit)
 }
 
