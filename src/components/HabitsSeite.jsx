@@ -180,7 +180,8 @@ function HabitHeatmapKarte({
 
       <div className="mt-2 overflow-x-auto">
         <div className="inline-flex gap-[3px]">
-          <div className="flex flex-col gap-[3px] pt-3">
+          <div className="flex flex-col gap-[3px]">
+            <span className="h-3" />
             {TAG_LABELS.map((l, i) => (
               <span
                 key={i}
