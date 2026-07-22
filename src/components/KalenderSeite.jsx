@@ -5,6 +5,7 @@ import { faelltAuf, WIEDERHOLUNGEN } from "../lib/wiederholung"
 import { alsICS, parseICS } from "../lib/ics"
 import Kalender, { TagesAnsicht, datumLang } from "./Kalender"
 import Seitenkopf from "./Seitenkopf"
+import { useTagesblockVorlagen, TagesblockAuswahl } from "./Tagesbloecke"
 
 // Kalender-Panel: vollständiger Kalender (Tag/Woche/Monat, Timestacking)
 // mit Termin-Erstellung. Wird im Dashboard eingebettet und auf der
@@ -26,8 +27,20 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
   const [formWiederholung, setFormWiederholung] = useState("")
   const [formBis, setFormBis] = useState("")
   const [formGeburtstag, setFormGeburtstag] = useState(false)
+  const [formBlockId, setFormBlockId] = useState("")
   const [icsMeldung, setIcsMeldung] = useState("")
   const icsInput = useRef(null)
+  const { bloecke: tagesbloecke, setBloecke: setTagesbloecke } =
+    useTagesblockVorlagen()
+
+  // Block wählen: Titel nur vorausfüllen, wenn noch leer; Dauer immer.
+  function waehleBlock(id) {
+    setFormBlockId(id)
+    const b = tagesbloecke.find((x) => x.id === id)
+    if (!b) return
+    if (!formTitel.trim()) setFormTitel(b.name)
+    setFormDauer(String(b.dauer))
+  }
 
   // Minuten zwischen zwei Uhrzeiten "HH:MM" (nur wenn Ende nach Start liegt).
   function minutenZwischen(start, ende) {
@@ -61,6 +74,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
           zeit: t.ganztags ? "" : t.zeit,
           bis: t.endeZeit,
           dauer: t.dauer,
+          blockFarbe: tagesbloecke.find((b) => b.id === t.blockId)?.farbe,
           onRemove: () => setTermine(termine.filter((x) => x.id !== t.id)),
         })),
       ...projekte
@@ -96,6 +110,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
         art: formGeburtstag ? "geburtstag" : "",
         wiederholung: formGeburtstag ? "jaehrlich" : formWiederholung,
         bis: formGeburtstag ? "" : formBis,
+        blockId: formGeburtstag ? null : formBlockId || null,
       },
     ])
     setFormTitel("")
@@ -107,6 +122,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
     setFormWiederholung("")
     setFormBis("")
     setFormGeburtstag(false)
+    setFormBlockId("")
     setFormOffen(false)
   }
 
@@ -205,6 +221,13 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
               ))}
             </select>
           </label>
+
+          <TagesblockAuswahl
+            bloecke={tagesbloecke}
+            wert={formBlockId}
+            onWaehle={waehleBlock}
+            onErstellen={(neu) => setTagesbloecke([...tagesbloecke, neu])}
+          />
 
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="flex flex-col text-xs text-gray-500">

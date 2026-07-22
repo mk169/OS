@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { heute } from "../lib/datum"
+import { heute, montagVon } from "../lib/datum"
+import { FARBEN } from "../lib/farben"
 
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 const MONATE = [
@@ -26,10 +27,14 @@ export function datumLang(key) {
   return `${WOCHENTAGE[(d.getDay() + 6) % 7]}, ${d.getDate()}. ${MONATE[d.getMonth()]} ${d.getFullYear()}`
 }
 
-function montagVon(d) {
-  const kopie = new Date(d)
-  kopie.setDate(kopie.getDate() - ((kopie.getDay() + 6) % 7))
-  return kopie
+// Farbe eines Eintrags: Tagesblock-Farbe hat Vorrang vor der Typ-Farbe.
+// Normiert auf {chip, punkt}, da FARBEN "zart" statt "chip" nennt.
+function eintragFarbe(e) {
+  if (e.blockFarbe) {
+    const f = FARBEN[e.blockFarbe]
+    return { chip: f.zart, punkt: f.punkt }
+  }
+  return EINTRAG_TYPEN[e.typ]
 }
 
 // Wiederverwendbarer Kalender mit Tages-, Wochen- und Monatsansicht.
@@ -235,7 +240,7 @@ function MonatsAnsicht({ cursorDate, heuteKey, auswahl, eintraegeAm, onTagKlick 
                 {eintraege.slice(0, 3).map((e, j) => (
                   <span
                     key={j}
-                    className={`h-1.5 w-1.5 rounded-full ${EINTRAG_TYPEN[e.typ].punkt}`}
+                    className={`h-1.5 w-1.5 rounded-full ${eintragFarbe(e).punkt}`}
                   />
                 ))}
               </span>
@@ -339,7 +344,7 @@ function WochenAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick, onNeuZei
                     .map((e, j) => (
                       <span
                         key={j}
-                        className={`h-1.5 w-1.5 rounded-full ${EINTRAG_TYPEN[e.typ].punkt}`}
+                        className={`h-1.5 w-1.5 rounded-full ${eintragFarbe(e).punkt}`}
                       />
                     ))}
                 </span>
@@ -408,7 +413,7 @@ function WochenAnsicht({ cursorDate, heuteKey, eintraegeAm, onTagKlick, onNeuZei
                         key={j}
                         onClick={(ev) => ev.stopPropagation()}
                         title={`${e.zeit} ${e.label}`}
-                        className={`absolute left-px right-px cursor-default overflow-hidden px-1 py-0.5 text-[10px] leading-tight ${EINTRAG_TYPEN[e.typ].chip}`}
+                        className={`absolute left-px right-px cursor-default overflow-hidden px-1 py-0.5 text-[10px] leading-tight ${eintragFarbe(e).chip}`}
                         style={{
                           top: (start - TAG_START) * PX_PRO_STUNDE,
                           height: Math.max(18, (dauer / 60) * PX_PRO_STUNDE),
@@ -459,7 +464,7 @@ export function TagesAnsicht({ cursor, eintraegeAm, onNeu, onNeuZeit }) {
               className="group flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2"
             >
               <span
-                className={`rounded px-2 py-0.5 text-xs ${EINTRAG_TYPEN[e.typ].chip}`}
+                className={`rounded px-2 py-0.5 text-xs ${eintragFarbe(e).chip}`}
               >
                 {EINTRAG_TYPEN[e.typ].name}
               </span>
@@ -533,7 +538,7 @@ export function TagesAnsicht({ cursor, eintraegeAm, onNeu, onNeuZeit }) {
             <div
               key={i}
               onClick={(ev) => ev.stopPropagation()}
-              className={`group absolute right-0 cursor-default overflow-hidden border-l-2 border-white px-2 py-1 text-xs ${EINTRAG_TYPEN[e.typ].chip}`}
+              className={`group absolute right-0 cursor-default overflow-hidden border-l-2 border-white px-2 py-1 text-xs ${eintragFarbe(e).chip}`}
               style={{ top, height: hoehe, left: "3.25rem" }}
             >
               <span className="font-medium">

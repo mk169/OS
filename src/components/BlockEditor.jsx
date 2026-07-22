@@ -14,6 +14,7 @@ import {
 const BEREICH_LABELS = {
   ziel: "Ziel",
   workflow: "Workflow",
+  board: "Board",
   todos: "Todos",
   inhalte: "Inhalte",
   notizen: "Notizen",

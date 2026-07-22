@@ -1,23 +1,15 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
-import { heute } from "../lib/datum"
+import { heute, montagVon, wochenSchluessel } from "../lib/datum"
 import { schluessel } from "./Kalender"
+import { FARBEN } from "../lib/farben"
 import { Fortschrittsbalken } from "./OrdnerSeite"
 import Seitenkopf from "./Seitenkopf"
 
-// Habits nach dem Atomic-Habits-Prinzip, dargestellt als kleine farbige
-// Kacheln (Farbe = Bereich). Stacking-Ketten erscheinen als verbundene
-// Reihe: Anker-Habit, dann die angeknüpften dahinter.
-
-export const FARBEN = {
-  emerald: { zart: "bg-emerald-50 text-emerald-700", voll: "bg-emerald-500 text-white", punkt: "bg-emerald-500" },
-  blue: { zart: "bg-blue-50 text-blue-700", voll: "bg-blue-500 text-white", punkt: "bg-blue-500" },
-  violet: { zart: "bg-violet-50 text-violet-700", voll: "bg-violet-500 text-white", punkt: "bg-violet-500" },
-  amber: { zart: "bg-amber-50 text-amber-700", voll: "bg-amber-500 text-white", punkt: "bg-amber-500" },
-  rose: { zart: "bg-rose-50 text-rose-700", voll: "bg-rose-500 text-white", punkt: "bg-rose-500" },
-  cyan: { zart: "bg-cyan-50 text-cyan-700", voll: "bg-cyan-500 text-white", punkt: "bg-cyan-500" },
-  gray: { zart: "bg-gray-100 text-gray-600", voll: "bg-gray-600 text-white", punkt: "bg-gray-400" },
-}
+// Habits nach dem Atomic-Habits-Prinzip, dargestellt als Wochen-Heatmap
+// (Spalten = Wochen, Zeilen = Tage) mit Wochenziel statt Tages-Streak.
+// Stacking-Ketten erscheinen als verbundene Karte: Anker-Habit, dann die
+// angeknüpften darunter.
 
 const STANDARD_BEREICHE = [
   { id: "koerper", name: "Körper", farbe: "emerald" },
@@ -25,6 +17,9 @@ const STANDARD_BEREICHE = [
   { id: "arbeit", name: "Arbeit", farbe: "violet" },
   { id: "achtsamkeit", name: "Achtsamkeit", farbe: "amber" },
 ]
+
+const STANDARD_WOCHENZIEL = 3
+const TAG_LABELS = ["Mo", "", "Mi", "", "Fr", "", ""]
 
 export function useHabitDaten() {
   const [habits, setHabits] = useStored("habits", [])
@@ -39,17 +34,6 @@ export function bereichVon(habit, bereiche) {
       farbe: "gray",
     }
   )
-}
-
-export function streakVon(habit) {
-  let zaehler = 0
-  const d = new Date()
-  if (!habit.erledigtAn.includes(heute())) d.setDate(d.getDate() - 1)
-  while (habit.erledigtAn.includes(schluessel(d))) {
-    zaehler++
-    d.setDate(d.getDate() - 1)
-  }
-  return zaehler
 }
 
 // Gruppiert Habits in Stacking-Ketten: jede Kette beginnt mit einem
@@ -74,89 +58,44 @@ export function alsKettenListe(habits) {
   return ketten
 }
 
-// Die letzten 7 Tage (älteste zuerst) als Datums-Schlüssel.
-function letzte7Tage() {
-  const tage = []
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    tage.push(schluessel(d))
+// Die letzten n Kalenderwochen als Montags-Daten (älteste zuerst, letzte
+// = Montag der laufenden Woche).
+function wochenSpalten(n) {
+  const spalten = []
+  const cursor = montagVon(new Date())
+  for (let i = 0; i < n; i++) {
+    spalten.unshift(new Date(cursor))
+    cursor.setDate(cursor.getDate() - 7)
   }
-  return tage
+  return spalten
 }
 
-// Cleane Zeilenliste: Checkbox, Bereichs-Punkt, Name, 7-Tage-Verlauf
-// und Streak. Stacking-Ketten als Gruppe mit dezentem ↳-Einzug.
-export function HabitKacheln({ habits, bereiche, onToggle, onRemove }) {
-  const heuteKey = heute()
-  const woche = letzte7Tage()
-  const ketten = alsKettenListe(habits)
+function wochenZielVon(habit) {
+  return habit.wochenZiel ?? STANDARD_WOCHENZIEL
+}
 
-  return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      {ketten.map((kette, ki) => (
-        <div key={kette[0].id} className={ki > 0 ? "border-t border-gray-100" : ""}>
-          {kette.map((habit, i) => {
-            const erledigt = habit.erledigtAn.includes(heuteKey)
-            const farbe =
-              FARBEN[bereichVon(habit, bereiche).farbe] ?? FARBEN.gray
-            const s = streakVon(habit)
-            return (
-              <div
-                key={habit.id}
-                className={`group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50 ${
-                  i > 0 ? "pl-9" : ""
-                }`}
-              >
-                {i > 0 && (
-                  <span className="-ml-4 text-xs text-gray-300">↳</span>
-                )}
-                <input
-                  type="checkbox"
-                  checked={erledigt}
-                  onChange={() => onToggle(habit)}
-                  className="h-4 w-4 shrink-0 accent-gray-900"
-                />
-                <span className={`h-2 w-2 shrink-0 rounded-full ${farbe.punkt}`} />
-                <span
-                  className={`min-w-0 flex-1 truncate text-sm ${
-                    erledigt ? "text-gray-400" : "text-gray-800"
-                  }`}
-                >
-                  {habit.name}
-                </span>
-                <span className="hidden items-center gap-0.5 sm:flex">
-                  {woche.map((tag) => (
-                    <span
-                      key={tag}
-                      title={new Date(tag).toLocaleDateString("de-DE")}
-                      className={`h-2.5 w-2.5 rounded-sm ${
-                        habit.erledigtAn.includes(tag)
-                          ? farbe.punkt
-                          : "bg-gray-100"
-                      }`}
-                    />
-                  ))}
-                </span>
-                <span className="w-10 shrink-0 text-right text-xs text-gray-400">
-                  {s > 0 ? `🔥 ${s}` : ""}
-                </span>
-                {onRemove && (
-                  <button
-                    onClick={() => onRemove(habit.id)}
-                    title="Habit löschen"
-                    className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      ))}
-    </div>
-  )
+function erledigtInWoche(habit, wocheMontag) {
+  const zielSchluessel = schluessel(wocheMontag)
+  return habit.erledigtAn.filter(
+    (tag) => wochenSchluessel(new Date(tag)) === zielSchluessel
+  ).length
+}
+
+function wochenZielErreicht(habit, wocheMontag) {
+  return erledigtInWoche(habit, wocheMontag) >= wochenZielVon(habit)
+}
+
+// Streak in Wochen: die laufende Woche zählt nicht als Fehlschlag, wenn
+// sie ihr Ziel noch nicht erreicht hat (sie ist ja noch nicht vorbei).
+export function wochenStreakVon(habit) {
+  let zaehler = 0
+  const cursor = montagVon(new Date())
+  if (!wochenZielErreicht(habit, cursor)) cursor.setDate(cursor.getDate() - 7)
+  while (wochenZielErreicht(habit, cursor)) {
+    zaehler++
+    cursor.setDate(cursor.getDate() - 7)
+  }
+  return zaehler
 }
 
 export function nutzeHabitToggle(habits, setHabits) {
@@ -178,6 +117,179 @@ export function nutzeHabitToggle(habits, setHabits) {
   }
 }
 
+// Kleine Zahlen-Auswahl 1–7 für das Wochenziel – sowohl beim Anlegen
+// als auch nachträglich in der Heatmap-Karte nutzbar.
+export function WochenZielAuswahl({ wert, onChange }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          title={`${n}× pro Woche`}
+          className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium transition-colors ${
+            wert === n
+              ? "bg-gray-900 text-white"
+              : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+          }`}
+        >
+          {n}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Ein Habit als Stacking-Heatmap: Spalten = Wochen (Monatslabel bei
+// Monatswechsel), Zeilen = Mo–So. Heute ist klickbar, Zukunft ist leer.
+function HabitHeatmapKarte({
+  habit,
+  bereiche,
+  wochenAnzahl = 26,
+  onToggleHeute,
+  onSetWochenZiel,
+  onRemove,
+  eingerueckt,
+}) {
+  const farbe = FARBEN[bereichVon(habit, bereiche).farbe] ?? FARBEN.gray
+  const heuteKey = heute()
+  const spalten = wochenSpalten(wochenAnzahl)
+  const streak = wochenStreakVon(habit)
+  const ziel = wochenZielVon(habit)
+  const inDieserWoche = erledigtInWoche(habit, montagVon(new Date()))
+
+  return (
+    <div className={`py-3 ${eingerueckt ? "pl-6" : ""}`}>
+      <div className="group flex items-center gap-2">
+        {eingerueckt && <span className="-ml-4 text-xs text-gray-300">↳</span>}
+        <span className={`h-2 w-2 shrink-0 rounded-full ${farbe.punkt}`} />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
+          {habit.name}
+        </span>
+        {onRemove && (
+          <button
+            onClick={() => onRemove(habit.id)}
+            title="Habit löschen"
+            className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2 overflow-x-auto">
+        <div className="inline-flex gap-[3px]">
+          <div className="flex flex-col gap-[3px] pt-3">
+            {TAG_LABELS.map((l, i) => (
+              <span
+                key={i}
+                className="h-2.5 text-[8px] leading-[10px] text-gray-300"
+              >
+                {l}
+              </span>
+            ))}
+          </div>
+          {spalten.map((montag, i) => {
+            const vorMonat = i > 0 ? spalten[i - 1].getMonth() : null
+            const zeigeMonat = i === 0 || montag.getMonth() !== vorMonat
+            return (
+              <div key={i} className="flex flex-col items-center gap-[3px]">
+                <span className="h-3 whitespace-nowrap text-[8px] text-gray-400">
+                  {zeigeMonat
+                    ? montag.toLocaleDateString("de-DE", { month: "short" })
+                    : ""}
+                </span>
+                {Array.from({ length: 7 }, (_, tagIndex) => {
+                  const tagDatum = new Date(montag)
+                  tagDatum.setDate(tagDatum.getDate() + tagIndex)
+                  const tagKey = schluessel(tagDatum)
+                  const erledigt = habit.erledigtAn.includes(tagKey)
+                  if (tagKey > heuteKey) {
+                    return <span key={tagIndex} className="h-2.5 w-2.5" />
+                  }
+                  if (tagKey === heuteKey) {
+                    return (
+                      <button
+                        key={tagIndex}
+                        type="button"
+                        onClick={() => onToggleHeute(habit)}
+                        title="Heute umschalten"
+                        className={`h-2.5 w-2.5 rounded-sm ${
+                          erledigt
+                            ? farbe.punkt
+                            : `bg-white ring-1 ring-inset ${farbe.ring}`
+                        }`}
+                      />
+                    )
+                  }
+                  return (
+                    <span
+                      key={tagIndex}
+                      title={tagDatum.toLocaleDateString("de-DE")}
+                      className={`h-2.5 w-2.5 rounded-sm ${
+                        erledigt ? farbe.punkt : "bg-gray-100"
+                      }`}
+                    />
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs text-gray-400">
+          {streak > 0
+            ? `🔥 ${streak} ${streak === 1 ? "Woche" : "Wochen"} Streak`
+            : `${inDieserWoche}/${ziel} diese Woche`}
+        </span>
+        {onSetWochenZiel && (
+          <WochenZielAuswahl
+            wert={ziel}
+            onChange={(z) => onSetWochenZiel(habit, z)}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Karten-Raster: eine Karte pro Stacking-Kette, darin je Habit eine
+// Heatmap-Zeile (angeknüpfte Habits mit ↳-Einzug darunter gestapelt).
+export function HabitKarten({
+  habits,
+  bereiche,
+  onToggleHeute,
+  onSetWochenZiel,
+  onRemove,
+}) {
+  const ketten = alsKettenListe(habits)
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {ketten.map((kette) => (
+        <div
+          key={kette[0].id}
+          className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4"
+        >
+          {kette.map((habit, i) => (
+            <HabitHeatmapKarte
+              key={habit.id}
+              habit={habit}
+              bereiche={bereiche}
+              onToggleHeute={onToggleHeute}
+              onSetWochenZiel={onSetWochenZiel}
+              onRemove={onRemove}
+              eingerueckt={i > 0}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
   const [offen, setOffen] = useState(false)
   const [name, setName] = useState("")
@@ -186,6 +298,7 @@ function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
   const [bereichName, setBereichName] = useState("")
   const [bereichFarbe, setBereichFarbe] = useState("rose")
   const [stackNachId, setStackNachId] = useState("")
+  const [wochenZiel, setWochenZiel] = useState(STANDARD_WOCHENZIEL)
 
   function speichern(e) {
     e.preventDefault()
@@ -211,12 +324,14 @@ function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
         bereichId: zielBereichId,
         stackNachId: stackNachId ? Number(stackNachId) : null,
         erledigtAn: [],
+        wochenZiel,
       },
     ])
     setName("")
     setStackNachId("")
     setNeuerBereich(false)
     setBereichName("")
+    setWochenZiel(STANDARD_WOCHENZIEL)
     setOffen(false)
   }
 
@@ -288,6 +403,11 @@ function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
         </label>
       </div>
 
+      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+        3. Wochenziel
+        <WochenZielAuswahl wert={wochenZiel} onChange={setWochenZiel} />
+      </div>
+
       {neuerBereich && (
         <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 p-3">
           <input
@@ -336,7 +456,7 @@ function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
 export default function HabitsSeite() {
   const { habits, setHabits, bereiche, setBereiche } = useHabitDaten()
   const toggle = nutzeHabitToggle(habits, setHabits)
-  const heuteKey = heute()
+  const wocheAktuell = montagVon(new Date())
 
   function remove(id) {
     setHabits(
@@ -346,8 +466,14 @@ export default function HabitsSeite() {
     )
   }
 
-  const heuteErledigt = habits.filter((h) =>
-    h.erledigtAn.includes(heuteKey)
+  function setWochenZiel(habit, ziel) {
+    setHabits(
+      habits.map((h) => (h.id === habit.id ? { ...h, wochenZiel: ziel } : h))
+    )
+  }
+
+  const amZielCount = habits.filter((h) =>
+    wochenZielErreicht(h, wocheAktuell)
   ).length
 
   return (
@@ -357,7 +483,7 @@ export default function HabitsSeite() {
         unterzeile={
           habits.length === 0
             ? "Baue Gewohnheiten in Ketten auf – ein Habit knüpft an das nächste an."
-            : `Heute ${heuteErledigt} von ${habits.length} erledigt.`
+            : `Diese Woche erreichen ${amZielCount} von ${habits.length} Habits ihr Wochenziel.`
         }
         aktion={
           <HabitErstellen
@@ -371,7 +497,7 @@ export default function HabitsSeite() {
 
       {habits.length > 0 && (
         <div className="mt-4 max-w-sm">
-          <Fortschrittsbalken erledigt={heuteErledigt} gesamt={habits.length} />
+          <Fortschrittsbalken erledigt={amZielCount} gesamt={habits.length} />
         </div>
       )}
 
@@ -381,10 +507,11 @@ export default function HabitsSeite() {
         </p>
       ) : (
         <div className="mt-8">
-          <HabitKacheln
+          <HabitKarten
             habits={habits}
             bereiche={bereiche}
-            onToggle={toggle}
+            onToggleHeute={toggle}
+            onSetWochenZiel={setWochenZiel}
             onRemove={remove}
           />
         </div>

@@ -1,15 +1,19 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
 
-// Lehrinhalte: eigene Notizen und Zusammenfassungen zum Projekt.
-// Eine Notiz aufklappen und direkt darin schreiben – speichert automatisch.
+// Lehrinhalte: eigene Notizen und Zusammenfassungen zum Projekt, als
+// Karten-Raster zum Sammeln und Stapeln. Klick öffnet die Notiz groß in
+// einem eigenen Schreib-Overlay (wie ein offenes Dokument).
 
 export default function ProjektNotizen({ projekt }) {
   const [alleNotizen, setAlleNotizen] = useStored("notizen", [])
   const [titel, setTitel] = useState("")
-  const [offeneId, setOffeneId] = useState(null)
+  const [bearbeiteId, setBearbeiteId] = useState(null)
 
-  const notizen = alleNotizen.filter((n) => n.projektId === projekt.id || n.kursId === projekt.id)
+  const notizen = alleNotizen.filter(
+    (n) => n.projektId === projekt.id || n.kursId === projekt.id
+  )
+  const bearbeiteteNotiz = notizen.find((n) => n.id === bearbeiteId)
 
   function addNotiz(e) {
     e.preventDefault()
@@ -22,18 +26,16 @@ export default function ProjektNotizen({ projekt }) {
     }
     setAlleNotizen([...alleNotizen, neue])
     setTitel("")
-    setOffeneId(neue.id)
+    setBearbeiteId(neue.id)
   }
 
-  function updateInhalt(id, inhalt) {
-    setAlleNotizen(
-      alleNotizen.map((n) => (n.id === id ? { ...n, inhalt } : n))
-    )
+  function updateNotiz(neu) {
+    setAlleNotizen(alleNotizen.map((n) => (n.id === neu.id ? neu : n)))
   }
 
   function remove(id) {
     setAlleNotizen(alleNotizen.filter((n) => n.id !== id))
-    if (offeneId === id) setOffeneId(null)
+    if (bearbeiteId === id) setBearbeiteId(null)
   }
 
   return (
@@ -61,57 +63,78 @@ export default function ProjektNotizen({ projekt }) {
           Noch keine Lehrinhalte. Lege eine Notiz an und schreibe direkt los.
         </p>
       ) : (
-        <ul className="mt-4 space-y-2">
-          {notizen.map((notiz) => {
-            const offen = offeneId === notiz.id
-            return (
-              <li
-                key={notiz.id}
-                className="group rounded-xl border border-gray-200 bg-white"
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {notizen.map((notiz) => (
+            <div key={notiz.id} className="group relative">
+              <button
+                onClick={() => setBearbeiteId(notiz.id)}
+                className="h-32 w-full rounded-xl border border-gray-200 bg-white p-4 text-left transition-colors hover:border-gray-400"
               >
-                <div
-                  onClick={() => setOffeneId(offen ? null : notiz.id)}
-                  className="flex cursor-pointer items-center gap-3 px-4 py-3"
-                >
-                  <span className="text-xs text-gray-400">
-                    {offen ? "▾" : "▸"}
-                  </span>
-                  <span className="flex-1 text-sm font-medium text-gray-900">
-                    {notiz.titel}
-                  </span>
-                  {!offen && notiz.inhalt && (
-                    <span className="max-w-48 truncate text-xs text-gray-400">
-                      {notiz.inhalt}
-                    </span>
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      remove(notiz.id)
-                    }}
-                    title="Notiz löschen"
-                    className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                  >
-                    ×
-                  </button>
-                </div>
-                {offen && (
-                  <div className="border-t border-gray-100 px-4 py-3">
-                    <textarea
-                      value={notiz.inhalt}
-                      onChange={(e) => updateInhalt(notiz.id, e.target.value)}
-                      placeholder="Schreib hier deine Zusammenfassung – speichert automatisch."
-                      rows={8}
-                      autoFocus
-                      className="w-full resize-y rounded-md border border-gray-200 bg-transparent p-3 text-sm text-gray-800 outline-none focus:border-gray-900"
-                    />
-                  </div>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+                <p className="line-clamp-1 text-sm font-medium text-gray-900">
+                  {notiz.titel}
+                </p>
+                <p className="mt-1.5 line-clamp-4 text-xs text-gray-400">
+                  {notiz.inhalt || "Leer – klicken zum Schreiben."}
+                </p>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  remove(notiz.id)
+                }}
+                title="Notiz löschen"
+                className="absolute right-2 top-2 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
       )}
+
+      {bearbeiteteNotiz && (
+        <NotizBearbeiten
+          notiz={bearbeiteteNotiz}
+          onChange={updateNotiz}
+          onClose={() => setBearbeiteId(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// Vollbild-Schreib-Overlay für eine einzelne Notiz – Titel und Inhalt
+// speichern automatisch bei jeder Änderung, kein Speichern-Button.
+function NotizBearbeiten({ notiz, onChange, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-5 sm:py-8">
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <span>Notiz</span>
+          <button onClick={onClose} className="hover:text-gray-900">
+            Fertig ×
+          </button>
+        </div>
+        <input
+          value={notiz.titel}
+          onChange={(e) => onChange({ ...notiz, titel: e.target.value })}
+          placeholder="Titel"
+          autoFocus
+          className="mt-4 w-full border-none bg-transparent text-2xl font-medium text-gray-900 outline-none placeholder:text-gray-300"
+        />
+        <textarea
+          value={notiz.inhalt}
+          onChange={(e) => onChange({ ...notiz, inhalt: e.target.value })}
+          placeholder="Schreib hier deine Zusammenfassung – speichert automatisch."
+          className="mt-4 flex-1 resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
+        />
+      </div>
     </div>
   )
 }
