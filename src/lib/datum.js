@@ -27,3 +27,18 @@ export function tageBis(datum) {
   if (tage === 1) return "morgen"
   return `in ${tage} Tagen`
 }
+
+// Montag der Woche, die `d` enthält (Wochenstart = Montag).
+export function montagVon(d) {
+  const kopie = new Date(d)
+  kopie.setDate(kopie.getDate() - ((kopie.getDay() + 6) % 7))
+  return kopie
+}
+
+// Eindeutiger Wochen-Schlüssel = Datum des Montags dieser Woche
+// ("JJJJ-MM-TT"). Bewusst keine ISO-Wochennummer – vermeidet
+// Jahreswechsel-Randfälle bei Woche 1/53.
+export function wochenSchluessel(d) {
+  const m = montagVon(d)
+  return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-${String(m.getDate()).padStart(2, "0")}`
+}

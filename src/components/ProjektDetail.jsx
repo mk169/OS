@@ -7,6 +7,7 @@ import { TodoZeile } from "./TodosSeite"
 import ProjektInhalte from "./ProjektInhalte"
 import ProjektNotizen from "./ProjektNotizen"
 import ProjektKarten from "./ProjektKarten"
+import ProjektBoard from "./ProjektBoard"
 import BlockEditor, { bloeckeVon } from "./BlockEditor"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
@@ -16,6 +17,7 @@ import BlockEditor, { bloeckeVon } from "./BlockEditor"
 export const MODULE = [
   { key: "ziel", label: "Ziel" },
   { key: "workflow", label: "Workflow" },
+  { key: "board", label: "Board" },
   { key: "todos", label: "Todos" },
   { key: "inhalte", label: "Inhalte" },
   { key: "notizen", label: "Notizen" },
@@ -172,6 +174,7 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
     if (key === "ziel") return <ZielModul projekt={projekt} onUpdate={onUpdate} />
     if (key === "workflow")
       return <WorkflowModul projekt={projekt} onUpdate={onUpdate} />
+    if (key === "board") return <ProjektBoard projekt={projekt} />
     if (key === "todos") return <TodosModul projekt={projekt} />
     if (key === "inhalte") return <ProjektInhalte projekt={projekt} />
     if (key === "notizen") return <ProjektNotizen projekt={projekt} />
@@ -190,7 +193,7 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-3.25rem)] w-full max-w-4xl flex-col px-4 pb-10 pt-6 sm:px-6">
+    <div className="mx-auto flex min-h-[calc(100vh-3.25rem)] w-full max-w-6xl flex-col px-4 pb-10 pt-6 sm:px-6">
       <button
         onClick={onBack}
         title="Zurück"
