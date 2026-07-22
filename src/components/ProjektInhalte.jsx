@@ -143,9 +143,6 @@ export default function ProjektInhalte({ projekt }) {
           <p className="text-sm font-medium text-gray-900">
             {eintraege.length} {eintraege.length === 1 ? "Inhalt" : "Inhalte"}
           </p>
-          <p className="text-xs text-gray-400">
-            Aus den Inhalten lässt sich ein Lernplan generieren.
-          </p>
         </div>
         <div className="flex gap-2">
           <button

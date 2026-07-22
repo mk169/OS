@@ -239,10 +239,6 @@ export default function ProjektKarten({ projekt }) {
       {importMeldung && (
         <p className="mt-2 text-xs text-gray-500">{importMeldung}</p>
       )}
-      <p className="mt-2 text-xs text-gray-400">
-        TXT-Import: eine Karte pro Zeile, Vorder- und Rückseite mit Tab/;/,/|
-        getrennt.
-      </p>
 
       <form
         onSubmit={addKarte}

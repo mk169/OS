@@ -34,11 +34,6 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-white px-6">
       <div className="w-full max-w-sm">
         <h1 className="text-center text-xl font-semibold tracking-tight">OS</h1>
-        <p className="mt-1 text-center text-sm text-gray-400">
-          {modus === "anmelden"
-            ? "Melde dich an, um deine Daten auf allen Geräten zu sehen."
-            : "Erstelle deinen Account."}
-        </p>
 
         <form
           onSubmit={absenden}

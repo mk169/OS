@@ -123,21 +123,11 @@ export default function DeepWorkSeite() {
     )
   }
 
-  const heutigeMinuten = sessions
-    .filter((s) => s.datum === heute())
-    .reduce((summe, s) => summe + s.minuten, 0)
   const letzte = [...sessions].reverse().slice(0, 5)
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <Seitenkopf
-        titel="Deep Work"
-        unterzeile={`Ein Block, eine Aufgabe, keine Ablenkung.${
-          heutigeMinuten > 0
-            ? ` Heute bereits ${heutigeMinuten} Minuten fokussiert.`
-            : ""
-        }`}
-      />
+      <Seitenkopf titel="Deep Work" />
 
       {/* Timer */}
       <div className="mt-8 rounded-xl border border-gray-200 bg-white p-10 text-center">
