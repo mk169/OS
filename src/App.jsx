@@ -171,7 +171,7 @@ export default function App() {
 
   if (cloudAktiv && !authBereit) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-sm text-gray-400">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-400">
         Lädt…
       </div>
     )
@@ -181,68 +181,80 @@ export default function App() {
   const abmelden = () => supabase.auth.signOut()
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* Sidebar – ab Tablet-Breite */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-200 bg-gray-100 px-3 py-5 md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-800 bg-gray-900 px-3 py-5 md:flex">
+        {/* Logo */}
         <button
           onClick={() => navigiere("dashboard")}
-          className="mb-6 flex items-center gap-2 px-2 text-sm font-semibold tracking-tight"
+          className="mb-5 flex items-center gap-2.5 px-2 text-sm font-semibold tracking-tight text-white"
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-900 text-[12px] font-bold text-white">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500 text-[13px] font-bold text-white shadow-sm">
             O
           </span>
-          OS
+          <span className="text-white/90">OS</span>
         </button>
+
+        {/* Suche */}
         <button
           onClick={() => setSucheOffen(true)}
-          className="mb-1 flex items-center gap-3 rounded-lg border border-gray-200 bg-white/70 px-3 py-2 text-sm text-gray-400 transition-colors hover:text-gray-900"
+          className="mb-2 flex items-center gap-2.5 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-400 transition-colors hover:border-gray-600 hover:text-gray-200"
         >
-          <NavIcon className="h-[18px] w-[18px] shrink-0">
+          <NavIcon className="h-[16px] w-[16px] shrink-0">
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.5-3.5" />
           </NavIcon>
           Suchen
-          <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-400">
+          <span className="ml-auto rounded bg-gray-700/60 px-1.5 py-0.5 text-[10px] text-gray-500">
             ⌘K
           </span>
         </button>
+
+        {/* Wochenrückblick */}
         <button
           onClick={() => navigiere("review")}
-          className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+          className={`mb-3 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
             seite === "review"
-              ? "bg-white font-medium text-gray-900 shadow-sm"
-              : "text-gray-400 hover:bg-white/70 hover:text-gray-900"
+              ? "bg-indigo-500/20 font-medium text-indigo-300"
+              : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
           }`}
         >
-          <NavIcon className="h-[18px] w-[18px] shrink-0">
+          <NavIcon className="h-[16px] w-[16px] shrink-0">
             <path d="M4 7h16M4 12h16M4 17h10" />
           </NavIcon>
           Wochenrückblick
         </button>
+
+        {/* Hauptnavigation */}
+        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-600">
+          Navigation
+        </p>
         <nav className="flex flex-1 flex-col gap-0.5">
           {NAV.map((item) => (
             <button
               key={item.key}
               onClick={() => navigiere(item.key)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                 seite === item.key
-                  ? "bg-white font-medium text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:bg-white/70 hover:text-gray-900"
+                  ? "bg-indigo-500/20 font-medium text-indigo-300"
+                  : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
               }`}
             >
-              <NavIcon className="h-[18px] w-[18px] shrink-0">
+              <NavIcon className="h-[16px] w-[16px] shrink-0">
                 {item.icon}
               </NavIcon>
               {item.label}
             </button>
           ))}
         </nav>
+
+        {/* Abmelden */}
         {cloudAktiv && session && (
           <button
             onClick={abmelden}
-            className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-white/70 hover:text-gray-900"
+            className="mt-2 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-800 hover:text-gray-300"
           >
-            <NavIcon className="h-[18px] w-[18px] shrink-0">
+            <NavIcon className="h-[16px] w-[16px] shrink-0">
               <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
             </NavIcon>
             Abmelden
@@ -252,14 +264,14 @@ export default function App() {
 
       {/* Mobile-Kopfzeile */}
       <header
-        className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-white/80 px-4 py-3 backdrop-blur-md md:hidden"
+        className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur-md md:hidden"
         style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
       >
         <button
           onClick={() => navigiere("dashboard")}
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"
         >
-          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gray-900 text-[11px] font-bold text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-500 text-[11px] font-bold text-white">
             O
           </span>
           OS
@@ -268,7 +280,7 @@ export default function App() {
           <button
             onClick={() => navigiere("review")}
             title="Wochenrückblick"
-            className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
           >
             <NavIcon className="h-[18px] w-[18px]">
               <path d="M4 7h16M4 12h16M4 17h10" />
@@ -277,7 +289,7 @@ export default function App() {
           <button
             onClick={() => setSucheOffen(true)}
             title="Suchen"
-            className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
           >
             <NavIcon className="h-[18px] w-[18px]">
               <circle cx="11" cy="11" r="7" />
@@ -287,7 +299,7 @@ export default function App() {
           {cloudAktiv && session && (
             <button
               onClick={abmelden}
-              className="rounded-md px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="rounded-lg px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
             >
               Abmelden
             </button>
@@ -313,7 +325,7 @@ export default function App() {
 
       {/* Tab-Leiste – nur Mobil */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-7 border-t border-gray-200 bg-white/90 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-7 border-t border-gray-200 bg-white/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {NAV.map((item) => (
@@ -322,8 +334,8 @@ export default function App() {
             onClick={() => navigiere(item.key)}
             className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
               seite === item.key
-                ? "font-medium text-gray-900"
-                : "text-gray-400 hover:text-gray-900"
+                ? "font-medium text-indigo-600"
+                : "text-gray-400 hover:text-gray-700"
             }`}
           >
             <NavIcon className="h-5 w-5">{item.icon}</NavIcon>
