@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { schreibeStore, setzeCloudSession } from "./lib/useStored"
+import useStored from "./lib/useStored"
 import { supabase, cloudAktiv } from "./lib/supabase"
 import Login from "./components/Login"
 import Dashboard from "./components/Dashboard"
@@ -11,6 +12,8 @@ import OrdnerSeite from "./components/OrdnerSeite"
 import SammelnSeite from "./components/SammelnSeite"
 import ReviewSeite from "./components/ReviewSeite"
 import Suche from "./components/Suche"
+import Onboarding from "./components/Onboarding"
+import Einstellungen from "./components/Einstellungen"
 
 // Einmalige Migration: alte Kurse werden zu Projekten in einem
 // „Uni“-Ordner. Die IDs bleiben erhalten, damit Todos, Karten und
@@ -125,19 +128,23 @@ const NAV = [
   },
 ]
 
+const EINSTELLUNGEN_STANDARD = {
+  onboardingAbgeschlossen: false,
+  profil: "komplett",
+  sichtbareSeiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte"],
+  appName: "OS",
+}
+
 export default function App() {
   const [seite, setSeite] = useState("dashboard")
   const [param, setParam] = useState(null)
   const [sucheOffen, setSucheOffen] = useState(false)
-  // Ohne Cloud gibt es keinen Login – dann gilt die App sofort als bereit.
   const [session, setSession] = useState(null)
   const [authBereit, setAuthBereit] = useState(!cloudAktiv)
+  const [einstellungen, setEinstellungen] = useStored("einstellungen", EINSTELLUNGEN_STANDARD)
 
-  useEffect(() => {
-    migriereAlteKurse()
-  }, [])
+  useEffect(() => { migriereAlteKurse() }, [])
 
-  // Auth-Status verfolgen (nur wenn Supabase konfiguriert ist).
   useEffect(() => {
     if (!cloudAktiv) return
     supabase.auth.getSession().then(({ data }) => {
@@ -157,12 +164,11 @@ export default function App() {
     setParam(wert)
   }
 
-  // Ctrl/Cmd+K öffnet die globale Suche.
   useEffect(() => {
     function taste(e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault()
-        setSucheOffen((offen) => !offen)
+        setSucheOffen((o) => !o)
       }
     }
     window.addEventListener("keydown", taste)
@@ -178,21 +184,39 @@ export default function App() {
   }
   if (cloudAktiv && !session) return <Login />
 
+  // Onboarding beim ersten Start
+  if (!einstellungen?.onboardingAbgeschlossen) {
+    return (
+      <Onboarding
+        onFertig={() =>
+          setEinstellungen((e) => ({ ...e, onboardingAbgeschlossen: true }))
+        }
+      />
+    )
+  }
+
   const abmelden = () => supabase.auth.signOut()
+  const appName = einstellungen?.appName || "OS"
+  const sichtbareSeiten = einstellungen?.sichtbareSeiten ?? EINSTELLUNGEN_STANDARD.sichtbareSeiten
+  // Dashboard ist immer dabei; Review und Einstellungen kommen separat
+  const sichtbareNav = NAV.filter(
+    (item) => item.key === "dashboard" || sichtbareSeiten.includes(item.key)
+  )
+  const mobileKolonnen = sichtbareNav.length + 1 // +1 für Review
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      {/* Sidebar – ab Tablet-Breite */}
+      {/* ── Desktop-Sidebar ─────────────────────────────────────── */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-800 bg-gray-900 px-3 py-5 md:flex">
-        {/* Logo */}
+        {/* Logo / App-Name */}
         <button
           onClick={() => navigiere("dashboard")}
           className="mb-5 flex items-center gap-2.5 px-2 text-sm font-semibold tracking-tight text-white"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500 text-[13px] font-bold text-white shadow-sm">
-            O
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-500 text-[13px] font-bold text-white shadow-sm">
+            {appName[0]?.toUpperCase() ?? "O"}
           </span>
-          <span className="text-white/90">OS</span>
+          <span className="truncate text-white/90">{appName}</span>
         </button>
 
         {/* Suche */}
@@ -205,9 +229,7 @@ export default function App() {
             <path d="m20 20-3.5-3.5" />
           </NavIcon>
           Suchen
-          <span className="ml-auto rounded bg-gray-700/60 px-1.5 py-0.5 text-[10px] text-gray-500">
-            ⌘K
-          </span>
+          <span className="ml-auto rounded bg-gray-700/60 px-1.5 py-0.5 text-[10px] text-gray-500">⌘K</span>
         </button>
 
         {/* Wochenrückblick */}
@@ -229,8 +251,8 @@ export default function App() {
         <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-600">
           Navigation
         </p>
-        <nav className="flex flex-1 flex-col gap-0.5">
-          {NAV.map((item) => (
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
+          {sichtbareNav.map((item) => (
             <button
               key={item.key}
               onClick={() => navigiere(item.key)}
@@ -240,29 +262,43 @@ export default function App() {
                   : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
               }`}
             >
-              <NavIcon className="h-[16px] w-[16px] shrink-0">
-                {item.icon}
-              </NavIcon>
+              <NavIcon className="h-[16px] w-[16px] shrink-0">{item.icon}</NavIcon>
               {item.label}
             </button>
           ))}
         </nav>
 
-        {/* Abmelden */}
-        {cloudAktiv && session && (
+        {/* Einstellungen + Abmelden */}
+        <div className="mt-2 border-t border-gray-800 pt-2">
           <button
-            onClick={abmelden}
-            className="mt-2 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-800 hover:text-gray-300"
+            onClick={() => navigiere("einstellungen")}
+            className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+              seite === "einstellungen"
+                ? "bg-indigo-500/20 font-medium text-indigo-300"
+                : "text-gray-500 hover:bg-gray-800 hover:text-gray-300"
+            }`}
           >
             <NavIcon className="h-[16px] w-[16px] shrink-0">
-              <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
+              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
             </NavIcon>
-            Abmelden
+            Einstellungen
           </button>
-        )}
+          {cloudAktiv && session && (
+            <button
+              onClick={abmelden}
+              className="mt-0.5 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-800 hover:text-gray-300"
+            >
+              <NavIcon className="h-[16px] w-[16px] shrink-0">
+                <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
+              </NavIcon>
+              Abmelden
+            </button>
+          )}
+        </div>
       </aside>
 
-      {/* Mobile-Kopfzeile */}
+      {/* ── Mobile-Kopfzeile ────────────────────────────────────── */}
       <header
         className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur-md md:hidden"
         style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
@@ -272,18 +308,19 @@ export default function App() {
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"
         >
           <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-500 text-[11px] font-bold text-white">
-            O
+            {appName[0]?.toUpperCase() ?? "O"}
           </span>
-          OS
+          <span className="max-w-[120px] truncate">{appName}</span>
         </button>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => navigiere("review")}
-            title="Wochenrückblick"
+            onClick={() => navigiere("einstellungen")}
+            title="Einstellungen"
             className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
           >
             <NavIcon className="h-[18px] w-[18px]">
-              <path d="M4 7h16M4 12h16M4 17h10" />
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
             </NavIcon>
           </button>
           <button
@@ -307,7 +344,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Inhalt */}
+      {/* ── Inhalt ──────────────────────────────────────────────── */}
       <main className="pb-24 md:pb-10 md:pl-60">
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite />}
@@ -327,18 +364,23 @@ export default function App() {
           />
         )}
         {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
+        {seite === "einstellungen" && <Einstellungen />}
       </main>
 
       {sucheOffen && (
         <Suche onNavigate={navigiere} onClose={() => setSucheOffen(false)} />
       )}
 
-      {/* Tab-Leiste – nur Mobil */}
+      {/* ── Mobile Tab-Leiste ───────────────────────────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-7 border-t border-gray-200 bg-white/95 backdrop-blur md:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-gray-200 bg-white/95 backdrop-blur md:hidden"
+        style={{
+          paddingBottom: "env(safe-area-inset-bottom)",
+          gridTemplateColumns: `repeat(${mobileKolonnen}, minmax(0, 1fr))`,
+          display: "grid",
+        }}
       >
-        {NAV.map((item) => (
+        {sichtbareNav.map((item) => (
           <button
             key={item.key}
             onClick={() => navigiere(item.key)}
@@ -352,6 +394,21 @@ export default function App() {
             {item.label}
           </button>
         ))}
+        {/* Einstellungen in der Tab-Leiste */}
+        <button
+          onClick={() => navigiere("einstellungen")}
+          className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
+            seite === "einstellungen"
+              ? "font-medium text-indigo-600"
+              : "text-gray-400 hover:text-gray-700"
+          }`}
+        >
+          <NavIcon className="h-5 w-5">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+          </NavIcon>
+          Einst.
+        </button>
       </nav>
     </div>
   )
