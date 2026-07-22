@@ -2,15 +2,18 @@ import { useState } from "react"
 import useStored from "../lib/useStored"
 import Seitenkopf from "./Seitenkopf"
 import { NotizenRaster, NotizBearbeiten } from "./ProjektNotizen"
+import WissensGraph from "./WissensGraph"
 
 // Sammeln: der reibungslose Einfangpunkt für alles ("zweites Gehirn").
 // Inbox = schnell erfassen, später verarbeiten (GTD-Prinzip). Wissen =
-// projektfreie Referenz-Notizen, gleiche Karten-Raster-Optik wie die
-// Projekt-Notizen, aber ein eigener Store (kein Projekt nötig/möglich).
+// projektfreie Referenz-Notizen mit "[[Titel]]"-Verlinkung zu anderem
+// Wissen/Projekten (siehe NotizBearbeiten). Graph = visuelle Übersicht
+// aller Verlinkungen.
 
 const ANSICHTEN = [
   { key: "inbox", label: "Inbox" },
   { key: "wissen", label: "Wissen" },
+  { key: "graph", label: "Graph" },
 ]
 
 function AnsichtToggle({ ansicht, setAnsicht }) {
@@ -33,7 +36,7 @@ function AnsichtToggle({ ansicht, setAnsicht }) {
   )
 }
 
-export default function SammelnSeite() {
+export default function SammelnSeite({ onNavigate }) {
   const [ansicht, setAnsicht] = useState("inbox")
 
   return (
@@ -42,7 +45,9 @@ export default function SammelnSeite() {
         titel="Sammeln"
         aktion={<AnsichtToggle ansicht={ansicht} setAnsicht={setAnsicht} />}
       />
-      {ansicht === "inbox" ? <InboxAnsicht /> : <WissenAnsicht />}
+      {ansicht === "inbox" && <InboxAnsicht />}
+      {ansicht === "wissen" && <WissenAnsicht onNavigate={onNavigate} />}
+      {ansicht === "graph" && <WissensGraph onNavigate={onNavigate} />}
     </div>
   )
 }
@@ -166,8 +171,9 @@ function InboxAnsicht() {
   )
 }
 
-function WissenAnsicht() {
+function WissenAnsicht({ onNavigate }) {
   const [wissen, setWissen] = useStored("wissen", [])
+  const [projekte] = useStored("projekte", [])
   const [titel, setTitel] = useState("")
   const [bearbeiteId, setBearbeiteId] = useState(null)
 
@@ -189,6 +195,13 @@ function WissenAnsicht() {
   function removeWissen(id) {
     setWissen(wissen.filter((w) => w.id !== id))
     if (bearbeiteId === id) setBearbeiteId(null)
+  }
+
+  // Wissen-Ziel öffnet sich inline im selben Overlay, Projekt-Ziel
+  // navigiert auf App-Ebene zur Projektseite.
+  function zielKlick(ziel) {
+    if (ziel.typ === "wissen") setBearbeiteId(ziel.id)
+    else onNavigate?.("projekte", ziel.id)
   }
 
   return (
@@ -219,6 +232,9 @@ function WissenAnsicht() {
           notiz={bearbeiteteNotiz}
           onChange={updateWissen}
           onClose={() => setBearbeiteId(null)}
+          wissen={wissen}
+          projekte={projekte}
+          onZielKlick={zielKlick}
         />
       )}
     </div>

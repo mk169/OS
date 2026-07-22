@@ -1,12 +1,18 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
+import { WIKILINK_REGEX, findeZiel, sammleBacklinks } from "../lib/wikilinks"
 
 // Lehrinhalte: eigene Notizen und Zusammenfassungen zum Projekt, als
 // Karten-Raster zum Sammeln und Stapeln. Klick öffnet die Notiz groß in
-// einem eigenen Schreib-Overlay (wie ein offenes Dokument).
+// einem eigenen Schreib-Overlay (wie ein offenes Dokument). Der Overlay
+// unterstützt "[[Titel]]"-Verlinkung zu Wissen/Projekten samt Rückverlinkung
+// (siehe NotizBearbeiten) – dieselbe Komponente wird auch von der
+// projektfreien Wissensbasis (SammelnSeite) genutzt.
 
 export default function ProjektNotizen({ projekt }) {
   const [alleNotizen, setAlleNotizen] = useStored("notizen", [])
+  const [wissen] = useStored("wissen", [])
+  const [projekte] = useStored("projekte", [])
   const [titel, setTitel] = useState("")
   const [bearbeiteId, setBearbeiteId] = useState(null)
 
@@ -69,6 +75,8 @@ export default function ProjektNotizen({ projekt }) {
           notiz={bearbeiteteNotiz}
           onChange={updateNotiz}
           onClose={() => setBearbeiteId(null)}
+          wissen={wissen}
+          projekte={projekte}
         />
       )}
     </div>
@@ -116,10 +124,131 @@ export function NotizenRaster({ notizen, onOeffnen, onRemove }) {
   )
 }
 
-// Vollbild-Schreib-Overlay für eine einzelne Notiz – Titel und Inhalt
-// speichern automatisch bei jeder Änderung, kein Speichern-Button. Von
-// ProjektNotizen und der Wissensbasis (SammelnSeite) gemeinsam genutzt.
-export function NotizBearbeiten({ notiz, onChange, onClose }) {
+// Erkennt "@query" am Textende (gleiches Prinzip wie BlockEditor.jsx'
+// Slash-Menü) – Auswahl fügt "[[Titel]]" ein.
+const MENTION_ERKENNEN = /(?:^|\s)@([^\s@]*)$/
+const MENTION_ENTFERNEN = /(?:^|\s)@[^\s@]*$/
+
+// Text mit "[[Titel]]"-Vorkommen als klickbare Chips gerendert (Ansicht-
+// Modus). Unbekannte Ziele bleiben dezent und nicht klickbar.
+function TextMitLinks({ text, wissen, projekte, onZielKlick }) {
+  if (!text) return null
+  const teile = text.split(WIKILINK_REGEX)
+  return (
+    <>
+      {teile.map((teil, i) =>
+        i % 2 === 1 ? (
+          <LinkChip
+            key={i}
+            titel={teil}
+            wissen={wissen}
+            projekte={projekte}
+            onZielKlick={onZielKlick}
+          />
+        ) : (
+          <span key={i}>{teil}</span>
+        )
+      )}
+    </>
+  )
+}
+
+function LinkChip({ titel, wissen, projekte, onZielKlick }) {
+  const ziel = findeZiel(titel, wissen, projekte)
+  return (
+    <button
+      type="button"
+      disabled={!ziel}
+      onClick={() => ziel && onZielKlick?.(ziel)}
+      className={`rounded-sm px-1 font-medium ${
+        ziel
+          ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
+          : "bg-gray-100 text-gray-400"
+      }`}
+    >
+      {titel}
+    </button>
+  )
+}
+
+// Vollbild-Schreib-Overlay für eine einzelne Notiz. Titel/Inhalt speichern
+// automatisch, kein Speichern-Button. Ansicht-Modus (Default) zeigt den
+// Text mit klickbaren "[[Titel]]"-Verlinkungen; Klick auf den Text (oder
+// den Stift) wechselt in den Bearbeiten-Modus mit "@"-Autocomplete.
+// wissen/projekte = mögliche Linkziele; onZielKlick(ziel) navigiert dorthin
+// (optional – Aufrufer ohne Navigationskontext lassen Chips nicht-klickbar
+// wirken, indem sie onZielKlick weglassen; Wissen-Ziele lassen sich dann
+// trotzdem visuell erkennen, nur Rücksprung fehlt).
+export function NotizBearbeiten({
+  notiz,
+  onChange,
+  onClose,
+  wissen = [],
+  projekte = [],
+  onZielKlick,
+}) {
+  const [bearbeiten, setBearbeiten] = useState(false)
+  const [mention, setMention] = useState(null)
+  const [mentionIndex, setMentionIndex] = useState(0)
+
+  const zielOptionen = [
+    ...wissen
+      .filter((w) => w.id !== notiz.id)
+      .map((w) => ({ typ: "wissen", titel: w.titel })),
+    ...projekte
+      .filter((p) => !p.archiviert)
+      .map((p) => ({ typ: "projekt", titel: p.name })),
+  ]
+  const mentionOptionen = mention
+    ? zielOptionen
+        .filter((o) => o.titel.toLowerCase().includes(mention.query.toLowerCase()))
+        .slice(0, 8)
+    : []
+
+  const backlinks = sammleBacklinks(notiz.titel, wissen, projekte).filter(
+    (b) => !(b.typ === "wissen" && b.id === notiz.id)
+  )
+
+  function inhaltOnChange(text) {
+    onChange({ ...notiz, inhalt: text })
+    const m = MENTION_ERKENNEN.exec(text)
+    if (m) {
+      setMention({ query: m[1] })
+      setMentionIndex(0)
+    } else {
+      setMention(null)
+    }
+  }
+
+  function waehleMention(option) {
+    const text = notiz.inhalt ?? ""
+    const match = MENTION_ENTFERNEN.exec(text)
+    if (!match) return
+    const vorher = text.slice(0, match.index)
+    const leerzeichen = /^\s/.test(match[0]) ? match[0][0] : ""
+    onChange({ ...notiz, inhalt: `${vorher}${leerzeichen}[[${option.titel}]] ` })
+    setMention(null)
+  }
+
+  function mentionKeyDown(e) {
+    if (!mention) return
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setMentionIndex((i) => Math.min(i + 1, mentionOptionen.length - 1))
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setMentionIndex((i) => Math.max(i - 1, 0))
+    } else if (e.key === "Enter") {
+      if (mentionOptionen[mentionIndex]) {
+        e.preventDefault()
+        waehleMention(mentionOptionen[mentionIndex])
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      setMention(null)
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white"
@@ -131,23 +260,99 @@ export function NotizBearbeiten({ notiz, onChange, onClose }) {
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-5 sm:py-8">
         <div className="flex items-center justify-between text-xs text-gray-400">
           <span>Notiz</span>
-          <button onClick={onClose} className="hover:text-gray-900">
-            Fertig ×
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setBearbeiten(!bearbeiten)}
+              className="hover:text-gray-900"
+            >
+              {bearbeiten ? "Fertig" : "Bearbeiten"}
+            </button>
+            <button onClick={onClose} className="hover:text-gray-900">
+              Schließen ×
+            </button>
+          </div>
         </div>
         <input
           value={notiz.titel}
           onChange={(e) => onChange({ ...notiz, titel: e.target.value })}
           placeholder="Titel"
-          autoFocus
+          autoFocus={bearbeiten}
           className="mt-4 w-full border-none bg-transparent text-2xl font-medium text-gray-900 outline-none placeholder:text-gray-300"
         />
-        <textarea
-          value={notiz.inhalt}
-          onChange={(e) => onChange({ ...notiz, inhalt: e.target.value })}
-          placeholder="Schreib hier deine Zusammenfassung – speichert automatisch."
-          className="mt-4 flex-1 resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
-        />
+
+        {bearbeiten ? (
+          <div className="relative mt-4 flex-1">
+            <textarea
+              value={notiz.inhalt}
+              onChange={(e) => inhaltOnChange(e.target.value)}
+              onKeyDown={mentionKeyDown}
+              onBlur={() => setMention(null)}
+              placeholder="Schreib hier deine Zusammenfassung – speichert automatisch. Tippe @ um auf Wissen oder ein Projekt zu verlinken."
+              autoFocus
+              className="h-full w-full resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
+            />
+            {mention && mentionOptionen.length > 0 && (
+              <div className="absolute bottom-4 left-0 w-64 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+                {mentionOptionen.map((o, i) => (
+                  <button
+                    key={`${o.typ}-${o.titel}`}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => waehleMention(o)}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                      i === mentionIndex
+                        ? "bg-gray-100 text-gray-900"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className="rounded-sm bg-gray-100 px-1 text-[10px] uppercase tracking-wide text-gray-400">
+                      {o.typ === "wissen" ? "Wissen" : "Projekt"}
+                    </span>
+                    {o.titel}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            onClick={() => setBearbeiten(true)}
+            className="mt-4 min-h-[40vh] flex-1 cursor-text whitespace-pre-wrap text-[15px] leading-relaxed text-gray-800"
+          >
+            {notiz.inhalt ? (
+              <TextMitLinks
+                text={notiz.inhalt}
+                wissen={wissen}
+                projekte={projekte}
+                onZielKlick={onZielKlick}
+              />
+            ) : (
+              <span className="text-gray-300">
+                Leer – klicken zum Schreiben.
+              </span>
+            )}
+          </div>
+        )}
+
+        {backlinks.length > 0 && (
+          <div className="mt-6 border-t border-gray-100 pt-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+              Erwähnt in
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {backlinks.map((b) => (
+                <button
+                  key={`${b.typ}-${b.id}`}
+                  onClick={() => onZielKlick?.(b)}
+                  disabled={!onZielKlick}
+                  className="rounded-sm bg-gray-100 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200 disabled:cursor-default disabled:hover:bg-gray-100"
+                >
+                  {b.titel}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
