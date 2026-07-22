@@ -3,6 +3,8 @@ import useStored from "../lib/useStored"
 import Seitenkopf from "./Seitenkopf"
 import { NotizenRaster, NotizBearbeiten } from "./ProjektNotizen"
 import WissensGraph from "./WissensGraph"
+import { erkenneDatum, erkenneProjekt } from "../lib/erkennung"
+import { tageBis } from "../lib/datum"
 
 // Sammeln: der reibungslose Einfangpunkt für alles ("zweites Gehirn").
 // Inbox = schnell erfassen, später verarbeiten (GTD-Prinzip). Wissen =
@@ -69,7 +71,7 @@ function InboxAnsicht() {
     setText("")
   }
 
-  function verarbeiteAlsTodo(item, projektId = null) {
+  function verarbeiteAlsTodo(item, projektId = null, datum = "") {
     setTodos([
       ...todos,
       {
@@ -78,7 +80,7 @@ function InboxAnsicht() {
         projektId: projektId ? Number(projektId) : null,
         kursId: null,
         dauer: null,
-        datum: "",
+        datum,
         wichtig: false,
         dringend: false,
         erledigt: false,
@@ -120,51 +122,82 @@ function InboxAnsicht() {
         </p>
       ) : (
         <ul className="mt-4 space-y-1.5">
-          {[...inbox].reverse().map((item) => (
-            <li
-              key={item.id}
-              className="group flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2"
-            >
-              <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
-                {item.text}
-              </span>
-              <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                <button
-                  onClick={() => verarbeiteAlsTodo(item)}
-                  className="rounded-sm bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
-                >
-                  → Todo
-                </button>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) verarbeiteAlsTodo(item, e.target.value)
-                  }}
-                  className="rounded-sm border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-600 outline-none"
-                >
-                  <option value="">→ Projekt…</option>
-                  {projekte.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => verarbeiteAlsNotiz(item)}
-                  className="rounded-sm bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
-                >
-                  → Wissen
-                </button>
-                <button
-                  onClick={() => verwerfe(item)}
-                  title="Verwerfen"
-                  className="px-1 text-gray-300 hover:text-red-500"
-                >
-                  ×
-                </button>
-              </div>
-            </li>
-          ))}
+          {[...inbox].reverse().map((item) => {
+            const erkanntesDatum = erkenneDatum(item.text)
+            const erkanntesProjekt = erkenneProjekt(item.text, projekte)
+            return (
+              <li
+                key={item.id}
+                className="group flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
+                  {item.text}
+                </span>
+                {(erkanntesDatum || erkanntesProjekt) && (
+                  <div className="flex items-center gap-1.5">
+                    {erkanntesDatum && (
+                      <span
+                        title="Erkanntes Datum"
+                        className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500"
+                      >
+                        📅 {tageBis(erkanntesDatum)}
+                      </span>
+                    )}
+                    {erkanntesProjekt && (
+                      <span
+                        title="Erkanntes Projekt"
+                        className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500"
+                      >
+                        📁 {erkanntesProjekt.name}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  <button
+                    onClick={() =>
+                      verarbeiteAlsTodo(
+                        item,
+                        erkanntesProjekt?.id ?? null,
+                        erkanntesDatum ?? ""
+                      )
+                    }
+                    className="rounded-sm bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
+                  >
+                    → Todo
+                  </button>
+                  <select
+                    defaultValue={erkanntesProjekt ? String(erkanntesProjekt.id) : ""}
+                    onChange={(e) => {
+                      if (e.target.value)
+                        verarbeiteAlsTodo(item, e.target.value, erkanntesDatum ?? "")
+                    }}
+                    className="rounded-sm border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-600 outline-none"
+                  >
+                    <option value="">→ Projekt…</option>
+                    {projekte.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => verarbeiteAlsNotiz(item)}
+                    className="rounded-sm bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
+                  >
+                    → Wissen
+                  </button>
+                  <button
+                    onClick={() => verwerfe(item)}
+                    title="Verwerfen"
+                    className="px-1 text-gray-300 hover:text-red-500"
+                  >
+                    ×
+                  </button>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
