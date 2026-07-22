@@ -8,6 +8,8 @@ import TodosSeite from "./components/TodosSeite"
 import HabitsSeite from "./components/HabitsSeite"
 import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
+import SammelnSeite from "./components/SammelnSeite"
+import ReviewSeite from "./components/ReviewSeite"
 import Suche from "./components/Suche"
 
 // Einmalige Migration: alte Kurse werden zu Projekten in einem
@@ -84,6 +86,16 @@ const NAV = [
       <>
         <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
         <path d="m8 12 3 3 5-6" />
+      </>
+    ),
+  },
+  {
+    key: "sammeln",
+    label: "Sammeln",
+    icon: (
+      <>
+        <path d="M4 4h16v6H4z" />
+        <path d="M4 10l2 10h12l2-10" />
       </>
     ),
   },
@@ -183,7 +195,7 @@ export default function App() {
         </button>
         <button
           onClick={() => setSucheOffen(true)}
-          className="mb-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white/70 px-3 py-2 text-sm text-gray-400 transition-colors hover:text-gray-900"
+          className="mb-1 flex items-center gap-3 rounded-lg border border-gray-200 bg-white/70 px-3 py-2 text-sm text-gray-400 transition-colors hover:text-gray-900"
         >
           <NavIcon className="h-[18px] w-[18px] shrink-0">
             <circle cx="11" cy="11" r="7" />
@@ -193,6 +205,19 @@ export default function App() {
           <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-400">
             ⌘K
           </span>
+        </button>
+        <button
+          onClick={() => navigiere("review")}
+          className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+            seite === "review"
+              ? "bg-white font-medium text-gray-900 shadow-sm"
+              : "text-gray-400 hover:bg-white/70 hover:text-gray-900"
+          }`}
+        >
+          <NavIcon className="h-[18px] w-[18px] shrink-0">
+            <path d="M4 7h16M4 12h16M4 17h10" />
+          </NavIcon>
+          Wochenrückblick
         </button>
         <nav className="flex flex-1 flex-col gap-0.5">
           {NAV.map((item) => (
@@ -241,6 +266,15 @@ export default function App() {
         </button>
         <div className="flex items-center gap-1">
           <button
+            onClick={() => navigiere("review")}
+            title="Wochenrückblick"
+            className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          >
+            <NavIcon className="h-[18px] w-[18px]">
+              <path d="M4 7h16M4 12h16M4 17h10" />
+            </NavIcon>
+          </button>
+          <button
             onClick={() => setSucheOffen(true)}
             title="Suchen"
             className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
@@ -266,9 +300,11 @@ export default function App() {
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite />}
         {seite === "todos" && <TodosSeite />}
+        {seite === "sammeln" && <SammelnSeite />}
         {seite === "habits" && <HabitsSeite />}
         {seite === "deepwork" && <DeepWorkSeite />}
         {seite === "projekte" && <OrdnerSeite startProjektId={param} />}
+        {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
       </main>
 
       {sucheOffen && (
@@ -277,7 +313,7 @@ export default function App() {
 
       {/* Tab-Leiste – nur Mobil */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-gray-200 bg-white/90 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-7 border-t border-gray-200 bg-white/90 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {NAV.map((item) => (

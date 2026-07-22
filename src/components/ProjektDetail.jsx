@@ -245,22 +245,26 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
           </select>
         </EigenschaftsZeile>
 
-        <EigenschaftsZeile
-          label="Fälligkeit"
-          icon={
-            <PropIcon>
-              <rect x="3" y="4.5" width="18" height="16" rx="2" />
-              <path d="M3 9.5h18M8 3v3M16 3v3" />
-            </PropIcon>
-          }
-        >
-          <input
-            type="date"
-            value={projekt.deadline ?? ""}
-            onChange={(e) => onUpdate({ ...projekt, deadline: e.target.value })}
-            className="cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
-          />
-        </EigenschaftsZeile>
+        {(projekt.typ ?? "projekt") !== "area" && (
+          <EigenschaftsZeile
+            label="Fälligkeit"
+            icon={
+              <PropIcon>
+                <rect x="3" y="4.5" width="18" height="16" rx="2" />
+                <path d="M3 9.5h18M8 3v3M16 3v3" />
+              </PropIcon>
+            }
+          >
+            <input
+              type="date"
+              value={projekt.deadline ?? ""}
+              onChange={(e) =>
+                onUpdate({ ...projekt, deadline: e.target.value })
+              }
+              className="cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
+            />
+          </EigenschaftsZeile>
+        )}
 
         <EigenschaftsZeile
           label="Priorität"
@@ -277,20 +281,22 @@ export default function ProjektDetail({ projekt, onUpdate, onBack }) {
           />
         </EigenschaftsZeile>
 
-        <EigenschaftsZeile
-          label="Status"
-          icon={
-            <PropIcon>
-              <circle cx="12" cy="12" r="8.5" strokeDasharray="3 3" />
-            </PropIcon>
-          }
-        >
-          <TagSelect
-            value={projekt.status ?? "offen"}
-            options={STATUS_OPTIONEN}
-            onChange={(v) => onUpdate({ ...projekt, status: v })}
-          />
-        </EigenschaftsZeile>
+        {(projekt.typ ?? "projekt") !== "area" && (
+          <EigenschaftsZeile
+            label="Status"
+            icon={
+              <PropIcon>
+                <circle cx="12" cy="12" r="8.5" strokeDasharray="3 3" />
+              </PropIcon>
+            }
+          >
+            <TagSelect
+              value={projekt.status ?? "offen"}
+              options={STATUS_OPTIONEN}
+              onChange={(v) => onUpdate({ ...projekt, status: v })}
+            />
+          </EigenschaftsZeile>
+        )}
 
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <button

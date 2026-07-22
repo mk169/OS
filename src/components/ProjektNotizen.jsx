@@ -58,39 +58,11 @@ export default function ProjektNotizen({ projekt }) {
         </button>
       </form>
 
-      {notizen.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
-          Noch keine Lehrinhalte. Lege eine Notiz an und schreibe direkt los.
-        </p>
-      ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {notizen.map((notiz) => (
-            <div key={notiz.id} className="group relative">
-              <button
-                onClick={() => setBearbeiteId(notiz.id)}
-                className="h-32 w-full rounded-xl border border-gray-200 bg-white p-4 text-left transition-colors hover:border-gray-400"
-              >
-                <p className="line-clamp-1 text-sm font-medium text-gray-900">
-                  {notiz.titel}
-                </p>
-                <p className="mt-1.5 line-clamp-4 text-xs text-gray-400">
-                  {notiz.inhalt || "Leer – klicken zum Schreiben."}
-                </p>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  remove(notiz.id)
-                }}
-                title="Notiz löschen"
-                className="absolute right-2 top-2 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      <NotizenRaster
+        notizen={notizen}
+        onOeffnen={setBearbeiteId}
+        onRemove={remove}
+      />
 
       {bearbeiteteNotiz && (
         <NotizBearbeiten
@@ -103,9 +75,51 @@ export default function ProjektNotizen({ projekt }) {
   )
 }
 
+// Karten-Raster für Notizen (Titel + Vorschau) – von ProjektNotizen und
+// der projektfreien Wissensbasis (SammelnSeite) gemeinsam genutzt.
+export function NotizenRaster({ notizen, onOeffnen, onRemove }) {
+  if (notizen.length === 0) {
+    return (
+      <p className="mt-6 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
+        Noch keine Lehrinhalte. Lege eine Notiz an und schreibe direkt los.
+      </p>
+    )
+  }
+  return (
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {notizen.map((notiz) => (
+        <div key={notiz.id} className="group relative">
+          <button
+            onClick={() => onOeffnen(notiz.id)}
+            className="h-32 w-full rounded-xl border border-gray-200 bg-white p-4 text-left transition-colors hover:border-gray-400"
+          >
+            <p className="line-clamp-1 text-sm font-medium text-gray-900">
+              {notiz.titel}
+            </p>
+            <p className="mt-1.5 line-clamp-4 text-xs text-gray-400">
+              {notiz.inhalt || "Leer – klicken zum Schreiben."}
+            </p>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove(notiz.id)
+            }}
+            title="Notiz löschen"
+            className="absolute right-2 top-2 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Vollbild-Schreib-Overlay für eine einzelne Notiz – Titel und Inhalt
-// speichern automatisch bei jeder Änderung, kein Speichern-Button.
-function NotizBearbeiten({ notiz, onChange, onClose }) {
+// speichern automatisch bei jeder Änderung, kein Speichern-Button. Von
+// ProjektNotizen und der Wissensbasis (SammelnSeite) gemeinsam genutzt.
+export function NotizBearbeiten({ notiz, onChange, onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white"
