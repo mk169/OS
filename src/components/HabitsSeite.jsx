@@ -481,11 +481,6 @@ export default function HabitsSeite() {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <Seitenkopf
         titel="Habits"
-        unterzeile={
-          habits.length === 0
-            ? "Baue Gewohnheiten in Ketten auf – ein Habit knüpft an das nächste an."
-            : `Diese Woche erreichen ${amZielCount} von ${habits.length} Habits ihr Wochenziel.`
-        }
         aktion={
           <HabitErstellen
             habits={habits}

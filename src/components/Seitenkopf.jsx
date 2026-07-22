@@ -4,7 +4,7 @@
 export default function Seitenkopf({ eyebrow, titel, unterzeile, aktion }) {
   return (
     <div className="mb-8 border-b border-gray-200 pb-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
           {eyebrow && (
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-widest text-gray-500">

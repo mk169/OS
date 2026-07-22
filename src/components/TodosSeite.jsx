@@ -67,11 +67,7 @@ export default function TodosSeite() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <Seitenkopf
-        titel="Todos"
-        unterzeile="Sortiert nach wichtig und dringend."
-        aktion={<TodoErstellen />}
-      />
+      <Seitenkopf titel="Todos" aktion={<TodoErstellen />} />
 
       <div className="mt-8 space-y-8">
         {EINTEILUNGEN.map((gruppe) => {

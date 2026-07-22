@@ -889,12 +889,8 @@ function KalenderModul({ projekt }) {
 
   return (
     <div className="py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+      <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
         Termine im Projekt
-      </p>
-      <p className="mb-4 mt-1 text-xs text-gray-400">
-        Zeigt Workflow-Schritte mit Termin, Todos mit Deadline und die
-        Projekt-Deadline.
       </p>
       <Kalender
         eintraegeAm={eintraegeAm}

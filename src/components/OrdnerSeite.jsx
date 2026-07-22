@@ -164,7 +164,6 @@ export default function OrdnerSeite({ startProjektId = null }) {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <Seitenkopf
         titel="Projekte"
-        unterzeile="Ordner und Projekte im Überblick."
         aktion={
           <div className="flex flex-wrap items-center gap-2">
             <AnsichtToggle ansicht={ansicht} setAnsicht={setAnsicht} />
@@ -797,10 +796,6 @@ function ProjektErstellen({ ordnerId, projekte, setProjekte, onFertig }) {
           />
         </label>
       </div>
-
-      <p className="mt-3 text-xs text-gray-400">
-        Bereiche fügst du danach direkt im Projekt-Sheet hinzu.
-      </p>
 
       <div className="mt-4 flex justify-end gap-2">
         <button

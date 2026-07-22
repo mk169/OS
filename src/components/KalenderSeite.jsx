@@ -404,7 +404,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
             onChange={importiereICS}
             className="hidden"
           />
-          <span>{icsMeldung || "Kompatibel mit Google Kalender."}</span>
+          {icsMeldung && <span>{icsMeldung}</span>}
         </div>
       )}
     </div>
@@ -414,10 +414,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
 export default function KalenderSeite() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <Seitenkopf
-        titel="Kalender"
-        unterzeile="Gesamtübersicht – Termine mit Dauer stapeln sich in der Tagesansicht zu deinem Tagesplan."
-      />
+      <Seitenkopf titel="Kalender" />
 
       <KalenderPanel tagesdetail />
     </div>
