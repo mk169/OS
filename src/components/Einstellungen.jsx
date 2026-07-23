@@ -10,34 +10,84 @@ const ALLE_SEITEN = [
   {
     key: "kalender",
     label: "Kalender",
-    beschreibung: "Termine, Wiederholungen, ICS-Import",
+    beschreibung: "Termine & Wiederholungen",
+    icon: (
+      <>
+        <rect x="3" y="4.5" width="18" height="16" rx="2" />
+        <path d="M3 9.5h18M8 3v3M16 3v3" />
+      </>
+    ),
   },
   {
     key: "todos",
     label: "Todos",
-    beschreibung: "Aufgaben nach Eisenhower-Matrix",
+    beschreibung: "Eisenhower-Matrix",
+    icon: (
+      <>
+        <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+        <path d="m8 12 3 3 5-6" />
+      </>
+    ),
   },
   {
     key: "sammeln",
-    label: "Sammeln / Inbox",
-    beschreibung: "GTD-Inbox, Wissensbasis, Graphansicht",
+    label: "Sammeln",
+    beschreibung: "GTD-Inbox & Wissen",
+    icon: (
+      <>
+        <path d="M4 4h16v6H4z" />
+        <path d="M4 10l2 10h12l2-10" />
+      </>
+    ),
   },
   {
     key: "habits",
     label: "Habits",
-    beschreibung: "Gewohnheiten mit Wochen-Heatmap",
+    beschreibung: "Gewohnheiten & Streaks",
+    icon: (
+      <path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1 .4-1.8.8-2.4.3 1 .9 1.6 1.7 1.6-.8-2 .5-5 1-7.2Z" />
+    ),
   },
   {
     key: "deepwork",
-    label: "Fokus-Timer",
-    beschreibung: "Pomodoro / Deep-Work-Sessions",
+    label: "Fokus",
+    beschreibung: "Pomodoro-Timer",
+    icon: (
+      <>
+        <circle cx="12" cy="13.5" r="7.5" />
+        <path d="M12 13.5V9.5M9.5 2h5" />
+      </>
+    ),
   },
   {
     key: "projekte",
     label: "Projekte",
-    beschreibung: "Ordner, Board, Notizen, Karteikarten",
+    beschreibung: "Ordner & Board",
+    icon: (
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+    ),
   },
 ]
+
+function Toggle({ an, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={an}
+      onClick={onChange}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+        an ? "bg-indigo-500" : "bg-gray-200"
+      }`}
+    >
+      <span
+        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+          an ? "translate-x-4" : "translate-x-0.5"
+        }`}
+      />
+    </button>
+  )
+}
 
 function NavIcon({ children }) {
   return (
@@ -229,35 +279,56 @@ export default function Einstellungen() {
         </div>
       </Abschnitt>
 
-      {/* ── Sichtbare Seiten ─────────────────────────────────────── */}
+      {/* ── Sichtbare Sparten ────────────────────────────────────── */}
       <Abschnitt
-        titel="Sichtbare Bereiche"
-        beschreibung="Welche Module erscheinen in der Navigation? Dashboard ist immer sichtbar."
+        titel="Sparten"
+        beschreibung="Wähle einzeln, welche Module in deiner Navigation erscheinen."
       >
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {ALLE_SEITEN.map((s) => {
             const istAktiv = sichtbar.includes(s.key)
             return (
-              <label
+              <button
                 key={s.key}
-                className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50"
+                onClick={() => { seiteToogle(s.key); zeigeSpeichert() }}
+                className={`flex flex-col gap-3 rounded-2xl border-2 p-4 text-left transition-all ${
+                  istAktiv
+                    ? "border-indigo-500 bg-indigo-50"
+                    : "border-gray-200 bg-white hover:border-gray-300"
+                }`}
               >
-                <input
-                  type="checkbox"
-                  checked={istAktiv}
-                  onChange={() => { seiteToogle(s.key); zeigeSpeichert() }}
-                  className="h-4 w-4 accent-indigo-500"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">{s.label}</p>
-                  <p className="text-xs text-gray-400">{s.beschreibung}</p>
+                <div className="flex items-center justify-between">
+                  <div
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                      istAktiv ? "bg-indigo-500 text-white" : "bg-gray-100 text-gray-400"
+                    }`}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-4 w-4"
+                    >
+                      {s.icon}
+                    </svg>
+                  </div>
+                  <Toggle
+                    an={istAktiv}
+                    onChange={() => { seiteToogle(s.key); zeigeSpeichert() }}
+                  />
                 </div>
-                <span
-                  className={`text-xs font-medium ${istAktiv ? "text-indigo-500" : "text-gray-300"}`}
-                >
-                  {istAktiv ? "Aktiv" : "Aus"}
-                </span>
-              </label>
+                <div>
+                  <p className={`text-sm font-semibold ${istAktiv ? "text-gray-900" : "text-gray-500"}`}>
+                    {s.label}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-gray-400">
+                    {s.beschreibung}
+                  </p>
+                </div>
+              </button>
             )
           })}
         </div>
