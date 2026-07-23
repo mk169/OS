@@ -202,7 +202,7 @@ export default function App() {
   const sichtbareNav = NAV.filter(
     (item) => item.key === "dashboard" || sichtbareSeiten.includes(item.key)
   )
-  const mobileKolonnen = sichtbareNav.length + 1 // +1 für Review
+  const mobileKolonnen = sichtbareNav.length
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -394,21 +394,6 @@ export default function App() {
             {item.label}
           </button>
         ))}
-        {/* Einstellungen in der Tab-Leiste */}
-        <button
-          onClick={() => navigiere("einstellungen")}
-          className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
-            seite === "einstellungen"
-              ? "font-medium text-indigo-600"
-              : "text-gray-400 hover:text-gray-700"
-          }`}
-        >
-          <NavIcon className="h-5 w-5">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-          </NavIcon>
-          Einst.
-        </button>
       </nav>
     </div>
   )
