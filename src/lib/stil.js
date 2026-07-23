@@ -20,6 +20,18 @@ export const STILE = [
     emoji: "🎮",
   },
   {
+    id: "arcade",
+    name: "Arcade",
+    beschreibung: "Retro-Arcade im Pac-Man-Stil",
+    emoji: "🕹️",
+  },
+  {
+    id: "cleangirl",
+    name: "Clean Girl",
+    beschreibung: "Soft, pastellrosa & elegant",
+    emoji: "🎀",
+  },
+  {
     id: "notion",
     name: "Notion",
     beschreibung: "Ruhig, minimal, viel Weißraum",

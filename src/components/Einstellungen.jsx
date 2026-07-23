@@ -410,7 +410,7 @@ export default function Einstellungen() {
           <p className="mt-0.5 text-xs text-gray-400">
             Bestimmt das Aussehen deiner Startseite.
           </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {STILE.map((s) => {
               const aktiv = stil === s.id
               return (
