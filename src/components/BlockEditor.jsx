@@ -18,6 +18,7 @@ const BEREICH_LABELS = {
   todos: "Todos",
   inhalte: "Inhalte",
   notizen: "Notizen",
+  artikel: "Artikel",
   karten: "Karteikarten",
   kalender: "Kalender",
 }

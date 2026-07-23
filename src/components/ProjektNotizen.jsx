@@ -58,7 +58,8 @@ export default function ProjektNotizen({
   }
 
   function updateNotiz(neu) {
-    setAlleNotizen(alleNotizen.map((n) => (n.id === neu.id ? neu : n)))
+    const gestempelt = { ...neu, aktualisiertAm: Date.now() }
+    setAlleNotizen(alleNotizen.map((n) => (n.id === neu.id ? gestempelt : n)))
   }
 
   function remove(id) {
@@ -108,16 +109,57 @@ export default function ProjektNotizen({
   )
 }
 
-// Karten-Raster für Notizen (Titel + Vorschau) – von ProjektNotizen und
-// der projektfreien Wissensbasis (SammelnSeite) gemeinsam genutzt.
-export function NotizenRaster({ notizen, onOeffnen, onRemove }) {
+// Notiz-Liste für Titel + Vorschau – von ProjektNotizen und der
+// projektfreien Wissensbasis (SammelnSeite) gemeinsam genutzt. layout
+// wählt zwischen Karten-Raster (Default) und kompakter Zeilen-Liste.
+// leerText erlaubt kontextabhängige Leer-Hinweise.
+export function NotizenRaster({
+  notizen,
+  onOeffnen,
+  onRemove,
+  layout = "raster",
+  leerText = "Noch keine Lehrinhalte. Lege eine Notiz an und schreibe direkt los.",
+}) {
   if (notizen.length === 0) {
     return (
       <p className="mt-6 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
-        Noch keine Lehrinhalte. Lege eine Notiz an und schreibe direkt los.
+        {leerText}
       </p>
     )
   }
+
+  if (layout === "liste") {
+    return (
+      <ul className="mt-4 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+        {notizen.map((notiz) => (
+          <li key={notiz.id} className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50">
+            <button
+              onClick={() => onOeffnen(notiz.id)}
+              className="flex min-w-0 flex-1 items-baseline gap-2 text-left"
+            >
+              <span className="shrink-0 truncate text-sm font-medium text-gray-900">
+                {notiz.titel || "Ohne Titel"}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-xs text-gray-400">
+                {notiz.inhalt || "Leer – klicken zum Schreiben."}
+              </span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemove(notiz.id)
+              }}
+              title="Notiz löschen"
+              className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+            >
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
   return (
     <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {notizen.map((notiz) => (

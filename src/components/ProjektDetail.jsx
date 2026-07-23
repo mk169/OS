@@ -6,6 +6,7 @@ import TodoErstellen from "./TodoErstellen"
 import { TodoZeile } from "./TodosSeite"
 import ProjektInhalte from "./ProjektInhalte"
 import ProjektNotizen from "./ProjektNotizen"
+import ProjektArtikel from "./ProjektArtikel"
 import ProjektKarten from "./ProjektKarten"
 import ProjektBoard from "./ProjektBoard"
 import BlockEditor, { bloeckeVon } from "./BlockEditor"
@@ -21,6 +22,7 @@ export const MODULE = [
   { key: "todos", label: "Todos" },
   { key: "inhalte", label: "Inhalte" },
   { key: "notizen", label: "Notizen" },
+  { key: "artikel", label: "Artikel" },
   { key: "karten", label: "Karteikarten" },
   { key: "kalender", label: "Kalender" },
 ]
@@ -200,6 +202,7 @@ export default function ProjektDetail({
           onNavigate={onNavigate}
         />
       )
+    if (key === "artikel") return <ProjektArtikel projekt={projekt} />
     if (key === "karten") return <ProjektKarten projekt={projekt} />
     if (key === "kalender") return <KalenderModul projekt={projekt} />
     if (key.startsWith("eigen-"))
