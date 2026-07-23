@@ -40,7 +40,12 @@ export function einteilungVon(todo) {
   return EINTEILUNGEN.find((e) => e.passt(todo))
 }
 
-export default function TodoErstellen({ fest = null, beschriftung = "Todo" }) {
+export default function TodoErstellen({
+  fest = null,
+  beschriftung = "Todo",
+  knopfKlasse = null,
+  knopfInhalt = null,
+}) {
   const [todos, setTodos] = useStored("todos", [])
   const [projekte] = useStored("projekte", [])
 
@@ -85,10 +90,13 @@ export default function TodoErstellen({ fest = null, beschriftung = "Todo" }) {
     return (
       <button
         onClick={() => setOffen(true)}
-        className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-900 text-white transition-colors hover:bg-gray-700"
+        className={
+          knopfKlasse ??
+          "flex h-8 w-8 items-center justify-center rounded-md bg-gray-900 text-white transition-colors hover:bg-gray-700"
+        }
         title={`${beschriftung} erstellen`}
       >
-        +
+        {knopfInhalt ?? "+"}
       </button>
     )
   }

@@ -2,6 +2,7 @@ import { useRef, useState } from "react"
 import useStored, { schreibeStore } from "../lib/useStored"
 import { FARBEN } from "../lib/farben"
 import { AKZENTE } from "../lib/akzent"
+import { STILE, STIL_STANDARD } from "../lib/stil"
 import { heute } from "../lib/datum"
 import Seitenkopf from "./Seitenkopf"
 import { PROFILE } from "./Onboarding"
@@ -179,6 +180,7 @@ export default function Einstellungen() {
     appName: "OS",
     startseite: "dashboard",
     akzent: "indigo",
+    stil: STIL_STANDARD,
   })
   const [bereiche, setBereiche] = useStored("habitBereiche", [
     { id: "koerper", name: "Körper", farbe: "emerald" },
@@ -195,6 +197,7 @@ export default function Einstellungen() {
 
   const sichtbar = einstellungen.sichtbareSeiten ?? []
   const akzent = einstellungen.akzent ?? "indigo"
+  const stil = einstellungen.stil ?? STIL_STANDARD
 
   // Aktive Module in der gewählten Reihenfolge + ausgeblendete Module.
   const sichtbareModule = sichtbar
@@ -262,6 +265,11 @@ export default function Einstellungen() {
 
   function akzentWaehlen(key) {
     setEinstellungen((e) => ({ ...e, akzent: key }))
+    zeigeSpeichert()
+  }
+
+  function stilWaehlen(id) {
+    setEinstellungen((e) => ({ ...e, stil: id }))
     zeigeSpeichert()
   }
 
@@ -388,7 +396,7 @@ export default function Einstellungen() {
       {/* ── Darstellung ─────────────────────────────────────────────────────── */}
       <Abschnitt
         titel="Darstellung"
-        beschreibung="Name und Akzentfarbe deiner App."
+        beschreibung="Design-Stil, Name und Akzentfarbe deiner App."
         icon={
           <>
             <circle cx="13.5" cy="6.5" r="2.5" />
@@ -397,6 +405,36 @@ export default function Einstellungen() {
           </>
         }
       >
+        <div className="border-b border-gray-100 py-3.5">
+          <p className="text-sm font-medium text-gray-800">Design-Stil</p>
+          <p className="mt-0.5 text-xs text-gray-400">
+            Bestimmt das Aussehen deiner Startseite.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {STILE.map((s) => {
+              const aktiv = stil === s.id
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => stilWaehlen(s.id)}
+                  aria-pressed={aktiv}
+                  className={`flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all ${
+                    aktiv
+                      ? "border-accent-500 bg-accent-50 ring-1 ring-accent-500"
+                      : "border-gray-200 bg-white hover:border-gray-300"
+                  }`}
+                >
+                  <span className="text-xl leading-none">{s.emoji}</span>
+                  <span className="text-sm font-semibold text-gray-900">{s.name}</span>
+                  <span className="text-[11px] leading-snug text-gray-400">
+                    {s.beschreibung}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         <Zeile titel="App-Name" beschreibung="Wie heisst dein persönliches OS?">
           <div className="flex gap-2">
             <input
