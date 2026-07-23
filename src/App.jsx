@@ -152,6 +152,7 @@ export default function App() {
   })
   const [param, setParam] = useState(null)
   const [sucheOffen, setSucheOffen] = useState(false)
+  const [mehrOffen, setMehrOffen] = useState(false)
   const [session, setSession] = useState(null)
   const [authBereit, setAuthBereit] = useState(!cloudAktiv)
 
@@ -179,6 +180,7 @@ export default function App() {
   function navigiere(ziel, wert = null) {
     setSeite(ziel)
     setParam(wert)
+    setMehrOffen(false)
   }
 
   useEffect(() => {
@@ -223,7 +225,13 @@ export default function App() {
       .filter((key) => key !== "dashboard" && NAV_NACH_KEY[key])
       .map((key) => NAV_NACH_KEY[key]),
   ]
-  const mobileKolonnen = sichtbareNav.length
+  // Auf dem Handy passen nur wenige Tabs auf die Leiste: die ersten vier
+  // Module als feste Tabs, der Rest wandert ins „Mehr"-Sheet – zusammen mit
+  // Wochenrückblick, Einstellungen und (falls Cloud) Abmelden.
+  const PRIMAER_MAX = 4
+  const primaereNav = sichtbareNav.slice(0, PRIMAER_MAX)
+  const weitereNav = sichtbareNav.slice(PRIMAER_MAX)
+  const mobileKolonnen = primaereNav.length + 1
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -333,36 +341,16 @@ export default function App() {
           </span>
           <span className="max-w-[120px] truncate">{appName}</span>
         </button>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => navigiere("einstellungen")}
-            title="Einstellungen"
-            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-          >
-            <NavIcon className="h-[18px] w-[18px]">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-            </NavIcon>
-          </button>
-          <button
-            onClick={() => setSucheOffen(true)}
-            title="Suchen"
-            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-          >
-            <NavIcon className="h-[18px] w-[18px]">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </NavIcon>
-          </button>
-          {cloudAktiv && session && (
-            <button
-              onClick={abmelden}
-              className="rounded-lg px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-            >
-              Abmelden
-            </button>
-          )}
-        </div>
+        <button
+          onClick={() => setSucheOffen(true)}
+          title="Suchen"
+          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+        >
+          <NavIcon className="h-[18px] w-[18px]">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </NavIcon>
+        </button>
       </header>
 
       {/* ── Inhalt ──────────────────────────────────────────────── */}
@@ -392,6 +380,55 @@ export default function App() {
         <Suche onNavigate={navigiere} onClose={() => setSucheOffen(false)} />
       )}
 
+      {/* ── Mobile „Mehr"-Sheet ─────────────────────────────────── */}
+      {mehrOffen && (
+        <div className="fixed inset-0 z-40 md:hidden" onClick={() => setMehrOffen(false)}>
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-gray-200 bg-white p-3 shadow-2xl"
+            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+          >
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-200" />
+            <div className="grid grid-cols-4 gap-1">
+              {weitereNav.map((item) => (
+                <SheetKnopf
+                  key={item.key}
+                  aktiv={seite === item.key}
+                  onClick={() => navigiere(item.key)}
+                  label={item.label}
+                  icon={item.icon}
+                />
+              ))}
+              <SheetKnopf
+                aktiv={seite === "review"}
+                onClick={() => navigiere("review")}
+                label="Rückblick"
+                icon={<path d="M4 7h16M4 12h16M4 17h10" />}
+              />
+              <SheetKnopf
+                aktiv={seite === "einstellungen"}
+                onClick={() => navigiere("einstellungen")}
+                label="Einstellungen"
+                icon={
+                  <>
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+                  </>
+                }
+              />
+              {cloudAktiv && session && (
+                <SheetKnopf
+                  onClick={() => { setMehrOffen(false); abmelden() }}
+                  label="Abmelden"
+                  icon={<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Mobile Tab-Leiste ───────────────────────────────────── */}
       <nav
         className="fixed inset-x-0 bottom-0 z-30 grid border-t border-gray-200 bg-white/95 backdrop-blur md:hidden"
@@ -400,7 +437,7 @@ export default function App() {
           gridTemplateColumns: `repeat(${mobileKolonnen}, minmax(0, 1fr))`,
         }}
       >
-        {sichtbareNav.map((item) => (
+        {primaereNav.map((item) => (
           <button
             key={item.key}
             onClick={() => navigiere(item.key)}
@@ -414,7 +451,40 @@ export default function App() {
             {item.label}
           </button>
         ))}
+        <button
+          onClick={() => setMehrOffen(true)}
+          className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
+            mehrOffen ||
+            weitereNav.some((n) => n.key === seite) ||
+            seite === "review" ||
+            seite === "einstellungen"
+              ? "font-medium text-accent-600"
+              : "text-gray-400 hover:text-gray-700"
+          }`}
+        >
+          <NavIcon className="h-5 w-5">
+            <circle cx="5" cy="12" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="19" cy="12" r="1.5" />
+          </NavIcon>
+          Mehr
+        </button>
       </nav>
     </div>
+  )
+}
+
+// Kachel-Knopf im mobilen „Mehr"-Sheet.
+function SheetKnopf({ aktiv, onClick, label, icon }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center gap-1.5 rounded-2xl px-1 py-3 text-[11px] font-medium transition-colors ${
+        aktiv ? "bg-accent-50 text-accent-600" : "text-gray-500 hover:bg-gray-50"
+      }`}
+    >
+      <NavIcon className="h-5 w-5">{icon}</NavIcon>
+      <span className="max-w-full truncate">{label}</span>
+    </button>
   )
 }

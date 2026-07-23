@@ -8,6 +8,14 @@ import ProjektDetail, {
   PRIORITAETEN,
 } from "./ProjektDetail"
 import Seitenkopf from "./Seitenkopf"
+import { SortMenu, LayoutUmschalter } from "./ListenControls"
+
+const ORDNER_SORT = [
+  { value: "name", label: "Name A–Z" },
+  { value: "faellig", label: "Fälligkeit" },
+  { value: "fortschritt", label: "Fortschritt" },
+  { value: "neueste", label: "Neueste" },
+]
 
 // Ordnersystem: Projekte liegen in beliebig verschachtelbaren Ordnern
 // (z.B. Uni → 4. Semester → Statistik). Jedes Projekt wird individuell
@@ -102,6 +110,8 @@ export default function OrdnerSeite({
   const [ordnerName, setOrdnerName] = useState("")
   const [projektFormOffen, setProjektFormOffen] = useState(false)
   const [ansicht, setAnsicht] = useState("ordner")
+  const [ordnerSort, setOrdnerSort] = useStored("projekteOrdnerSort", "name")
+  const [ordnerLayout, setOrdnerLayout] = useStored("projekteOrdnerLayout", "raster")
 
   // Von außen (App.jsx) angestoßene Navigation nachziehen – OrdnerSeite
   // bleibt bei aktiver "projekte"-Seite dauerhaft gemountet, ein bloßer
@@ -153,12 +163,28 @@ export default function OrdnerSeite({
   // damit Areas' datierte Todos/Deadlines dort trotzdem auftauchen.
   const aktiveProjekte = aktive.filter((p) => (p.typ ?? "projekt") !== "area")
 
-  const unterordner = ordner.filter(
-    (o) => (o.parentId ?? null) === aktuellerOrdnerId
-  )
-  const hiesigeProjekte = aktiveProjekte.filter(
-    (p) => (p.ordnerId ?? null) === aktuellerOrdnerId
-  )
+  const unterordner = ordner
+    .filter((o) => (o.parentId ?? null) === aktuellerOrdnerId)
+    .sort((a, b) =>
+      ordnerSort === "neueste"
+        ? b.id - a.id
+        : (a.name ?? "").localeCompare(b.name ?? "")
+    )
+  const hiesigeProjekte = aktiveProjekte
+    .filter((p) => (p.ordnerId ?? null) === aktuellerOrdnerId)
+    .sort((a, b) => {
+      if (ordnerSort === "faellig")
+        return (a.deadline || "9999").localeCompare(b.deadline || "9999")
+      if (ordnerSort === "neueste") return b.id - a.id
+      if (ordnerSort === "fortschritt") {
+        const pa = projektFortschrittWerte(a, todos)
+        const pb = projektFortschrittWerte(b, todos)
+        const ra = pa.gesamt ? pa.erledigt / pa.gesamt : -1
+        const rb = pb.gesamt ? pb.erledigt / pb.gesamt : -1
+        return rb - ra
+      }
+      return (a.name ?? "").localeCompare(b.name ?? "")
+    })
 
   // Brotkrumen-Pfad vom Start bis zum aktuellen Ordner
   const pfad = []
@@ -294,73 +320,116 @@ export default function OrdnerSeite({
 
       {ansicht === "ordner" && (
         <div>
-          <nav className="mt-3 flex flex-wrap items-center gap-1 text-sm text-gray-400">
-            <button
-              onClick={() => setAktuellerOrdnerId(null)}
-              className={
-                aktuellerOrdnerId === null
-                  ? "font-medium text-gray-900"
-                  : "hover:text-gray-900"
-              }
-            >
-              Start
-            </button>
-            {pfad.map((o) => (
-              <span key={o.id} className="flex items-center gap-1">
-                <span>/</span>
-                <button
-                  onClick={() => setAktuellerOrdnerId(o.id)}
-                  className={
-                    o.id === aktuellerOrdnerId
-                      ? "font-medium text-gray-900"
-                      : "hover:text-gray-900"
-                  }
-                >
-                  {o.name}
-                </button>
-              </span>
-            ))}
-          </nav>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <nav className="flex flex-wrap items-center gap-1 text-sm text-gray-400">
+              <button
+                onClick={() => setAktuellerOrdnerId(null)}
+                className={
+                  aktuellerOrdnerId === null
+                    ? "font-medium text-gray-900"
+                    : "hover:text-gray-900"
+                }
+              >
+                Start
+              </button>
+              {pfad.map((o) => (
+                <span key={o.id} className="flex items-center gap-1">
+                  <span>/</span>
+                  <button
+                    onClick={() => setAktuellerOrdnerId(o.id)}
+                    className={
+                      o.id === aktuellerOrdnerId
+                        ? "font-medium text-gray-900"
+                        : "hover:text-gray-900"
+                    }
+                  >
+                    {o.name}
+                  </button>
+                </span>
+              ))}
+            </nav>
+            {(unterordner.length > 0 || hiesigeProjekte.length > 0) && (
+              <div className="flex items-center gap-2">
+                <SortMenu wert={ordnerSort} onChange={setOrdnerSort} optionen={ORDNER_SORT} />
+                <LayoutUmschalter layout={ordnerLayout} setLayout={setOrdnerLayout} />
+              </div>
+            )}
+          </div>
 
       {unterordner.length > 0 && (
         <section className="mt-8">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
             Ordner
           </h2>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {unterordner.map((o) => {
-              const anzahl =
-                ordner.filter((x) => x.parentId === o.id).length +
-                projekte.filter((p) => p.ordnerId === o.id).length
-              return (
-                <div
-                  key={o.id}
-                  onClick={() => setAktuellerOrdnerId(o.id)}
-                  className="group flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:border-gray-400"
-                >
-                  <OrdnerIcon />
-                  <span className="flex-1 truncate text-sm font-medium text-gray-900">
-                    {o.name}
-                  </span>
-                  <span className="shrink-0 text-xs text-gray-400">
-                    {anzahl}
-                  </span>
-                  {anzahl === 0 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeOrdner(o.id)
-                      }}
-                      title="Leeren Ordner löschen"
-                      className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          {ordnerLayout === "liste" ? (
+            <ul className="mt-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              {unterordner.map((o) => {
+                const anzahl =
+                  ordner.filter((x) => x.parentId === o.id).length +
+                  projekte.filter((p) => p.ordnerId === o.id).length
+                return (
+                  <li
+                    key={o.id}
+                    onClick={() => setAktuellerOrdnerId(o.id)}
+                    className="group flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50"
+                  >
+                    <OrdnerIcon />
+                    <span className="flex-1 truncate text-sm font-medium text-gray-900">
+                      {o.name}
+                    </span>
+                    <span className="shrink-0 text-xs text-gray-400">{anzahl}</span>
+                    {anzahl === 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeOrdner(o.id)
+                        }}
+                        title="Leeren Ordner löschen"
+                        className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {unterordner.map((o) => {
+                const anzahl =
+                  ordner.filter((x) => x.parentId === o.id).length +
+                  projekte.filter((p) => p.ordnerId === o.id).length
+                return (
+                  <div
+                    key={o.id}
+                    onClick={() => setAktuellerOrdnerId(o.id)}
+                    className="group flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:border-gray-400"
+                  >
+                    <OrdnerIcon />
+                    <span className="flex-1 truncate text-sm font-medium text-gray-900">
+                      {o.name}
+                    </span>
+                    <span className="shrink-0 text-xs text-gray-400">
+                      {anzahl}
+                    </span>
+                    {anzahl === 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeOrdner(o.id)
+                        }}
+                        title="Leeren Ordner löschen"
+                        className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
       )}
 
@@ -369,17 +438,31 @@ export default function OrdnerSeite({
           <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
             Projekte
           </h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {hiesigeProjekte.map((p) => (
-              <ProjektKarte
-                key={p.id}
-                p={p}
-                todos={todos}
-                onOeffnen={setOffenesProjektId}
-                onRemove={removeProjekt}
-              />
-            ))}
-          </div>
+          {ordnerLayout === "liste" ? (
+            <ul className="mt-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              {hiesigeProjekte.map((p) => (
+                <ProjektZeile
+                  key={p.id}
+                  p={p}
+                  todos={todos}
+                  onOeffnen={setOffenesProjektId}
+                  onRemove={removeProjekt}
+                />
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {hiesigeProjekte.map((p) => (
+                <ProjektKarte
+                  key={p.id}
+                  p={p}
+                  todos={todos}
+                  onOeffnen={setOffenesProjektId}
+                  onRemove={removeProjekt}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -477,6 +560,36 @@ function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
         )}
       </div>
     </div>
+  )
+}
+
+// Kompakte Projekt-Zeile für die Listen-Ansicht (Ordneransicht).
+function ProjektZeile({ p, todos, onOeffnen, onRemove }) {
+  return (
+    <li
+      onClick={() => onOeffnen(p.id)}
+      className="group flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50"
+    >
+      <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
+        {p.name}
+      </span>
+      <div className="hidden w-32 shrink-0 sm:block">
+        <Fortschrittsbalken {...projektFortschrittWerte(p, todos)} />
+      </div>
+      {p.deadline && <DeadlineChip datum={p.deadline} />}
+      {onRemove && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(p.id)
+          }}
+          title="Projekt löschen"
+          className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+        >
+          ×
+        </button>
+      )}
+    </li>
   )
 }
 

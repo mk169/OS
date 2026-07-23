@@ -1,10 +1,18 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
 import Seitenkopf from "./Seitenkopf"
 import { NotizenRaster, NotizBearbeiten } from "./ProjektNotizen"
 import WissensGraph from "./WissensGraph"
+import { Suchfeld, SortMenu, LayoutUmschalter } from "./ListenControls"
 import { erkenneDatum, erkenneProjekt } from "../lib/erkennung"
 import { tageBis } from "../lib/datum"
+
+const WISSEN_SORT = [
+  { value: "bearbeitet", label: "Zuletzt bearbeitet" },
+  { value: "neueste", label: "Neueste" },
+  { value: "aelteste", label: "Älteste" },
+  { value: "titel", label: "Titel A–Z" },
+]
 
 // Sammeln: der reibungslose Einfangpunkt für alles ("zweites Gehirn").
 // Inbox = schnell erfassen, später verarbeiten (GTD-Prinzip). Wissen =
@@ -60,6 +68,11 @@ function InboxAnsicht() {
   const [wissen, setWissen] = useStored("wissen", [])
   const [projekte] = useStored("projekte", [])
   const [text, setText] = useState("")
+  const [sort, setSort] = useStored("inboxSort", "neueste")
+
+  const sortiert = [...inbox].sort((a, b) =>
+    sort === "aelteste" ? a.id - b.id : b.id - a.id
+  )
 
   function addInboxItem(e) {
     e.preventDefault()
@@ -121,8 +134,22 @@ function InboxAnsicht() {
           Inbox leer. Alles verarbeitet.
         </p>
       ) : (
-        <ul className="mt-4 space-y-1.5">
-          {[...inbox].reverse().map((item) => {
+        <>
+        <div className="mt-4 flex items-center justify-between">
+          <span className="text-xs text-gray-400">
+            {inbox.length} {inbox.length === 1 ? "Eintrag" : "Einträge"}
+          </span>
+          <SortMenu
+            wert={sort}
+            onChange={setSort}
+            optionen={[
+              { value: "neueste", label: "Neueste" },
+              { value: "aelteste", label: "Älteste" },
+            ]}
+          />
+        </div>
+        <ul className="mt-3 space-y-1.5">
+          {sortiert.map((item) => {
             const erkanntesDatum = erkenneDatum(item.text)
             const erkanntesProjekt = erkenneProjekt(item.text, projekte)
             return (
@@ -199,6 +226,7 @@ function InboxAnsicht() {
             )
           })}
         </ul>
+        </>
       )}
     </div>
   )
@@ -210,20 +238,43 @@ function WissenAnsicht({ onNavigate }) {
   const [notizen] = useStored("notizen", [])
   const [titel, setTitel] = useState("")
   const [bearbeiteId, setBearbeiteId] = useState(null)
+  const [suche, setSuche] = useState("")
+  const [sort, setSort] = useStored("wissenSort", "bearbeitet")
+  const [layout, setLayout] = useStored("wissenLayout", "raster")
 
   const bearbeiteteNotiz = wissen.find((w) => w.id === bearbeiteId)
+
+  // Gefiltert (Titel + Inhalt) und sortiert. „bearbeitet" nutzt
+  // aktualisiertAm mit Fallback auf id (= Erstellzeit via Date.now()).
+  const sichtbareWissen = useMemo(() => {
+    const q = suche.trim().toLowerCase()
+    const gefiltert = q
+      ? wissen.filter(
+          (w) =>
+            (w.titel ?? "").toLowerCase().includes(q) ||
+            (w.inhalt ?? "").toLowerCase().includes(q)
+        )
+      : wissen
+    return [...gefiltert].sort((a, b) => {
+      if (sort === "titel") return (a.titel ?? "").localeCompare(b.titel ?? "")
+      if (sort === "aelteste") return a.id - b.id
+      if (sort === "neueste") return b.id - a.id
+      return (b.aktualisiertAm ?? b.id) - (a.aktualisiertAm ?? a.id)
+    })
+  }, [wissen, suche, sort])
 
   function addWissen(e) {
     e.preventDefault()
     if (!titel.trim()) return
-    const neu = { id: Date.now(), titel: titel.trim(), inhalt: "" }
+    const neu = { id: Date.now(), titel: titel.trim(), inhalt: "", aktualisiertAm: Date.now() }
     setWissen([...wissen, neu])
     setTitel("")
     setBearbeiteId(neu.id)
   }
 
   function updateWissen(neu) {
-    setWissen(wissen.map((w) => (w.id === neu.id ? neu : w)))
+    const gestempelt = { ...neu, aktualisiertAm: Date.now() }
+    setWissen(wissen.map((w) => (w.id === neu.id ? gestempelt : w)))
   }
 
   function removeWissen(id) {
@@ -258,10 +309,24 @@ function WissenAnsicht({ onNavigate }) {
         </button>
       </form>
 
+      {wissen.length > 0 && (
+        <div className="mt-4 flex items-center gap-2">
+          <Suchfeld wert={suche} onChange={setSuche} placeholder="Wissen durchsuchen…" />
+          <SortMenu wert={sort} onChange={setSort} optionen={WISSEN_SORT} />
+          <LayoutUmschalter layout={layout} setLayout={setLayout} />
+        </div>
+      )}
+
       <NotizenRaster
-        notizen={wissen}
+        notizen={sichtbareWissen}
         onOeffnen={setBearbeiteId}
         onRemove={removeWissen}
+        layout={layout}
+        leerText={
+          suche.trim()
+            ? "Kein Wissen zu dieser Suche."
+            : "Noch kein Wissen. Lege einen Eintrag an und schreibe direkt los."
+        }
       />
 
       {bearbeiteteNotiz && (
