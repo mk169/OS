@@ -1,11 +1,15 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import useStored, { schreibeStore } from "../lib/useStored"
 import { FARBEN } from "../lib/farben"
+import { AKZENTE } from "../lib/akzent"
+import { heute } from "../lib/datum"
 import Seitenkopf from "./Seitenkopf"
 import { PROFILE } from "./Onboarding"
 
 const FARBEN_OPTIONEN = Object.keys(FARBEN).filter((f) => f !== "gray")
 
+// Modul-Metadaten für die Sparten-Verwaltung (Dashboard ist immer sichtbar
+// und daher hier bewusst nicht enthalten).
 const ALLE_SEITEN = [
   {
     key: "kalender",
@@ -69,15 +73,37 @@ const ALLE_SEITEN = [
   },
 ]
 
-function Toggle({ an, onChange }) {
+const DASHBOARD_ICON = <path d="M3 10.75 12 3l9 7.75M5 9.5V21h14V9.5" />
+
+// ── Kleine, wiederverwendbare Bausteine ─────────────────────────────────────
+
+function NavIcon({ children, className = "h-4 w-4" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  )
+}
+
+function Toggle({ an, onChange, title }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={an}
+      title={title}
       onClick={onChange}
       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-        an ? "bg-indigo-500" : "bg-gray-200"
+        an ? "bg-accent-500" : "bg-gray-200 hover:bg-gray-300"
       }`}
     >
       <span
@@ -89,36 +115,61 @@ function Toggle({ an, onChange }) {
   )
 }
 
-function NavIcon({ children }) {
+// Modul-Icon-Kachel (aktiv = Akzent, sonst dezent grau).
+function ModulIcon({ children, aktiv }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-4 w-4"
-      aria-hidden="true"
+    <div
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+        aktiv ? "bg-accent-500 text-white" : "bg-gray-100 text-gray-400"
+      }`}
     >
-      {children}
-    </svg>
+      <NavIcon>{children}</NavIcon>
+    </div>
   )
 }
 
-function Abschnitt({ titel, beschreibung, children }) {
+// Abschnitts-Karte: Kopf (Icon + Titel + Beschreibung) über einem Panel.
+function Abschnitt({ icon, titel, beschreibung, children, panel = true }) {
   return (
-    <section className="mb-10">
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-900">{titel}</h2>
-        {beschreibung && (
-          <p className="mt-0.5 text-xs text-gray-400">{beschreibung}</p>
+    <section className="mb-8">
+      <div className="mb-3 flex items-start gap-2.5 px-0.5">
+        {icon && (
+          <div className="mt-px flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500">
+            <NavIcon className="h-4 w-4">{icon}</NavIcon>
+          </div>
         )}
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-gray-900">{titel}</h2>
+          {beschreibung && (
+            <p className="mt-0.5 text-xs leading-relaxed text-gray-400">{beschreibung}</p>
+          )}
+        </div>
       </div>
-      {children}
+      {panel ? (
+        <div className="rounded-2xl border border-gray-200 bg-white px-4 shadow-sm shadow-gray-100">
+          {children}
+        </div>
+      ) : (
+        children
+      )}
     </section>
   )
 }
+
+// Einstellungs-Zeile: Label/Beschreibung links, Control rechts.
+function Zeile({ titel, beschreibung, children }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 py-3.5 last:border-0">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-gray-800">{titel}</p>
+        {beschreibung && <p className="mt-0.5 text-xs text-gray-400">{beschreibung}</p>}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  )
+}
+
+// ── Hauptkomponente ─────────────────────────────────────────────────────────
 
 export default function Einstellungen() {
   const [einstellungen, setEinstellungen] = useStored("einstellungen", {
@@ -126,6 +177,8 @@ export default function Einstellungen() {
     profil: "komplett",
     sichtbareSeiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte"],
     appName: "OS",
+    startseite: "dashboard",
+    akzent: "indigo",
   })
   const [bereiche, setBereiche] = useStored("habitBereiche", [
     { id: "koerper", name: "Körper", farbe: "emerald" },
@@ -138,26 +191,83 @@ export default function Einstellungen() {
   const [neueFarbe, setNeueFarbe] = useState("emerald")
   const [gespeichert, setGespeichert] = useState(false)
   const [appNameEntwurf, setAppNameEntwurf] = useState(einstellungen.appName ?? "OS")
+  const dateiRef = useRef(null)
 
   const sichtbar = einstellungen.sichtbareSeiten ?? []
+  const akzent = einstellungen.akzent ?? "indigo"
 
-  function seiteToogle(key) {
-    // Dashboard ist immer sichtbar
-    if (key === "dashboard") return
-    setEinstellungen((e) => ({
-      ...e,
-      sichtbareSeiten: sichtbar.includes(key)
-        ? sichtbar.filter((s) => s !== key)
-        : [...sichtbar, key],
-    }))
+  // Aktive Module in der gewählten Reihenfolge + ausgeblendete Module.
+  const sichtbareModule = sichtbar
+    .filter((k) => k !== "dashboard")
+    .map((k) => ALLE_SEITEN.find((s) => s.key === k))
+    .filter(Boolean)
+  const ausgeblendeteModule = ALLE_SEITEN.filter((s) => !sichtbar.includes(s.key))
+  const sichtbareModulKeys = sichtbareModule.map((s) => s.key)
+
+  const startseitenOptionen = [
+    { key: "dashboard", label: "Start" },
+    ...sichtbareModule.map((s) => ({ key: s.key, label: s.label })),
+  ]
+  const aktuelleStartseite = startseitenOptionen.some((o) => o.key === einstellungen.startseite)
+    ? einstellungen.startseite
+    : "dashboard"
+
+  function zeigeSpeichert() {
+    setGespeichert(true)
+    setTimeout(() => setGespeichert(false), 2000)
   }
 
+  // ── Sparten ───────────────────────────────────────────────────────────────
+  function spartenUmschalten(key) {
+    if (key === "dashboard") return
+    setEinstellungen((e) => {
+      const liste = e.sichtbareSeiten ?? []
+      return {
+        ...e,
+        sichtbareSeiten: liste.includes(key)
+          ? liste.filter((s) => s !== key)
+          : [...liste, key],
+      }
+    })
+    zeigeSpeichert()
+  }
+
+  // Setzt die Reihenfolge der aktiven Module neu; Dashboard bleibt gepinnt,
+  // unbekannte Zusatz-Keys (z. B. „review" aus Profilen) bleiben erhalten.
+  function setzeReihenfolge(neueModulKeys) {
+    setEinstellungen((e) => {
+      const alle = e.sichtbareSeiten ?? []
+      const sonstige = alle.filter(
+        (k) => k !== "dashboard" && !ALLE_SEITEN.some((s) => s.key === k)
+      )
+      return { ...e, sichtbareSeiten: ["dashboard", ...neueModulKeys, ...sonstige] }
+    })
+  }
+
+  function verschiebeSparte(key, richtung) {
+    const i = sichtbareModulKeys.indexOf(key)
+    const j = i + richtung
+    if (i < 0 || j < 0 || j >= sichtbareModulKeys.length) return
+    const neu = [...sichtbareModulKeys]
+    ;[neu[i], neu[j]] = [neu[j], neu[i]]
+    setzeReihenfolge(neu)
+    zeigeSpeichert()
+  }
+
+  // ── Profil & Darstellung ───────────────────────────────────────────────────
   function profilWaehlen(profil) {
-    setEinstellungen((e) => ({
-      ...e,
-      profil: profil.id,
-      sichtbareSeiten: profil.seiten,
-    }))
+    setEinstellungen((e) => ({ ...e, profil: profil.id, sichtbareSeiten: profil.seiten }))
+    zeigeSpeichert()
+  }
+
+  function akzentWaehlen(key) {
+    setEinstellungen((e) => ({ ...e, akzent: key }))
+    zeigeSpeichert()
+  }
+
+  function startseiteWaehlen(key) {
+    setEinstellungen((e) => ({ ...e, startseite: key }))
+    zeigeSpeichert()
   }
 
   function appNameSpeichern() {
@@ -165,6 +275,7 @@ export default function Einstellungen() {
     zeigeSpeichert()
   }
 
+  // ── Lebensbereiche ──────────────────────────────────────────────────────────
   function bereichHinzufuegen() {
     if (!neuerName.trim()) return
     setBereiche((b) => [
@@ -190,6 +301,60 @@ export default function Einstellungen() {
     zeigeSpeichert()
   }
 
+  // ── Datensicherung ───────────────────────────────────────────────────────────
+  function datenExportieren() {
+    const daten = {}
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      const roh = localStorage.getItem(k)
+      try {
+        daten[k] = JSON.parse(roh)
+      } catch {
+        daten[k] = roh
+      }
+    }
+    const inhalt = JSON.stringify(
+      { __app: "OS", __version: 1, exportiert: new Date().toISOString(), daten },
+      null,
+      2
+    )
+    const blob = new Blob([inhalt], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `OS-Backup-${heute()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    zeigeSpeichert()
+  }
+
+  function importDateiGewaehlt(e) {
+    const datei = e.target.files?.[0]
+    if (!datei) return
+    const leser = new FileReader()
+    leser.onload = () => {
+      let daten
+      try {
+        const geparst = JSON.parse(leser.result)
+        daten = geparst?.daten ?? geparst
+      } catch {
+        daten = null
+      }
+      if (dateiRef.current) dateiRef.current.value = ""
+      if (!daten || typeof daten !== "object" || Array.isArray(daten)) {
+        window.alert("Die Datei konnte nicht gelesen werden. Ist es ein gültiges OS-Backup?")
+        return
+      }
+      const anzahl = Object.keys(daten).length
+      if (!window.confirm(`Backup einspielen? ${anzahl} Einträge ersetzen deine aktuellen Daten. Das kann nicht rückgängig gemacht werden.`))
+        return
+      for (const [k, v] of Object.entries(daten)) schreibeStore(k, null, v)
+      window.location.reload()
+    }
+    leser.readAsText(datei)
+  }
+
+  // ── Zurücksetzen ────────────────────────────────────────────────────────────
   function onboardingZuruecksetzen() {
     if (!window.confirm("Onboarding wirklich zurücksetzen? Die App startet dann neu mit dem Einrichtungsassistenten.")) return
     setEinstellungen((e) => ({ ...e, onboardingAbgeschlossen: false }))
@@ -202,52 +367,107 @@ export default function Einstellungen() {
     window.location.reload()
   }
 
-  function zeigeSpeichert() {
-    setGespeichert(true)
-    setTimeout(() => setGespeichert(false), 2000)
-  }
-
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
-      <Seitenkopf
-        titel="Einstellungen"
-        unterzeile="Passe dein OS an deinen Workflow an."
-      />
+      <Seitenkopf titel="Einstellungen" unterzeile="Passe dein OS an deinen Workflow an." />
 
       {/* Gespeichert-Toast */}
-      {gespeichert && (
-        <div className="mb-6 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700">
-          <span>✓</span> Gespeichert
-        </div>
-      )}
-
-      {/* ── App-Name ─────────────────────────────────────────────── */}
-      <Abschnitt
-        titel="App-Name"
-        beschreibung="Wie heisst dein persönliches OS?"
+      <div
+        className={`pointer-events-none fixed bottom-24 left-1/2 z-40 -translate-x-1/2 md:bottom-8 ${
+          gespeichert ? "opacity-100" : "opacity-0"
+        } transition-opacity duration-300`}
       >
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={appNameEntwurf}
-            onChange={(e) => setAppNameEntwurf(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && appNameSpeichern()}
-            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-indigo-400 focus:bg-white"
-            placeholder="z.B. Mein OS, Lukas' Brain…"
-          />
-          <button
-            onClick={appNameSpeichern}
-            className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700"
-          >
-            Speichern
-          </button>
+        <div className="flex items-center gap-2 rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          <NavIcon className="h-4 w-4 text-emerald-400">
+            <path d="m5 12 5 5L20 7" />
+          </NavIcon>
+          Gespeichert
         </div>
+      </div>
+
+      {/* ── Darstellung ─────────────────────────────────────────────────────── */}
+      <Abschnitt
+        titel="Darstellung"
+        beschreibung="Name und Akzentfarbe deiner App."
+        icon={
+          <>
+            <circle cx="13.5" cy="6.5" r="2.5" />
+            <circle cx="6.5" cy="12" r="2.5" />
+            <path d="M12 21a9 9 0 1 1 9-9c0 2-1.8 3-3.5 3H15a2 2 0 0 0-1.5 3.3A2 2 0 0 1 12 21Z" />
+          </>
+        }
+      >
+        <Zeile titel="App-Name" beschreibung="Wie heisst dein persönliches OS?">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={appNameEntwurf}
+              onChange={(e) => setAppNameEntwurf(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && appNameSpeichern()}
+              className="w-40 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 outline-none transition-colors focus:border-accent-400 focus:bg-white sm:w-52"
+              placeholder="z.B. Mein OS"
+            />
+            <button
+              onClick={appNameSpeichern}
+              className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700"
+            >
+              Speichern
+            </button>
+          </div>
+        </Zeile>
+
+        <Zeile titel="Akzentfarbe" beschreibung="Färbt Navigation, Buttons & Fokus.">
+          <div className="flex items-center gap-1.5">
+            {Object.entries(AKZENTE).map(([key, pal]) => {
+              const aktiv = akzent === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => akzentWaehlen(key)}
+                  title={pal.name}
+                  aria-label={pal.name}
+                  aria-pressed={aktiv}
+                  className={`h-6 w-6 rounded-full transition-transform hover:scale-110 ${
+                    aktiv ? "ring-2 ring-gray-900 ring-offset-2" : ""
+                  }`}
+                  style={{ backgroundColor: pal[500] }}
+                />
+              )
+            })}
+          </div>
+        </Zeile>
+
+        <Zeile titel="Standard-Startseite" beschreibung="Womit die App beim Öffnen startet.">
+          <div className="relative">
+            <select
+              value={aktuelleStartseite}
+              onChange={(e) => startseiteWaehlen(e.target.value)}
+              className="cursor-pointer appearance-none rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-3 pr-8 text-sm font-medium text-gray-800 outline-none transition-colors hover:bg-gray-100 focus:border-accent-400"
+            >
+              {startseitenOptionen.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <NavIcon className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400">
+              <path d="m6 9 6 6 6-6" />
+            </NavIcon>
+          </div>
+        </Zeile>
       </Abschnitt>
 
-      {/* ── Profil ───────────────────────────────────────────────── */}
+      {/* ── App-Profil ──────────────────────────────────────────────────────── */}
       <Abschnitt
         titel="App-Profil"
-        beschreibung="Wähle eine Voreinstellung für deinen Workflow. Das aktiviert die passenden Module."
+        beschreibung="Eine Voreinstellung aktiviert die passenden Module."
+        panel={false}
+        icon={
+          <>
+            <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+            <path d="M8 8h8M8 12h8M8 16h5" />
+          </>
+        }
       >
         <div className="grid gap-2 sm:grid-cols-2">
           {PROFILE.map((p) => {
@@ -255,21 +475,21 @@ export default function Einstellungen() {
             return (
               <button
                 key={p.id}
-                onClick={() => { profilWaehlen(p); zeigeSpeichert() }}
-                className={`group flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all ${
+                onClick={() => profilWaehlen(p)}
+                className={`group flex items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
                   aktiv
-                    ? "border-indigo-500 bg-indigo-50"
+                    ? "border-accent-500 bg-accent-50 ring-1 ring-accent-500"
                     : "border-gray-200 bg-white hover:border-gray-300"
                 }`}
               >
                 <div
                   className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                    aktiv ? "bg-indigo-500 text-white" : "bg-gray-100 text-gray-500"
+                    aktiv ? "bg-accent-500 text-white" : "bg-gray-100 text-gray-500"
                   }`}
                 >
                   <NavIcon>{p.icon}</NavIcon>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900">{p.name}</p>
                   <p className="mt-0.5 text-xs leading-relaxed text-gray-400">{p.beschreibung}</p>
                 </div>
@@ -279,85 +499,121 @@ export default function Einstellungen() {
         </div>
       </Abschnitt>
 
-      {/* ── Sichtbare Sparten ────────────────────────────────────── */}
+      {/* ── Navigation / Sparten ────────────────────────────────────────────── */}
       <Abschnitt
-        titel="Sparten"
-        beschreibung="Wähle einzeln, welche Module in deiner Navigation erscheinen."
+        titel="Navigation"
+        beschreibung="Bestimme, welche Module erscheinen – und in welcher Reihenfolge."
+        icon={
+          <>
+            <rect x="3.5" y="3.5" width="17" height="17" rx="3" />
+            <path d="M9 3.5v17" />
+          </>
+        }
       >
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {ALLE_SEITEN.map((s) => {
-            const istAktiv = sichtbar.includes(s.key)
-            return (
-              <button
-                key={s.key}
-                onClick={() => { seiteToogle(s.key); zeigeSpeichert() }}
-                className={`flex flex-col gap-3 rounded-2xl border-2 p-4 text-left transition-all ${
-                  istAktiv
-                    ? "border-indigo-500 bg-indigo-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                      istAktiv ? "bg-indigo-500 text-white" : "bg-gray-100 text-gray-400"
-                    }`}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4"
-                    >
-                      {s.icon}
-                    </svg>
+        <div className="py-2">
+          <p className="px-1 py-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+            Sichtbar
+          </p>
+
+          {/* Dashboard – immer sichtbar */}
+          <div className="flex items-center gap-3 rounded-xl px-1 py-2 opacity-90">
+            <div className="flex w-8 justify-center text-gray-300">
+              <NavIcon className="h-4 w-4">
+                <rect x="4" y="5" width="16" height="4" rx="1" />
+                <rect x="4" y="11" width="16" height="4" rx="1" />
+              </NavIcon>
+            </div>
+            <ModulIcon aktiv>{DASHBOARD_ICON}</ModulIcon>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-900">Start</p>
+              <p className="mt-0.5 text-[11px] text-gray-400">Dashboard & Übersicht</p>
+            </div>
+            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-500">
+              Immer sichtbar
+            </span>
+          </div>
+
+          {sichtbareModule.map((s, i) => (
+            <div key={s.key} className="flex items-center gap-3 rounded-xl px-1 py-2 hover:bg-gray-50">
+              {/* Reihenfolge */}
+              <div className="flex w-8 flex-col items-center">
+                <button
+                  onClick={() => verschiebeSparte(s.key, -1)}
+                  disabled={i === 0}
+                  title="Nach oben"
+                  className="text-gray-300 transition-colors hover:text-gray-600 disabled:opacity-30 disabled:hover:text-gray-300"
+                >
+                  <NavIcon className="h-3.5 w-3.5"><path d="m6 15 6-6 6 6" /></NavIcon>
+                </button>
+                <button
+                  onClick={() => verschiebeSparte(s.key, 1)}
+                  disabled={i === sichtbareModule.length - 1}
+                  title="Nach unten"
+                  className="text-gray-300 transition-colors hover:text-gray-600 disabled:opacity-30 disabled:hover:text-gray-300"
+                >
+                  <NavIcon className="h-3.5 w-3.5"><path d="m6 9 6 6 6-6" /></NavIcon>
+                </button>
+              </div>
+              <ModulIcon aktiv>{s.icon}</ModulIcon>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900">{s.label}</p>
+                <p className="mt-0.5 text-[11px] text-gray-400">{s.beschreibung}</p>
+              </div>
+              <Toggle an onChange={() => spartenUmschalten(s.key)} title="Ausblenden" />
+            </div>
+          ))}
+
+          {ausgeblendeteModule.length > 0 && (
+            <>
+              <p className="px-1 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                Ausgeblendet
+              </p>
+              {ausgeblendeteModule.map((s) => (
+                <div key={s.key} className="flex items-center gap-3 rounded-xl px-1 py-2 hover:bg-gray-50">
+                  <div className="w-8" />
+                  <ModulIcon aktiv={false}>{s.icon}</ModulIcon>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-500">{s.label}</p>
+                    <p className="mt-0.5 text-[11px] text-gray-400">{s.beschreibung}</p>
                   </div>
-                  <Toggle
-                    an={istAktiv}
-                    onChange={() => { seiteToogle(s.key); zeigeSpeichert() }}
-                  />
+                  <Toggle an={false} onChange={() => spartenUmschalten(s.key)} title="Einblenden" />
                 </div>
-                <div>
-                  <p className={`text-sm font-semibold ${istAktiv ? "text-gray-900" : "text-gray-500"}`}>
-                    {s.label}
-                  </p>
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-gray-400">
-                    {s.beschreibung}
-                  </p>
-                </div>
-              </button>
-            )
-          })}
+              ))}
+            </>
+          )}
         </div>
       </Abschnitt>
 
-      {/* ── Lebensbereiche / Habit-Bereiche ─────────────────────── */}
+      {/* ── Lebensbereiche ──────────────────────────────────────────────────── */}
       <Abschnitt
         titel="Lebensbereiche"
-        beschreibung="Bereiche strukturieren deine Habits und Projekte. Füge eigene hinzu oder passe bestehende an."
+        beschreibung="Bereiche strukturieren deine Habits und Projekte."
+        panel={false}
+        icon={
+          <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 3v18M3 12h18" />
+          </>
+        }
       >
-        <div className="mb-3 space-y-2">
+        <div className="space-y-2">
           {bereiche.map((b) => (
             <div
               key={b.id}
               className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5"
             >
-              {/* Farbwähler */}
               <div className="flex gap-1">
                 {FARBEN_OPTIONEN.map((f) => (
                   <button
                     key={f}
                     onClick={() => bereichFarbe(b.id, f)}
+                    title={f}
                     className={`h-3.5 w-3.5 rounded-full ${FARBEN[f].punkt} transition-transform hover:scale-125 ${
-                      b.farbe === f ? "ring-2 ring-offset-1 ring-gray-400" : ""
+                      b.farbe === f ? "ring-2 ring-gray-400 ring-offset-1" : ""
                     }`}
                   />
                 ))}
               </div>
-              {/* Name editierbar */}
               <input
                 type="text"
                 value={b.name}
@@ -367,50 +623,94 @@ export default function Einstellungen() {
               />
               <button
                 onClick={() => bereichEntfernen(b.id)}
-                className="text-gray-300 transition-colors hover:text-red-400"
+                title="Bereich entfernen"
+                className="flex h-6 w-6 items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
               >
-                ×
+                <NavIcon className="h-4 w-4"><path d="M18 6 6 18M6 6l12 12" /></NavIcon>
               </button>
             </div>
           ))}
         </div>
 
-        {/* Neuen Bereich hinzufügen */}
-        <div className="flex gap-2">
+        <div className="mt-2 flex gap-2">
           <input
             type="text"
             value={neuerName}
             onChange={(e) => setNeuerName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && bereichHinzufuegen()}
             placeholder="Neuer Bereich…"
-            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-indigo-400 focus:bg-white"
+            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-accent-400 focus:bg-white"
           />
           <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-2.5">
             {FARBEN_OPTIONEN.map((f) => (
               <button
                 key={f}
                 onClick={() => setNeueFarbe(f)}
+                title={f}
                 className={`h-3.5 w-3.5 rounded-full ${FARBEN[f].punkt} transition-transform hover:scale-125 ${
-                  neueFarbe === f ? "ring-2 ring-offset-1 ring-gray-400" : ""
+                  neueFarbe === f ? "ring-2 ring-gray-400 ring-offset-1" : ""
                 }`}
               />
             ))}
           </div>
           <button
             onClick={bereichHinzufuegen}
-            className="rounded-xl bg-gray-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-gray-700"
+            title="Bereich hinzufügen"
+            className="flex items-center rounded-xl bg-gray-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-gray-700"
           >
-            +
+            <NavIcon className="h-4 w-4"><path d="M12 5v14M5 12h14" /></NavIcon>
           </button>
         </div>
       </Abschnitt>
 
-      {/* ── Daten & Zurücksetzen ────────────────────────────────── */}
+      {/* ── Daten & Sicherung ───────────────────────────────────────────────── */}
       <Abschnitt
-        titel="Daten & Zurücksetzen"
-        beschreibung="Einrichtungsassistent neu starten oder alle Daten löschen."
+        titel="Daten & Sicherung"
+        beschreibung="Sichere deine Daten oder setze die App zurück."
+        panel={false}
+        icon={
+          <>
+            <ellipse cx="12" cy="6" rx="8" ry="3" />
+            <path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+          </>
+        }
       >
-        <div className="space-y-2">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            onClick={datenExportieren}
+            className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:border-gray-300 hover:bg-gray-50"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-accent-500">
+              <NavIcon><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></NavIcon>
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-gray-800">Backup exportieren</span>
+              <span className="block text-xs text-gray-400">Als JSON-Datei speichern</span>
+            </span>
+          </button>
+
+          <button
+            onClick={() => dateiRef.current?.click()}
+            className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:border-gray-300 hover:bg-gray-50"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-accent-500">
+              <NavIcon><path d="M12 15V3m0 0-4 4m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></NavIcon>
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-gray-800">Backup importieren</span>
+              <span className="block text-xs text-gray-400">Aus JSON-Datei wiederherstellen</span>
+            </span>
+          </button>
+        </div>
+        <input
+          ref={dateiRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={importDateiGewaehlt}
+          className="hidden"
+        />
+
+        <div className="mt-2 space-y-2">
           <button
             onClick={onboardingZuruecksetzen}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-left text-sm text-gray-600 transition-colors hover:bg-gray-50"
