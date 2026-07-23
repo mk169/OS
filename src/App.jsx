@@ -136,6 +136,7 @@ const EINSTELLUNGEN_STANDARD = {
   appName: "OS",
   startseite: "dashboard",
   akzent: "indigo",
+  stil: "todo",
 }
 
 // Modul-Metadaten schnell per Schlüssel nachschlagen (für die Navigation
