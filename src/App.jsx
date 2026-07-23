@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { schreibeStore, setzeCloudSession } from "./lib/useStored"
 import useStored from "./lib/useStored"
 import { supabase, cloudAktiv } from "./lib/supabase"
+import { wendeAkzentAn } from "./lib/akzent"
 import Login from "./components/Login"
 import Dashboard from "./components/Dashboard"
 import KalenderSeite from "./components/KalenderSeite"
@@ -133,17 +134,33 @@ const EINSTELLUNGEN_STANDARD = {
   profil: "komplett",
   sichtbareSeiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte"],
   appName: "OS",
+  startseite: "dashboard",
+  akzent: "indigo",
 }
 
+// Modul-Metadaten schnell per Schlüssel nachschlagen (für die Navigation
+// in der vom Nutzer gewählten Reihenfolge).
+const NAV_NACH_KEY = Object.fromEntries(NAV.map((n) => [n.key, n]))
+
 export default function App() {
-  const [seite, setSeite] = useState("dashboard")
+  const [einstellungen, setEinstellungen] = useStored("einstellungen", EINSTELLUNGEN_STANDARD)
+  // Startseite aus den Einstellungen – aber nur, wenn das Modul sichtbar ist.
+  const [seite, setSeite] = useState(() => {
+    const ziel = einstellungen?.startseite ?? "dashboard"
+    const sichtbar = einstellungen?.sichtbareSeiten ?? []
+    return ziel === "dashboard" || sichtbar.includes(ziel) ? ziel : "dashboard"
+  })
   const [param, setParam] = useState(null)
   const [sucheOffen, setSucheOffen] = useState(false)
   const [session, setSession] = useState(null)
   const [authBereit, setAuthBereit] = useState(!cloudAktiv)
-  const [einstellungen, setEinstellungen] = useStored("einstellungen", EINSTELLUNGEN_STANDARD)
 
   useEffect(() => { migriereAlteKurse() }, [])
+
+  // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den Einstellungen).
+  useEffect(() => {
+    wendeAkzentAn(einstellungen?.akzent)
+  }, [einstellungen?.akzent])
 
   useEffect(() => {
     if (!cloudAktiv) return
@@ -198,10 +215,14 @@ export default function App() {
   const abmelden = () => supabase.auth.signOut()
   const appName = einstellungen?.appName || "OS"
   const sichtbareSeiten = einstellungen?.sichtbareSeiten ?? EINSTELLUNGEN_STANDARD.sichtbareSeiten
-  // Dashboard ist immer dabei; Review und Einstellungen kommen separat
-  const sichtbareNav = NAV.filter(
-    (item) => item.key === "dashboard" || sichtbareSeiten.includes(item.key)
-  )
+  // Navigation in der vom Nutzer gewählten Reihenfolge aufbauen. Dashboard ist
+  // immer zuerst dabei; Review und Einstellungen kommen separat.
+  const sichtbareNav = [
+    NAV_NACH_KEY.dashboard,
+    ...sichtbareSeiten
+      .filter((key) => key !== "dashboard" && NAV_NACH_KEY[key])
+      .map((key) => NAV_NACH_KEY[key]),
+  ]
   const mobileKolonnen = sichtbareNav.length
 
   return (
@@ -213,7 +234,7 @@ export default function App() {
           onClick={() => navigiere("dashboard")}
           className="mb-5 flex items-center gap-2.5 px-2 text-sm font-semibold tracking-tight text-white"
         >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-500 text-[13px] font-bold text-white shadow-sm">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-500 text-[13px] font-bold text-white shadow-sm">
             {appName[0]?.toUpperCase() ?? "O"}
           </span>
           <span className="truncate text-white/90">{appName}</span>
@@ -237,7 +258,7 @@ export default function App() {
           onClick={() => navigiere("review")}
           className={`mb-3 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
             seite === "review"
-              ? "bg-indigo-500/20 font-medium text-indigo-300"
+              ? "bg-accent-500/20 font-medium text-accent-300"
               : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
           }`}
         >
@@ -258,7 +279,7 @@ export default function App() {
               onClick={() => navigiere(item.key)}
               className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                 seite === item.key
-                  ? "bg-indigo-500/20 font-medium text-indigo-300"
+                  ? "bg-accent-500/20 font-medium text-accent-300"
                   : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
               }`}
             >
@@ -274,7 +295,7 @@ export default function App() {
             onClick={() => navigiere("einstellungen")}
             className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
               seite === "einstellungen"
-                ? "bg-indigo-500/20 font-medium text-indigo-300"
+                ? "bg-accent-500/20 font-medium text-accent-300"
                 : "text-gray-500 hover:bg-gray-800 hover:text-gray-300"
             }`}
           >
@@ -307,7 +328,7 @@ export default function App() {
           onClick={() => navigiere("dashboard")}
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-500 text-[11px] font-bold text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent-500 text-[11px] font-bold text-white">
             {appName[0]?.toUpperCase() ?? "O"}
           </span>
           <span className="max-w-[120px] truncate">{appName}</span>
@@ -373,11 +394,10 @@ export default function App() {
 
       {/* ── Mobile Tab-Leiste ───────────────────────────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-gray-200 bg-white/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid border-t border-gray-200 bg-white/95 backdrop-blur md:hidden"
         style={{
           paddingBottom: "env(safe-area-inset-bottom)",
           gridTemplateColumns: `repeat(${mobileKolonnen}, minmax(0, 1fr))`,
-          display: "grid",
         }}
       >
         {sichtbareNav.map((item) => (
@@ -386,7 +406,7 @@ export default function App() {
             onClick={() => navigiere(item.key)}
             className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
               seite === item.key
-                ? "font-medium text-indigo-600"
+                ? "font-medium text-accent-600"
                 : "text-gray-400 hover:text-gray-700"
             }`}
           >

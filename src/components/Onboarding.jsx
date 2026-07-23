@@ -90,9 +90,9 @@ function Schritte({ aktuell, gesamt }) {
           key={i}
           className={`h-1.5 rounded-full transition-all ${
             i < aktuell
-              ? "bg-indigo-500 w-8"
+              ? "bg-accent-500 w-8"
               : i === aktuell
-              ? "bg-indigo-400 w-8"
+              ? "bg-accent-400 w-8"
               : "bg-gray-200 w-4"
           }`}
         />
@@ -139,6 +139,8 @@ export default function Onboarding({ onFertig }) {
       profil: profil.id,
       sichtbareSeiten: profil.seiten,
       appName: appName.trim() || "OS",
+      startseite: "dashboard",
+      akzent: "indigo",
     })
     // Habit-Bereiche speichern
     schreibeStore("habitBereiche", STANDARD_BEREICHE, bereiche)
@@ -150,7 +152,7 @@ export default function Onboarding({ onFertig }) {
     return (
       <OnboardingHuelle schritt={0} gesamt={3}>
         <div className="flex flex-col items-center text-center">
-          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-500 shadow-lg shadow-indigo-200">
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-accent-500 shadow-lg shadow-accent-200">
             <span className="text-4xl font-bold text-white">O</span>
           </div>
           <h1 className="mb-2 text-3xl font-semibold tracking-tight text-gray-900">
@@ -170,13 +172,13 @@ export default function Onboarding({ onFertig }) {
               value={appName}
               onChange={(e) => setAppName(e.target.value)}
               placeholder="z.B. Mein OS, Lukas' Brain…"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-indigo-400 focus:bg-white"
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-accent-400 focus:bg-white"
             />
           </label>
 
           <button
             onClick={weiter}
-            className="w-full max-w-xs rounded-xl bg-indigo-500 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-400"
+            className="w-full max-w-xs rounded-xl bg-accent-500 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-400"
           >
             Loslegen →
           </button>
@@ -203,14 +205,14 @@ export default function Onboarding({ onFertig }) {
               onClick={() => setGewaehltesProfil(p)}
               className={`group flex flex-col gap-2 rounded-2xl border-2 p-4 text-left transition-all ${
                 gewaehltesProfil?.id === p.id
-                  ? "border-indigo-500 bg-indigo-50"
+                  ? "border-accent-500 bg-accent-50"
                   : "border-gray-200 bg-white hover:border-gray-300"
               }`}
             >
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-xl ${
                   gewaehltesProfil?.id === p.id
-                    ? "bg-indigo-500 text-white"
+                    ? "bg-accent-500 text-white"
                     : "bg-gray-100 text-gray-500 group-hover:bg-gray-200"
                 }`}
               >
@@ -236,7 +238,7 @@ export default function Onboarding({ onFertig }) {
           <button
             onClick={weiter}
             disabled={!gewaehltesProfil}
-            className="flex-1 rounded-xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-400 disabled:opacity-40"
+            className="flex-1 rounded-xl bg-accent-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-400 disabled:opacity-40"
           >
             Weiter →
           </button>
@@ -293,7 +295,7 @@ export default function Onboarding({ onFertig }) {
             onChange={(e) => setNeuerName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && bereichHinzufuegen()}
             placeholder="Neuer Bereich…"
-            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-indigo-400 focus:bg-white"
+            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-accent-400 focus:bg-white"
           />
           <div className="flex gap-1 rounded-xl border border-gray-200 bg-white px-2.5 py-2">
             {FARBEN_OPTIONEN.map((f) => (
@@ -323,7 +325,7 @@ export default function Onboarding({ onFertig }) {
           </button>
           <button
             onClick={abschliessen}
-            className="flex-1 rounded-xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-400"
+            className="flex-1 rounded-xl bg-accent-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-400"
           >
             Fertig ✓
           </button>
