@@ -8,11 +8,6 @@ import { levelVon, attributLevel } from "../lib/spiel"
 import { Fortschrittsbalken } from "./OrdnerSeite"
 import Seitenkopf from "./Seitenkopf"
 
-// Habits nach dem Atomic-Habits-Prinzip, dargestellt als Wochen-Heatmap
-// (Spalten = Wochen, Zeilen = Tage) mit Wochenziel statt Tages-Streak.
-// Stacking-Ketten erscheinen als verbundene Karte: Anker-Habit, dann die
-// angeknüpften darunter.
-
 const STANDARD_BEREICHE = [
   { id: "koerper", name: "Körper", farbe: "emerald" },
   { id: "bildung", name: "Bildung", farbe: "blue" },
@@ -22,6 +17,11 @@ const STANDARD_BEREICHE = [
 
 const STANDARD_WOCHENZIEL = 3
 const TAG_LABELS = ["Mo", "", "Mi", "", "Fr", "", ""]
+const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
+
+// ──────────────────────────────────────────────────────────────
+// Exportierte Helfer-Funktionen
+// ──────────────────────────────────────────────────────────────
 
 export function useHabitDaten() {
   const [habits, setHabits] = useStored("habits", [])
@@ -38,8 +38,6 @@ export function bereichVon(habit, bereiche) {
   )
 }
 
-// Gruppiert Habits in Stacking-Ketten: jede Kette beginnt mit einem
-// freien Habit, dahinter folgen die angeknüpften in Reihenfolge.
 export function alsKettenListe(habits) {
   const ketten = []
   const kinderVon = (id) => habits.filter((h) => h.stackNachId === id)
@@ -60,8 +58,6 @@ export function alsKettenListe(habits) {
   return ketten
 }
 
-// Die letzten n Kalenderwochen als Montags-Daten (älteste zuerst, letzte
-// = Montag der laufenden Woche).
 function wochenSpalten(n) {
   const spalten = []
   const cursor = montagVon(new Date())
@@ -87,8 +83,6 @@ export function wochenZielErreicht(habit, wocheMontag) {
   return erledigtInWoche(habit, wocheMontag) >= wochenZielVon(habit)
 }
 
-// Streak in Wochen: die laufende Woche zählt nicht als Fehlschlag, wenn
-// sie ihr Ziel noch nicht erreicht hat (sie ist ja noch nicht vorbei).
 export function wochenStreakVon(habit) {
   let zaehler = 0
   const cursor = montagVon(new Date())
@@ -119,8 +113,6 @@ export function nutzeHabitToggle(habits, setHabits) {
   }
 }
 
-// Kleine Zahlen-Auswahl 1–7 für das Wochenziel – sowohl beim Anlegen
-// als auch nachträglich in der Heatmap-Karte nutzbar.
 export function WochenZielAuswahl({ wert, onChange }) {
   return (
     <div className="flex items-center gap-0.5">
@@ -143,8 +135,42 @@ export function WochenZielAuswahl({ wert, onChange }) {
   )
 }
 
-// Ein Habit als Stacking-Heatmap: Spalten = Wochen (Monatslabel bei
-// Monatswechsel), Zeilen = Mo–So. Heute ist klickbar, Zukunft ist leer.
+export function HabitKarten({
+  habits,
+  bereiche,
+  onToggleHeute,
+  onSetWochenZiel,
+  onRemove,
+}) {
+  const ketten = alsKettenListe(habits)
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {ketten.map((kette) => (
+        <div
+          key={kette[0].id}
+          className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4"
+        >
+          {kette.map((habit, i) => (
+            <HabitHeatmapKarte
+              key={habit.id}
+              habit={habit}
+              bereiche={bereiche}
+              onToggleHeute={onToggleHeute}
+              onSetWochenZiel={onSetWochenZiel}
+              onRemove={onRemove}
+              eingerueckt={i > 0}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Komponenten für den Standard-Stil
+// ──────────────────────────────────────────────────────────────
+
 function HabitHeatmapKarte({
   habit,
   bereiche,
@@ -259,40 +285,6 @@ function HabitHeatmapKarte({
   )
 }
 
-// Karten-Raster: eine Karte pro Stacking-Kette, darin je Habit eine
-// Heatmap-Zeile (angeknüpfte Habits mit ↳-Einzug darunter gestapelt).
-export function HabitKarten({
-  habits,
-  bereiche,
-  onToggleHeute,
-  onSetWochenZiel,
-  onRemove,
-}) {
-  const ketten = alsKettenListe(habits)
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {ketten.map((kette) => (
-        <div
-          key={kette[0].id}
-          className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4"
-        >
-          {kette.map((habit, i) => (
-            <HabitHeatmapKarte
-              key={habit.id}
-              habit={habit}
-              bereiche={bereiche}
-              onToggleHeute={onToggleHeute}
-              onSetWochenZiel={onSetWochenZiel}
-              onRemove={onRemove}
-              eingerueckt={i > 0}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function HabitErstellen({
   habits,
   setHabits,
@@ -400,7 +392,7 @@ function HabitErstellen({
         </label>
 
         <label className="flex flex-col text-xs text-gray-500">
-          Anknüpfen an (Habit Stacking)
+          Anknüpfen an (Stacking)
           <select
             value={stackNachId}
             onChange={(e) => setStackNachId(e.target.value)}
@@ -426,7 +418,7 @@ function HabitErstellen({
           <input
             value={bereichName}
             onChange={(e) => setBereichName(e.target.value)}
-            placeholder="Name des Bereichs, z.B. Finanzen"
+            placeholder="Name des Bereichs"
             className="rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-gray-900"
           />
           <div className="flex items-center gap-1.5">
@@ -466,6 +458,10 @@ function HabitErstellen({
   )
 }
 
+// ──────────────────────────────────────────────────────────────
+// Hauptseite – Stil-Routing
+// ──────────────────────────────────────────────────────────────
+
 export default function HabitsSeite() {
   const { habits, setHabits, bereiche, setBereiche } = useHabitDaten()
   const [einstellungen] = useStored("einstellungen", { stil: STIL_STANDARD })
@@ -491,20 +487,29 @@ export default function HabitsSeite() {
     wochenZielErreicht(h, wocheAktuell)
   ).length
 
-  if (stil === "gamified") {
-    return (
-      <HabitsGamified
-        habits={habits}
-        bereiche={bereiche}
-        setHabits={setHabits}
-        setBereiche={setBereiche}
-        toggle={toggle}
-        setWochenZiel={setWochenZiel}
-        remove={remove}
-      />
-    )
+  const gemeinsam = {
+    habits,
+    bereiche,
+    setHabits,
+    setBereiche,
+    toggle,
+    setWochenZiel,
+    remove,
+    amZielCount,
   }
 
+  if (stil === "gamified") return <HabitsGamified {...gemeinsam} />
+  if (stil === "arcade") return <HabitsArcade {...gemeinsam} />
+  if (stil === "cleangirl") return <HabitsCleanGirl {...gemeinsam} />
+  if (stil === "notion") return <HabitsNotion {...gemeinsam} />
+  return <HabitsTodo {...gemeinsam} />
+}
+
+// ──────────────────────────────────────────────────────────────
+// Stil: Todo (Standard) – Klassische Heatmap-Ansicht
+// ──────────────────────────────────────────────────────────────
+
+function HabitsTodo({ habits, bereiche, toggle, setWochenZiel, remove, amZielCount }) {
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <Seitenkopf
@@ -512,9 +517,9 @@ export default function HabitsSeite() {
         aktion={
           <HabitErstellen
             habits={habits}
-            setHabits={setHabits}
+            setHabits={habits}
             bereiche={bereiche}
-            setBereiche={setBereiche}
+            setBereiche={bereiche}
           />
         }
       />
@@ -565,9 +570,181 @@ export default function HabitsSeite() {
   )
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
- * Gamified-Stil: „Training" – Habits als Fähigkeiten, Bereiche als Attribute.
- * ════════════════════════════════════════════════════════════════════════ */
+// ──────────────────────────────────────────────────────────────
+// Stil: Arcade – Retro Terminal
+// ──────────────────────────────────────────────────────────────
+
+function HabitsArcade({ habits, _bereiche, toggle, _remove }) {
+  const completionsCount = habits.reduce((s, h) => s + h.erledigtAn.length, 0)
+  const score = completionsCount * 50
+  const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
+
+  return (
+    <div className="min-h-screen bg-black px-4 py-6 text-white sm:px-6">
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-6 text-center">
+          <p style={{ fontFamily: '"Press Start 2P"' }} className="text-[10px] text-yellow-300">
+            TRAINING MODE
+          </p>
+          <p className="mt-2 text-[12px] text-white/70">Score: {String(score).padStart(5, "0")}</p>
+          <p className="text-[10px] text-amber-400">🔥 Streak: {bestStreak}</p>
+        </div>
+
+        {habits.length === 0 ? (
+          <p className="rounded border-2 border-blue-800 py-8 text-center text-xl text-white/50">
+            NO HABITS LOADED
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {habits.map((h) => (
+              <button
+                key={h.id}
+                onClick={() => toggle(h)}
+                className="flex w-full items-center gap-3 rounded border-2 border-cyan-600 bg-cyan-900/20 px-3 py-2 text-left transition-colors hover:border-cyan-300"
+              >
+                <span className="text-[10px] font-bold text-cyan-400">
+                  {h.erledigtAn.includes(hoje()) ? "✓" : "○"}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm text-cyan-300">{h.name}</span>
+                <span className="text-[10px] text-cyan-400">🔥{wochenStreakVon(h)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Stil: Clean Girl – Soft & elegant
+// ──────────────────────────────────────────────────────────────
+
+function HabitsCleanGirl({ habits, _bereiche, toggle, remove }) {
+  const completionsToday = habits.filter((h) =>
+    h.erledigtAn.includes(heute())
+  ).length
+
+  return (
+    <div className="mx-auto max-w-2xl px-6 py-12">
+      <div className="mb-10">
+        <p style={{ fontFamily: FONT_SERIF_ELEGANT }} className="text-4xl text-rose-400">
+          daily rituals ♡
+        </p>
+        <p className="mt-2 text-sm text-rose-300">
+          {completionsToday}/{habits.length} today
+        </p>
+      </div>
+
+      {habits.length === 0 ? (
+        <p className="rounded-3xl bg-white/60 py-10 text-center text-sm text-rose-400">
+          start a new ritual ♡
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {habits.map((h) => {
+            const dranHeute = h.erledigtAn.includes(heute())
+            return (
+              <li
+                key={h.id}
+                className="group flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3 shadow-[0_10px_30px_-20px_rgba(219,112,147,0.6)] backdrop-blur-sm"
+              >
+                <button
+                  onClick={() => toggle(h)}
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-rose-300 text-rose-400 transition-colors hover:bg-rose-100"
+                  title="Heute trainieren"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={`h-3 w-3 ${dranHeute ? "opacity-100" : "opacity-0"}`}
+                  >
+                    <path d="m5 12 5 5L20 7" />
+                  </svg>
+                </button>
+                <span
+                  className={`min-w-0 flex-1 truncate text-[14px] ${
+                    dranHeute ? "text-rose-300/50 line-through" : "text-rose-700"
+                  }`}
+                >
+                  {h.name}
+                </span>
+                <span className="text-[11px] text-rose-300">🔥{wochenStreakVon(h)}</span>
+                <button
+                  onClick={() => remove(h.id)}
+                  className="text-rose-200 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
+                >
+                  ×
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Stil: Notion – Minimal & subtil
+// ──────────────────────────────────────────────────────────────
+
+function HabitsNotion({ habits, _bereiche, toggle, remove }) {
+  return (
+    <div className="mx-auto max-w-2xl px-6 py-12">
+      <div className="mb-10">
+        <div className="text-5xl">💪</div>
+        <h1 className="mt-3 text-4xl font-bold tracking-tight text-gray-900">Habits</h1>
+      </div>
+
+      <section className="mb-12">
+        <div className="mb-3 border-b border-gray-100 pb-1.5">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+            Deine Fähigkeiten
+          </p>
+        </div>
+
+        {habits.length === 0 ? (
+          <p className="px-2 py-3 text-sm text-gray-300">Noch keine Habits.</p>
+        ) : (
+          <ul>
+            {habits.map((h) => {
+              const dran = h.erledigtAn.includes(heute())
+              return (
+                <li key={h.id} className="group flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={dran}
+                    onChange={() => toggle(h)}
+                    className="h-[15px] w-[15px] shrink-0 rounded accent-gray-800"
+                  />
+                  <span className={`min-w-0 flex-1 truncate text-[15px] ${dran ? "text-gray-400 line-through" : "text-gray-700"}`}>
+                    {h.name}
+                  </span>
+                  <span className="text-[11px] text-gray-400">🔥{wochenStreakVon(h)}</span>
+                  <button
+                    onClick={() => remove(h.id)}
+                    className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-gray-500 group-hover:opacity-100"
+                  >
+                    ×
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Gamified – RPG Training System
+// ──────────────────────────────────────────────────────────────
 
 function attributEmoji(name) {
   const n = name.toLowerCase()
@@ -715,7 +892,6 @@ function HabitsGamified({
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-slate-900 to-slate-950 px-5 py-8 text-white sm:px-6">
       <div className="mx-auto max-w-3xl">
-        {/* Helden-Header */}
         <div className="mb-6 rounded-3xl border border-white/10 bg-white/5 p-5">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -749,7 +925,6 @@ function HabitsGamified({
           </div>
         </div>
 
-        {/* Attribute (Bereiche) */}
         {bereiche.length > 0 && (
           <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {bereiche.map((b) => {
@@ -779,7 +954,6 @@ function HabitsGamified({
           </div>
         )}
 
-        {/* Anlegen */}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-bold uppercase tracking-wider text-white/70">Fähigkeiten</h2>
           <HabitErstellen

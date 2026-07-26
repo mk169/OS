@@ -6,22 +6,65 @@ import { rangVon, xpVonTodos, levelVon } from "../lib/spiel"
 import Seitenkopf from "./Seitenkopf"
 import TodoErstellen, { EINTEILUNGEN, einteilungVon } from "./TodoErstellen"
 
-export function TodoZeile({ todo, onToggle, onRemove, zuordnungsName }) {
+const FONT_ARCADE = '"Press Start 2P", ui-monospace, monospace'
+const FONT_TERMINAL = '"VT323", ui-monospace, "SF Mono", Menlo, monospace'
+const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
+
+const GEISTER_FARBEN = {
+  "wichtig-dringend": "#ff0000",
+  wichtig: "#ffb8ff",
+  dringend: "#ffb852",
+  sonstige: "#00ffff",
+}
+
+export default function TodosSeite() {
+  const [todos, setTodos] = useStored("todos", [])
+  const [projekte] = useStored("projekte", [])
+  const [einstellungen] = useStored("einstellungen", { stil: STIL_STANDARD })
+  const stil = normalisiereStil(einstellungen?.stil)
+
+  function zuordnungsName(todo) {
+    const id = todo.projektId ?? todo.kursId
+    return id ? projekte.find((p) => p.id === id)?.name : null
+  }
+
+  function toggle(id) {
+    setTodos(todos.map((t) => (t.id === id ? { ...t, erledigt: !t.erledigt } : t)))
+  }
+
+  function remove(id) {
+    setTodos(todos.filter((t) => t.id !== id))
+  }
+
+  const offene = todos.filter((t) => !t.erledigt)
+  const erledigte = todos.filter((t) => t.erledigt)
+  const gemeinsam = { todos, offene, erledigte, toggle, remove, zuordnungsName }
+
+  if (stil === "gamified") return <TodosGamified {...gemeinsam} />
+  if (stil === "arcade") return <TodosArcade {...gemeinsam} />
+  if (stil === "cleangirl") return <TodosCleanGirl {...gemeinsam} />
+  if (stil === "notion") return <TodosNotion {...gemeinsam} />
+  return <TodosTodo {...gemeinsam} />
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Stil „Todo-Liste" – klare Karten, farbige Punkte (Todoist)
+ * ════════════════════════════════════════════════════════════════════════ */
+
+function TodoRow({ todo, onToggle, onRemove, zuordnungsName }) {
   const einteilung = einteilungVon(todo)
   return (
-    <li className="group flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2">
-      <span className={`h-2 w-2 shrink-0 rounded-full ${einteilung.punkt}`} />
-      <input
-        type="checkbox"
-        checked={!!todo.erledigt}
-        onChange={() => onToggle(todo.id)}
-        className="h-4 w-4 accent-gray-900"
-      />
-      <span
-        className={`flex-1 truncate text-sm ${
-          todo.erledigt ? "text-gray-400 line-through" : "text-gray-800"
-        }`}
+    <li className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm shadow-gray-100 transition-colors hover:border-gray-300">
+      <button
+        onClick={() => onToggle(todo.id)}
+        title="Als erledigt markieren"
+        className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-current transition-colors ${einteilung.text}`}
       >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <path d="m5 12 5 5L20 7" />
+        </svg>
+      </button>
+      <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
         {todo.text}
       </span>
       {zuordnungsName && (
@@ -46,73 +89,48 @@ export function TodoZeile({ todo, onToggle, onRemove, zuordnungsName }) {
   )
 }
 
-export default function TodosSeite() {
-  const [todos, setTodos] = useStored("todos", [])
-  const [projekte] = useStored("projekte", [])
-  const [einstellungen] = useStored("einstellungen", { stil: STIL_STANDARD })
-  const stil = normalisiereStil(einstellungen?.stil)
+function StatKachel({ wert, label, akzent }) {
+  return (
+    <div className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm shadow-gray-100">
+      <p className={`text-2xl font-bold tracking-tight ${akzent ? "text-accent-600" : "text-gray-900"}`}>
+        {wert}
+      </p>
+      <p className="mt-0.5 text-xs font-medium text-gray-400">{label}</p>
+    </div>
+  )
+}
 
-  function zuordnungsName(todo) {
-    const id = todo.projektId ?? todo.kursId
-    return id ? projekte.find((p) => p.id === id)?.name : null
-  }
-
-  function toggle(id) {
-    setTodos(
-      todos.map((t) => (t.id === id ? { ...t, erledigt: !t.erledigt } : t))
-    )
-  }
-
-  function remove(id) {
-    setTodos(todos.filter((t) => t.id !== id))
-  }
-
-  const offene = todos.filter((t) => !t.erledigt)
-  const erledigte = todos.filter((t) => t.erledigt)
-
-  if (stil === "gamified") {
-    return (
-      <TodosGamified
-        todos={todos}
-        offene={offene}
-        erledigte={erledigte}
-        toggle={toggle}
-        remove={remove}
-        zuordnungsName={zuordnungsName}
-      />
-    )
-  }
+function TodosTodo({ _todos, offene, erledigte, toggle, remove, zuordnungsName }) {
+  const heuteFaellig = offene.filter((t) => t.datum && t.datum <= new Date().toISOString().split("T")[0]).length
+  const erledigt = erledigte.length
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6">
       <Seitenkopf titel="Todos" aktion={<TodoErstellen />} />
 
-      <div className="mt-8 space-y-8">
+      <div className="mb-8 mt-8 flex gap-3">
+        <StatKachel wert={offene.length} label="offene Aufgaben" akzent />
+        <StatKachel wert={heuteFaellig} label="heute fällig" />
+        <StatKachel wert={erledigt} label="erledigt" />
+      </div>
+
+      <div className="space-y-8">
         {EINTEILUNGEN.map((gruppe) => {
           const eintraege = offene
             .filter((t) => gruppe.passt(t))
             .sort((a, b) => (a.datum || "9999").localeCompare(b.datum || "9999"))
+          if (eintraege.length === 0) return null
           return (
             <section key={gruppe.key}>
               <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-500">
                 <span className={`h-2 w-2 rounded-full ${gruppe.punkt}`} />
                 {gruppe.label} ({eintraege.length})
               </h2>
-              {eintraege.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-300">Nichts offen.</p>
-              ) : (
-                <ul className="mt-2 space-y-1.5">
-                  {eintraege.map((t) => (
-                    <TodoZeile
-                      key={t.id}
-                      todo={t}
-                      onToggle={toggle}
-                      onRemove={remove}
-                      zuordnungsName={zuordnungsName(t)}
-                    />
-                  ))}
-                </ul>
-              )}
+              <ul className="mt-2 space-y-2">
+                {eintraege.map((t) => (
+                  <TodoRow key={t.id} todo={t} onToggle={toggle} onRemove={remove} zuordnungsName={zuordnungsName(t)} />
+                ))}
+              </ul>
             </section>
           )
         })}
@@ -122,20 +140,360 @@ export default function TodosSeite() {
             <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
               Erledigt ({erledigte.length})
             </h2>
-            <ul className="mt-2 space-y-1.5">
+            <ul className="mt-2 space-y-2">
               {erledigte.map((t) => (
-                <TodoZeile
-                  key={t.id}
-                  todo={t}
-                  onToggle={toggle}
-                  onRemove={remove}
-                  zuordnungsName={zuordnungsName(t)}
-                />
+                <TodoRow key={t.id} todo={t} onToggle={toggle} onRemove={remove} zuordnungsName={zuordnungsName(t)} />
               ))}
             </ul>
           </section>
         )}
       </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Stil „Arcade" – Retro Pac-Man im Terminal-Stil
+ * ════════════════════════════════════════════════════════════════════════ */
+
+function PacIcon({ size = 16 }) {
+  return (
+    <svg viewBox="0 0 32 32" width={size} height={size} className="shrink-0">
+      <path fill="#ffd400" d="M16 16 L31 8.5 A16 16 0 1 0 31 23.5 Z" />
+    </svg>
+  )
+}
+
+function GhostIcon({ size = 24, color = "#ff0000" }) {
+  return (
+    <svg viewBox="0 0 32 32" width={size} height={size} className="shrink-0">
+      <path
+        fill={color}
+        d="M4 30 V15 a12 12 0 0 1 24 0 V30 l-4-3 -4 3 -4-3 -4 3 -4-3 -4 3 Z"
+      />
+      <circle cx="12" cy="15" r="3.4" fill="#fff" />
+      <circle cx="21" cy="15" r="3.4" fill="#fff" />
+      <circle cx="13" cy="15.5" r="1.7" fill="#2121ff" />
+      <circle cx="22" cy="15.5" r="1.7" fill="#2121ff" />
+    </svg>
+  )
+}
+
+function PacLane({ label, wert, max }) {
+  const n = 14
+  const gegessen = max > 0 ? Math.round((wert / max) * n) : 0
+  return (
+    <div>
+      <div className="flex items-center justify-between" style={{ fontFamily: FONT_ARCADE }}>
+        <span className="text-[8px] text-white/70">{label}</span>
+        <span className="text-[8px] text-yellow-300">
+          {wert}/{max}
+        </span>
+      </div>
+      <div className="mt-1.5 flex items-center gap-1 rounded border-2 border-blue-700 bg-black px-2 py-1.5">
+        {Array.from({ length: n }).map((_, i) => {
+          if (i < gegessen) return <span key={i} className="h-2 w-2 shrink-0" />
+          if (i === gegessen) return <PacIcon key={i} size={12} />
+          return (
+            <span key={i} className="h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-200/80" />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function ArcadeGhostRow({ label, meta, color, erledigt, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      className="flex w-full items-center gap-3 rounded border-2 border-blue-800 bg-blue-950/40 px-3 py-2.5 text-left transition-colors hover:border-blue-400"
+    >
+      <GhostIcon size={26} color={color} />
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate text-lg leading-tight ${erledigt ? "text-white/40 line-through" : "text-white"}`}>
+          {label}
+        </span>
+        {meta && <span className="block truncate text-sm text-white/40">{meta}</span>}
+      </span>
+      <span style={{ fontFamily: FONT_ARCADE }} className="shrink-0 text-[8px] text-yellow-300">
+        {erledigt ? "200" : "•••"}
+      </span>
+    </button>
+  )
+}
+
+function TodosArcade({ _todos, offene, erledigte, toggle, _remove, _zuordnungsName }) {
+  const erledigtGesamt = erledigte.length
+  const level = Math.floor(erledigtGesamt / 10) + 1
+  const score = erledigtGesamt * 100
+  const hiScore = (erledigtGesamt + offene.length) * 100
+
+  const todoQuests = offene.slice(0, 8)
+
+  return (
+    <div style={{ fontFamily: FONT_TERMINAL }} className="min-h-screen bg-black px-4 py-6 text-white sm:px-6">
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-6 grid grid-cols-3 items-start" style={{ fontFamily: FONT_ARCADE }}>
+          <div>
+            <p className="text-[8px] text-white/70">1UP</p>
+            <p className="mt-1.5 text-[12px] text-white">{String(score).padStart(5, "0")}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[8px] text-red-500">HIGH SCORE</p>
+            <p className="mt-1.5 text-[12px] text-yellow-300">{String(hiScore).padStart(5, "0")}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[8px] text-white/70">LEVEL</p>
+            <p className="mt-1.5 text-[12px] text-yellow-300">{level}</p>
+          </div>
+        </div>
+
+        <div className="mb-6 flex items-center gap-3">
+          <PacIcon size={30} />
+          <div className="min-w-0">
+            <h1 style={{ fontFamily: FONT_ARCADE }} className="text-[13px] leading-tight text-yellow-300">
+              READY!
+            </h1>
+            <p className="truncate text-xl leading-tight text-white/70">Todos</p>
+          </div>
+        </div>
+
+        <div className="mb-7 space-y-3">
+          <PacLane label="ERLEDIGT" wert={erledigtGesamt} max={erledigtGesamt + offene.length} />
+          <PacLane label="OFFEN" wert={offene.length} max={offene.length + erledigtGesamt} />
+        </div>
+
+        <div className="mb-3">
+          <h2 style={{ fontFamily: FONT_ARCADE }} className="text-[10px] text-white">
+            ◄ QUESTS ►
+          </h2>
+        </div>
+
+        {todoQuests.length === 0 ? (
+          <p className="rounded border-2 border-blue-800 py-8 text-center text-xl text-white/50">
+            GAME OVER — alle Quests erledigt!
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {todoQuests.map((t) => {
+              const ghostColor = GEISTER_FARBEN[einteilungVon(t).key] ?? "#00ffff"
+              return (
+                <ArcadeGhostRow
+                  key={t.id}
+                  label={t.text}
+                  meta={t.datum ? tageBis(t.datum) : null}
+                  color={ghostColor}
+                  erledigt={false}
+                  onToggle={() => toggle(t.id)}
+                />
+              )
+            })}
+          </div>
+        )}
+
+        {erledigte.length > 0 && (
+          <div className="mt-6 space-y-2">
+            <h2 style={{ fontFamily: FONT_ARCADE }} className="text-[10px] text-emerald-400">
+              ◄ CAUGHT ►
+            </h2>
+            {erledigte.slice(0, 5).map((t) => {
+              const ghostColor = GEISTER_FARBEN[einteilungVon(t).key] ?? "#00ffff"
+              return (
+                <ArcadeGhostRow
+                  key={t.id}
+                  label={t.text}
+                  meta="200"
+                  color={ghostColor}
+                  erledigt={true}
+                  onToggle={() => toggle(t.id)}
+                />
+              )
+            })}
+            {erledigte.length > 5 && (
+              <p style={{ fontFamily: FONT_ARCADE }} className="text-[8px] text-white/50">
+                +{erledigte.length - 5} more
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-4">
+          <TodoErstellen
+            knopfKlasse="inline-flex items-center gap-2 rounded border-2 border-yellow-400 bg-black px-4 py-2 text-sm text-yellow-300 transition-colors hover:bg-yellow-400 hover:text-black"
+            knopfInhalt="+ INSERT COIN"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Stil „Clean Girl" – soft, pastellrosa, elegant
+ * ════════════════════════════════════════════════════════════════════════ */
+
+function CleanGirlZeile({ todo, onToggle, onRemove, zuordnungsName }) {
+  return (
+    <li className="group flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3 shadow-[0_10px_30px_-20px_rgba(219,112,147,0.6)] backdrop-blur-sm">
+      <button
+        onClick={() => onToggle(todo.id)}
+        title="Als erledigt markieren"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-rose-300 text-rose-400 transition-colors hover:bg-rose-100"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100">
+          <path d="m5 12 5 5L20 7" />
+        </svg>
+      </button>
+      <span className={`min-w-0 flex-1 truncate text-[14px] ${todo.erledigt ? "text-rose-300/50 line-through" : "text-rose-700"}`}>
+        {todo.text}
+      </span>
+      {zuordnungsName && (
+        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] text-rose-500">
+          {zuordnungsName}
+        </span>
+      )}
+      {todo.datum && (
+        <span className="text-[11px] text-rose-300">{tageBis(todo.datum)}</span>
+      )}
+      <button
+        onClick={() => onRemove(todo.id)}
+        className="text-rose-200 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
+      >
+        ×
+      </button>
+    </li>
+  )
+}
+
+function TodosCleanGirl({ offene, erledigte, toggle, remove, zuordnungsName }) {
+  return (
+    <div className="mx-auto max-w-2xl px-6 py-12">
+      <div className="mb-10">
+        <p style={{ fontFamily: FONT_SERIF_ELEGANT }} className="text-4xl text-rose-400">
+          to-do ♡
+        </p>
+        <p className="mt-2 text-sm text-rose-300">
+          {offene.length} {offene.length === 1 ? "task" : "tasks"} to go
+        </p>
+      </div>
+
+      <div className="mb-6 flex items-center justify-between">
+        <p style={{ fontFamily: FONT_SERIF_ELEGANT }} className="text-sm italic text-rose-500">
+          ongoing
+        </p>
+        <TodoErstellen
+          knopfKlasse="inline-flex items-center gap-1.5 rounded-full bg-rose-400 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-rose-500"
+          knopfInhalt="+ hinzufügen"
+        />
+      </div>
+
+      {offene.length === 0 ? (
+        <p className="rounded-3xl bg-white/60 py-10 text-center text-sm text-rose-400">
+          alles erledigt ♡
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {offene.map((t) => (
+            <CleanGirlZeile key={t.id} todo={t} onToggle={toggle} onRemove={remove} zuordnungsName={zuordnungsName(t)} />
+          ))}
+        </ul>
+      )}
+
+      {erledigte.length > 0 && (
+        <div className="mt-12">
+          <p style={{ fontFamily: FONT_SERIF_ELEGANT }} className="mb-3 text-sm italic text-rose-300">
+            finished
+          </p>
+          <ul className="space-y-2 opacity-60">
+            {erledigte.slice(0, 5).map((t) => (
+              <CleanGirlZeile key={t.id} todo={t} onToggle={toggle} onRemove={remove} zuordnungsName={zuordnungsName(t)} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Stil „Notion" – minimal, subtil, Haarlinien
+ * ════════════════════════════════════════════════════════════════════════ */
+
+function NotionZeile({ todo, onToggle, onRemove, zuordnungsName }) {
+  return (
+    <li className="group flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-gray-50">
+      <input
+        type="checkbox"
+        checked={!!todo.erledigt}
+        onChange={() => onToggle(todo.id)}
+        className="h-[15px] w-[15px] shrink-0 rounded accent-gray-800"
+      />
+      <span className={`min-w-0 flex-1 truncate text-[15px] ${todo.erledigt ? "text-gray-400 line-through" : "text-gray-700"}`}>
+        {todo.text}
+      </span>
+      {zuordnungsName && (
+        <span className="shrink-0 text-xs text-gray-400">{zuordnungsName}</span>
+      )}
+      {todo.datum && (
+        <span className="shrink-0 text-xs text-gray-400">{tageBis(todo.datum)}</span>
+      )}
+      <button
+        onClick={() => onRemove(todo.id)}
+        className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-gray-500 group-hover:opacity-100"
+      >
+        ×
+      </button>
+    </li>
+  )
+}
+
+function TodosNotion({ offene, erledigte, toggle, remove, zuordnungsName }) {
+  return (
+    <div className="mx-auto max-w-2xl px-6 py-12">
+      <div className="mb-10">
+        <div className="text-5xl">✅</div>
+        <h1 className="mt-3 text-4xl font-bold tracking-tight text-gray-900">
+          Todos
+        </h1>
+      </div>
+
+      <section className="mb-12">
+        <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-1.5">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+            offene Aufgaben ({offene.length})
+          </p>
+          <TodoErstellen
+            knopfKlasse="text-sm text-gray-400 transition-colors hover:text-gray-800"
+            knopfInhalt="+ Neu"
+          />
+        </div>
+
+        {offene.length === 0 ? (
+          <p className="px-2 py-3 text-sm text-gray-300">Keine offenen Aufgaben.</p>
+        ) : (
+          <ul>
+            {offene.map((t) => (
+              <NotionZeile key={t.id} todo={t} onToggle={toggle} onRemove={remove} zuordnungsName={zuordnungsName(t)} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {erledigte.length > 0 && (
+        <section>
+          <div className="mb-3 border-b border-gray-100 pb-1.5">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+              erledigt ({erledigte.length})
+            </p>
+          </div>
+          <ul>
+            {erledigte.slice(0, 10).map((t) => (
+              <NotionZeile key={t.id} todo={t} onToggle={toggle} onRemove={remove} zuordnungsName={zuordnungsName(t)} />
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   )
 }
@@ -324,3 +682,5 @@ function TodosGamified({ todos, offene, erledigte, toggle, remove, zuordnungsNam
     </div>
   )
 }
+
+export { TodoRow as TodoZeile }
