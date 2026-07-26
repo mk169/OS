@@ -3,6 +3,8 @@ import useStored from "../lib/useStored"
 import { heute, montagVon, wochenSchluessel } from "../lib/datum"
 import { schluessel } from "./Kalender"
 import { FARBEN } from "../lib/farben"
+import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
+import { levelVon, attributLevel } from "../lib/spiel"
 import { Fortschrittsbalken } from "./OrdnerSeite"
 import Seitenkopf from "./Seitenkopf"
 
@@ -291,7 +293,14 @@ export function HabitKarten({
   )
 }
 
-function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
+function HabitErstellen({
+  habits,
+  setHabits,
+  bereiche,
+  setBereiche,
+  knopfKlasse = null,
+  knopfInhalt = null,
+}) {
   const [offen, setOffen] = useState(false)
   const [name, setName] = useState("")
   const [bereichId, setBereichId] = useState(bereiche[0]?.id ?? "")
@@ -340,10 +349,13 @@ function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
     return (
       <button
         onClick={() => setOffen(true)}
-        className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-900 text-white transition-colors hover:bg-gray-700"
+        className={
+          knopfKlasse ??
+          "flex h-8 w-8 items-center justify-center rounded-md bg-gray-900 text-white transition-colors hover:bg-gray-700"
+        }
         title="Habit erstellen"
       >
-        +
+        {knopfInhalt ?? "+"}
       </button>
     )
   }
@@ -456,6 +468,8 @@ function HabitErstellen({ habits, setHabits, bereiche, setBereiche }) {
 
 export default function HabitsSeite() {
   const { habits, setHabits, bereiche, setBereiche } = useHabitDaten()
+  const [einstellungen] = useStored("einstellungen", { stil: STIL_STANDARD })
+  const stil = normalisiereStil(einstellungen?.stil)
   const toggle = nutzeHabitToggle(habits, setHabits)
   const wocheAktuell = montagVon(new Date())
 
@@ -476,6 +490,20 @@ export default function HabitsSeite() {
   const amZielCount = habits.filter((h) =>
     wochenZielErreicht(h, wocheAktuell)
   ).length
+
+  if (stil === "gamified") {
+    return (
+      <HabitsGamified
+        habits={habits}
+        bereiche={bereiche}
+        setHabits={setHabits}
+        setBereiche={setBereiche}
+        toggle={toggle}
+        setWochenZiel={setWochenZiel}
+        remove={remove}
+      />
+    )
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
@@ -533,6 +561,261 @@ export default function HabitsSeite() {
           })}
         </div>
       </section>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Gamified-Stil: „Training" – Habits als Fähigkeiten, Bereiche als Attribute.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+function attributEmoji(name) {
+  const n = name.toLowerCase()
+  if (/(körper|koerper|sport|fitness|gesund)/.test(n)) return "💪"
+  if (/(bildung|lernen|wissen|studium|schule)/.test(n)) return "🧠"
+  if (/(arbeit|beruf|work|business|karriere)/.test(n)) return "⚒️"
+  if (/(achtsam|medit|geist|mental|ruhe)/.test(n)) return "🧘"
+  if (/(finanz|geld|money|spar)/.test(n)) return "💰"
+  if (/(sozial|freund|familie|beziehung)/.test(n)) return "🤝"
+  return "⭐"
+}
+
+const RUNEN_LABELS = ["M", "D", "M", "D", "F", "S", "S"]
+
+function WochenRunen({ habit, farbe, onToggleHeute }) {
+  const heuteKey = heute()
+  const montag = montagVon(new Date())
+  return (
+    <div className="flex gap-1">
+      {RUNEN_LABELS.map((label, i) => {
+        const d = new Date(montag)
+        d.setDate(d.getDate() + i)
+        const key = schluessel(d)
+        const done = habit.erledigtAn.includes(key)
+        const future = key > heuteKey
+        const istHeute = key === heuteKey
+        return (
+          <button
+            key={i}
+            type="button"
+            disabled={future}
+            onClick={istHeute ? () => onToggleHeute(habit) : undefined}
+            title={d.toLocaleDateString("de-DE")}
+            className={`flex h-6 w-6 items-center justify-center rounded-md text-[9px] font-bold transition-colors ${
+              done
+                ? `${farbe.punkt} text-white`
+                : future
+                  ? "bg-white/5 text-white/15"
+                  : istHeute
+                    ? `border border-dashed ${farbe.ring} text-white/60`
+                    : "bg-white/10 text-white/25"
+            }`}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function HabitGamifiedKarte({
+  habit,
+  bereiche,
+  onToggleHeute,
+  onSetWochenZiel,
+  onRemove,
+  eingerueckt,
+}) {
+  const farbe = FARBEN[bereichVon(habit, bereiche).farbe] ?? FARBEN.gray
+  const dranHeute = habit.erledigtAn.includes(heute())
+  const streak = wochenStreakVon(habit)
+  const ziel = wochenZielVon(habit)
+  const inWoche = erledigtInWoche(habit, montagVon(new Date()))
+  const fortschritt = ziel > 0 ? Math.min(100, Math.round((inWoche / ziel) * 100)) : 0
+
+  return (
+    <div
+      className={`rounded-2xl border border-white/10 bg-white/5 p-4 ${
+        eingerueckt ? "ml-4 border-l-2 border-l-white/20" : ""
+      }`}
+    >
+      <div className="group flex items-start gap-2">
+        {eingerueckt && <span className="text-white/30">⛓</span>}
+        <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${farbe.punkt}`} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white">{habit.name}</p>
+          <p className="text-[11px] text-white/40">
+            {streak > 0
+              ? `🔥 ${streak} ${streak === 1 ? "Woche" : "Wochen"} Streak`
+              : `${inWoche}/${ziel} diese Woche`}
+          </p>
+        </div>
+        {onRemove && (
+          <button
+            onClick={() => onRemove(habit.id)}
+            title="Fähigkeit löschen"
+            className="text-white/20 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+          <div
+            className={`h-full rounded-full ${farbe.punkt} transition-all duration-500`}
+            style={{ width: `${fortschritt}%` }}
+          />
+        </div>
+        <span className="shrink-0 text-[10px] text-white/40">
+          {inWoche}/{ziel} XP
+        </span>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <WochenRunen habit={habit} farbe={farbe} onToggleHeute={onToggleHeute} />
+        <button
+          onClick={() => onToggleHeute(habit)}
+          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+            dranHeute
+              ? "bg-amber-400 text-slate-900"
+              : "bg-white/10 text-white hover:bg-white/20"
+          }`}
+        >
+          {dranHeute ? "✓ Trainiert" : "Heute trainieren"}
+        </button>
+      </div>
+
+      {onSetWochenZiel && (
+        <div className="mt-3 flex items-center gap-2 text-[10px] text-white/40">
+          Ziel/Woche
+          <WochenZielAuswahl wert={ziel} onChange={(z) => onSetWochenZiel(habit, z)} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function HabitsGamified({
+  habits,
+  bereiche,
+  setHabits,
+  setBereiche,
+  toggle,
+  setWochenZiel,
+  remove,
+}) {
+  const totalCompletions = habits.reduce((s, h) => s + h.erledigtAn.length, 0)
+  const { level, xpInLevel, xpProLevel, fortschritt } = levelVon(totalCompletions * 5)
+  const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
+  const ketten = alsKettenListe(habits)
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-slate-900 to-slate-950 px-5 py-8 text-white sm:px-6">
+      <div className="mx-auto max-w-3xl">
+        {/* Helden-Header */}
+        <div className="mb-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-2xl shadow-lg">
+                🧙
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-violet-300">
+                  Training
+                </p>
+                <h1 style={{ fontFamily: "var(--font-sans)" }} className="text-2xl font-bold">
+                  Level {level}
+                </h1>
+              </div>
+            </div>
+            <div className="text-right text-sm">
+              <p className="font-bold text-amber-300">🔥 {bestStreak}</p>
+              <p className="text-white/50">{habits.length} Skills</p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400 transition-all duration-500"
+                style={{ width: `${fortschritt}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[11px] font-medium text-white/50">
+              {xpInLevel}/{xpProLevel} XP
+            </span>
+          </div>
+        </div>
+
+        {/* Attribute (Bereiche) */}
+        {bereiche.length > 0 && (
+          <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {bereiche.map((b) => {
+              const farbe = FARBEN[b.farbe] ?? FARBEN.gray
+              const count = habits
+                .filter((h) => h.bereichId === b.id)
+                .reduce((s, h) => s + h.erledigtAn.length, 0)
+              const attr = attributLevel(count)
+              return (
+                <div key={b.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">{attributEmoji(b.name)}</span>
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-white/80">
+                      {b.name}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-lg font-bold">Lv {attr.level}</p>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className={`h-full rounded-full ${farbe.punkt}`}
+                      style={{ width: `${attr.fortschritt}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Anlegen */}
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-white/70">Fähigkeiten</h2>
+          <HabitErstellen
+            habits={habits}
+            setHabits={setHabits}
+            bereiche={bereiche}
+            setBereiche={setBereiche}
+            knopfKlasse="inline-flex items-center gap-1.5 rounded-full bg-violet-500 px-4 py-1.5 text-sm font-bold text-white transition-colors hover:bg-violet-400"
+            knopfInhalt="+ Neue Fähigkeit"
+          />
+        </div>
+
+        {habits.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/15 py-12 text-center text-sm text-white/40">
+            Noch keine Fähigkeiten. Trainiere deine erste! 🗡️
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {ketten.map((kette) => (
+              <div key={kette[0].id} className="space-y-2">
+                {kette.map((habit, i) => (
+                  <HabitGamifiedKarte
+                    key={habit.id}
+                    habit={habit}
+                    bereiche={bereiche}
+                    onToggleHeute={toggle}
+                    onSetWochenZiel={setWochenZiel}
+                    onRemove={remove}
+                    eingerueckt={i > 0}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
