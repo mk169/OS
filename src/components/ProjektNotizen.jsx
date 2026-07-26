@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import useStored from "../lib/useStored"
 import { WIKILINK_REGEX, findeZiel, sammleBacklinks } from "../lib/wikilinks"
+import { teileMitTags, sammleTags } from "../lib/tags"
 
 // Lehrinhalte: eigene Notizen und Zusammenfassungen zum Projekt, als
 // Karten-Raster zum Sammeln und Stapeln. Klick öffnet die Notiz groß in
@@ -103,6 +104,7 @@ export default function ProjektNotizen({
           projekte={projekte}
           notizen={alleNotizen}
           onZielKlick={zielKlick}
+          onTagKlick={() => onNavigate?.("sammeln", "tags")}
         />
       )}
     </div>
@@ -196,9 +198,26 @@ export function NotizenRaster({
 const MENTION_ERKENNEN = /(?:^|\s)@([^\s@]*)$/
 const MENTION_ENTFERNEN = /(?:^|\s)@[^\s@]*$/
 
-// Text mit "[[Titel]]"-Vorkommen als klickbare Chips gerendert (Ansicht-
-// Modus). Unbekannte Ziele bleiben dezent und nicht klickbar.
-function TextMitLinks({ text, wissen, projekte, notizen, onZielKlick }) {
+// Analog für "#Schlagwort" am Textende – öffnet die Tag-Autovervollständigung.
+const TAG_ERKENNEN = /(?:^|\s)#([\p{L}\d_-]*)$/u
+const TAG_ENTFERNEN = /(?:^|\s)#[\p{L}\d_-]*$/u
+
+// Vorschlagsliste für die #-Eingabe: passende vorhandene Tags plus – wenn der
+// getippte Tag noch nicht existiert – ein „neu"-Eintrag zum Anlegen.
+function tagVorschlaege(alleTags, query) {
+  const q = query.toLowerCase()
+  const liste = alleTags
+    .filter((t) => t.includes(q))
+    .slice(0, 8)
+    .map((tag) => ({ tag, neu: false }))
+  if (q && !alleTags.includes(q)) liste.unshift({ tag: q, neu: true })
+  return liste
+}
+
+// Text mit "[[Titel]]"-Vorkommen (klickbare Link-Chips) und "#Schlagwort"
+// (klickbare Tag-Chips) gerendert (Ansicht-Modus). Unbekannte Link-Ziele
+// bleiben dezent und nicht klickbar.
+function TextMitLinks({ text, wissen, projekte, notizen, onZielKlick, onTagKlick }) {
   if (!text) return null
   const teile = text.split(WIKILINK_REGEX)
   return (
@@ -214,7 +233,33 @@ function TextMitLinks({ text, wissen, projekte, notizen, onZielKlick }) {
             onZielKlick={onZielKlick}
           />
         ) : (
-          <span key={i}>{teil}</span>
+          <TextMitTags key={i} text={teil} onTagKlick={onTagKlick} />
+        )
+      )}
+    </>
+  )
+}
+
+// Rendert einen Klartext-Abschnitt und hebt darin "#Schlagworte" als Chips
+// hervor (Klick öffnet die Tag-Übersicht, falls ein Handler übergeben ist).
+function TextMitTags({ text, onTagKlick }) {
+  const stuecke = teileMitTags(text)
+  if (stuecke.length === 0) return null
+  return (
+    <>
+      {stuecke.map((s, i) =>
+        s.typ === "tag" ? (
+          <button
+            key={i}
+            type="button"
+            disabled={!onTagKlick}
+            onClick={() => onTagKlick?.(s.wert.toLowerCase())}
+            className="rounded-sm px-0.5 font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-default disabled:hover:bg-transparent"
+          >
+            #{s.wert}
+          </button>
+        ) : (
+          <span key={i}>{s.wert}</span>
         )
       )}
     </>
@@ -255,10 +300,17 @@ export function NotizBearbeiten({
   projekte = [],
   notizen = [],
   onZielKlick,
+  onTagKlick,
 }) {
   const [bearbeiten, setBearbeiten] = useState(false)
-  const [mention, setMention] = useState(null)
+  const [mention, setMention] = useState(null) // { modus: "link"|"tag", query }
   const [mentionIndex, setMentionIndex] = useState(0)
+
+  // Vorhandene Schlagworte für die #-Autovervollständigung.
+  const alleTags = useMemo(
+    () => sammleTags(wissen, notizen, projekte).map((t) => t.tag),
+    [wissen, notizen, projekte]
+  )
 
   const zielOptionen = [
     ...wissen
@@ -276,11 +328,15 @@ export function NotizBearbeiten({
           ?.name,
       })),
   ]
-  const mentionOptionen = mention
-    ? zielOptionen
-        .filter((o) => o.titel.toLowerCase().includes(mention.query.toLowerCase()))
-        .slice(0, 8)
-    : []
+  const mentionOptionen = !mention
+    ? []
+    : mention.modus === "tag"
+      ? tagVorschlaege(alleTags, mention.query)
+      : zielOptionen
+          .filter((o) =>
+            o.titel.toLowerCase().includes(mention.query.toLowerCase())
+          )
+          .slice(0, 8)
 
   // Eigener Typ der gerade bearbeiteten Notiz – Projekt-Notizen tragen
   // projektId/kursId, projektfreie Wissens-Einträge nicht. Bestimmt, welcher
@@ -297,20 +353,28 @@ export function NotizBearbeiten({
     onChange({ ...notiz, inhalt: text })
     const m = MENTION_ERKENNEN.exec(text)
     if (m) {
-      setMention({ query: m[1] })
+      setMention({ modus: "link", query: m[1] })
       setMentionIndex(0)
-    } else {
-      setMention(null)
+      return
     }
+    const t = TAG_ERKENNEN.exec(text)
+    if (t) {
+      setMention({ modus: "tag", query: t[1] })
+      setMentionIndex(0)
+      return
+    }
+    setMention(null)
   }
 
   function waehleMention(option) {
     const text = notiz.inhalt ?? ""
-    const match = MENTION_ENTFERNEN.exec(text)
+    const istTag = mention?.modus === "tag"
+    const match = (istTag ? TAG_ENTFERNEN : MENTION_ENTFERNEN).exec(text)
     if (!match) return
     const vorher = text.slice(0, match.index)
     const leerzeichen = /^\s/.test(match[0]) ? match[0][0] : ""
-    onChange({ ...notiz, inhalt: `${vorher}${leerzeichen}[[${option.titel}]] ` })
+    const eingefuegt = istTag ? `#${option.tag} ` : `[[${option.titel}]] `
+    onChange({ ...notiz, inhalt: `${vorher}${leerzeichen}${eingefuegt}` })
     setMention(null)
   }
 
@@ -371,39 +435,62 @@ export function NotizBearbeiten({
               onChange={(e) => inhaltOnChange(e.target.value)}
               onKeyDown={mentionKeyDown}
               onBlur={() => setMention(null)}
-              placeholder="Schreib hier deine Zusammenfassung – speichert automatisch. Tippe @ um auf Wissen oder ein Projekt zu verlinken."
+              placeholder="Schreib hier deine Zusammenfassung – speichert automatisch. Tippe @ um zu verlinken, # für ein Schlagwort."
               autoFocus
               className="h-full w-full resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
             />
             {mention && mentionOptionen.length > 0 && (
               <div className="absolute bottom-4 left-0 w-64 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
-                {mentionOptionen.map((o, i) => (
-                  <button
-                    key={`${o.typ}-${o.titel}-${i}`}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => waehleMention(o)}
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
-                      i === mentionIndex
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span className="rounded-sm bg-gray-100 px-1 text-[10px] uppercase tracking-wide text-gray-400">
-                      {o.typ === "wissen"
-                        ? "Wissen"
-                        : o.typ === "notiz"
-                          ? "Notiz"
-                          : "Projekt"}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">{o.titel}</span>
-                    {o.typ === "notiz" && o.projektName && (
-                      <span className="shrink-0 text-[10px] text-gray-400">
-                        {o.projektName}
+                {mentionOptionen.map((o, i) =>
+                  mention.modus === "tag" ? (
+                    <button
+                      key={`tag-${o.tag}-${i}`}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => waehleMention(o)}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                        i === mentionIndex
+                          ? "bg-gray-100 text-gray-900"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1 truncate font-medium text-blue-600">
+                        #{o.tag}
                       </span>
-                    )}
-                  </button>
-                ))}
+                      {o.neu && (
+                        <span className="shrink-0 text-[10px] text-gray-400">
+                          neu anlegen
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      key={`${o.typ}-${o.titel}-${i}`}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => waehleMention(o)}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                        i === mentionIndex
+                          ? "bg-gray-100 text-gray-900"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span className="rounded-sm bg-gray-100 px-1 text-[10px] uppercase tracking-wide text-gray-400">
+                        {o.typ === "wissen"
+                          ? "Wissen"
+                          : o.typ === "notiz"
+                            ? "Notiz"
+                            : "Projekt"}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{o.titel}</span>
+                      {o.typ === "notiz" && o.projektName && (
+                        <span className="shrink-0 text-[10px] text-gray-400">
+                          {o.projektName}
+                        </span>
+                      )}
+                    </button>
+                  )
+                )}
               </div>
             )}
           </div>
@@ -419,6 +506,7 @@ export function NotizBearbeiten({
                 projekte={projekte}
                 notizen={notizen}
                 onZielKlick={onZielKlick}
+                onTagKlick={onTagKlick}
               />
             ) : (
               <span className="text-gray-300">

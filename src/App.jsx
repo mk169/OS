@@ -359,7 +359,12 @@ export default function App() {
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite />}
         {seite === "todos" && <TodosSeite />}
-        {seite === "sammeln" && <SammelnSeite onNavigate={navigiere} />}
+        {seite === "sammeln" && (
+          <SammelnSeite
+            onNavigate={navigiere}
+            startAnsicht={typeof param === "string" ? param : null}
+          />
+        )}
         {seite === "habits" && <HabitsSeite />}
         {seite === "deepwork" && <DeepWorkSeite />}
         {seite === "projekte" && (

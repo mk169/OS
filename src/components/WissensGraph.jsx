@@ -84,7 +84,7 @@ function berechneLayout(knoten, kanten, iterationen = 200) {
   return pos
 }
 
-export default function WissensGraph({ onNavigate }) {
+export default function WissensGraph({ onNavigate, onTagKlick }) {
   const [wissen, setWissen] = useStored("wissen", [])
   const [projekte] = useStored("projekte", [])
   const [notizen] = useStored("notizen", [])
@@ -286,6 +286,7 @@ export default function WissensGraph({ onNavigate }) {
           projekte={projekte}
           notizen={notizen}
           onZielKlick={zielKlick}
+          onTagKlick={onTagKlick}
         />
       )}
     </div>

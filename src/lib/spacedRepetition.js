@@ -1,4 +1,4 @@
-import { inTagen } from "./datum"
+import { inTagen, heute } from "./datum"
 
 // Spaced Repetition nach einem optimierten SM-2 (tagesbasiert, wie Anki).
 // Jede Karte hat:
@@ -96,6 +96,13 @@ export function bewerteKarte(karte, stufe, antwortSekunden = null) {
     dauerSchnitt,
     faellig: inTagen(mitStreuung(neuesIntervall)),
   }
+}
+
+// Ob eine Karte heute (oder überfällig) zur Wiederholung ansteht. Neue
+// Karten ohne `faellig`-Datum gelten als sofort fällig. Gemeinsam genutzt
+// von der Projekt-Ansicht und dem projektübergreifenden „Heute lernen".
+export function istFaellig(karte) {
+  return !karte.faellig || karte.faellig <= heute()
 }
 
 // Mischt eine Liste (Fisher-Yates) ohne das Original zu verändern.

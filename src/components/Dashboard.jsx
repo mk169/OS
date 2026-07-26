@@ -1,5 +1,6 @@
 import useStored from "../lib/useStored"
 import { heute, tageBis, montagVon } from "../lib/datum"
+import { istFaellig } from "../lib/spacedRepetition"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { datumLang } from "./Kalender"
@@ -23,6 +24,48 @@ function begruessung() {
 const FONT_ARCADE = '"Press Start 2P", ui-monospace, monospace'
 const FONT_TERMINAL = '"VT323", ui-monospace, "SF Mono", Menlo, monospace'
 const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
+
+// Hinweis auf fällige Karteikarten (projektübergreifend). Erscheint nur, wenn
+// wirklich etwas ansteht, und führt direkt in die globale Lern-Session
+// (Sammeln → Lernen). „dunkel" für dunkle Dashboard-Stile (Arcade).
+function LernBanner({ onNavigate, variant = "hell" }) {
+  const [karten] = useStored("karten", [])
+  const faellig = karten.filter(istFaellig).length
+  if (faellig === 0) return null
+
+  const dunkel = variant === "dunkel"
+  return (
+    <button
+      onClick={() => onNavigate("sammeln", "lernen")}
+      className={`mb-6 flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
+        dunkel
+          ? "border-accent-500/40 bg-accent-500/15 hover:bg-accent-500/25"
+          : "border-accent-200 bg-accent-50 hover:bg-accent-100"
+      }`}
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-500 text-lg">
+        🧠
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block text-sm font-semibold ${dunkel ? "text-accent-200" : "text-accent-700"}`}
+        >
+          {faellig} {faellig === 1 ? "Karte" : "Karten"} fällig
+        </span>
+        <span
+          className={`block text-xs ${dunkel ? "text-accent-200/70" : "text-accent-600/70"}`}
+        >
+          Karteikarten projektübergreifend wiederholen
+        </span>
+      </span>
+      <span
+        className={`shrink-0 text-sm font-medium ${dunkel ? "text-accent-300" : "text-accent-600"}`}
+      >
+        Lernen →
+      </span>
+    </button>
+  )
+}
 
 // Offene Todos nach laufendem Projekt gruppieren (+ „Ohne Projekt"), innerhalb
 // jeder Gruppe nach Eisenhower und Datum sortiert. Von allen drei Stilen
@@ -139,6 +182,8 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate 
           {begruessung()}
         </h1>
       </header>
+
+      <LernBanner onNavigate={onNavigate} />
 
       <div className="mb-8 flex gap-3">
         <StatKachel wert={offene.length} label="offene Aufgaben" akzent />
@@ -348,6 +393,8 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
         </div>
       </div>
 
+      <LernBanner onNavigate={onNavigate} />
+
       {/* Fortschrittsbalken */}
       <div className="mb-8 space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-gray-100">
         <StatBalken wert={erledigtGesamt} max={erledigtGesamt + offene.length} label="Aufgaben" farbe="rose" />
@@ -546,6 +593,8 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
           </div>
         </div>
 
+        <LernBanner onNavigate={onNavigate} variant="dunkel" />
+
         {/* Fortschritts-Bahnen */}
         <div className="mb-7 space-y-3">
           <PacLane label="XP" wert={xpInLevel} max={10} />
@@ -678,6 +727,8 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
           <CleanPill wert={erledigt} label="erledigt" farbe="bg-amber-100/70 text-amber-700" />
         </div>
 
+        <LernBanner onNavigate={onNavigate} />
+
         <section className="mb-8">
           <button
             onClick={() => onNavigate("kalender")}
@@ -783,6 +834,8 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate }) {
         </h1>
         <p className="mt-1.5 text-sm text-gray-400">{datumLang(heute())}</p>
       </div>
+
+      <LernBanner onNavigate={onNavigate} />
 
       {/* Aufgaben */}
       <section className="mb-12">

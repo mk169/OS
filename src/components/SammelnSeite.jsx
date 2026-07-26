@@ -3,6 +3,8 @@ import useStored from "../lib/useStored"
 import Seitenkopf from "./Seitenkopf"
 import { NotizenRaster, NotizBearbeiten } from "./ProjektNotizen"
 import WissensGraph from "./WissensGraph"
+import TagsAnsicht from "./TagsAnsicht"
+import LernenGlobal from "./LernenGlobal"
 import { Suchfeld, SortMenu, LayoutUmschalter } from "./ListenControls"
 import { erkenneDatum, erkenneProjekt } from "../lib/erkennung"
 import { tageBis } from "../lib/datum"
@@ -23,6 +25,8 @@ const WISSEN_SORT = [
 const ANSICHTEN = [
   { key: "inbox", label: "Inbox" },
   { key: "wissen", label: "Wissen" },
+  { key: "tags", label: "Tags" },
+  { key: "lernen", label: "Lernen" },
   { key: "graph", label: "Graph" },
 ]
 
@@ -46,18 +50,41 @@ function AnsichtToggle({ ansicht, setAnsicht }) {
   )
 }
 
-export default function SammelnSeite({ onNavigate }) {
-  const [ansicht, setAnsicht] = useState("inbox")
+export default function SammelnSeite({ onNavigate, startAnsicht = null }) {
+  const [ansicht, setAnsicht] = useState(() =>
+    ANSICHTEN.some((a) => a.key === startAnsicht) ? startAnsicht : "inbox"
+  )
+  // Vorgemerktes Schlagwort (z.B. per Klick auf einen Tag-Chip): beim Wechsel
+  // in die Tags-Ansicht direkt geöffnet, bei manuellem Tab-Wechsel verworfen.
+  const [tagWunsch, setTagWunsch] = useState(null)
+
+  function waehleAnsicht(key) {
+    setTagWunsch(null)
+    setAnsicht(key)
+  }
+
+  function oeffneTag(tag) {
+    setTagWunsch(tag)
+    setAnsicht("tags")
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <Seitenkopf
         titel="Sammeln"
-        aktion={<AnsichtToggle ansicht={ansicht} setAnsicht={setAnsicht} />}
+        aktion={<AnsichtToggle ansicht={ansicht} setAnsicht={waehleAnsicht} />}
       />
       {ansicht === "inbox" && <InboxAnsicht />}
-      {ansicht === "wissen" && <WissenAnsicht onNavigate={onNavigate} />}
-      {ansicht === "graph" && <WissensGraph onNavigate={onNavigate} />}
+      {ansicht === "wissen" && (
+        <WissenAnsicht onNavigate={onNavigate} onTagKlick={oeffneTag} />
+      )}
+      {ansicht === "tags" && (
+        <TagsAnsicht onNavigate={onNavigate} startTag={tagWunsch} />
+      )}
+      {ansicht === "lernen" && <LernenGlobal />}
+      {ansicht === "graph" && (
+        <WissensGraph onNavigate={onNavigate} onTagKlick={oeffneTag} />
+      )}
     </div>
   )
 }
@@ -232,7 +259,7 @@ function InboxAnsicht() {
   )
 }
 
-function WissenAnsicht({ onNavigate }) {
+function WissenAnsicht({ onNavigate, onTagKlick }) {
   const [wissen, setWissen] = useStored("wissen", [])
   const [projekte] = useStored("projekte", [])
   const [notizen] = useStored("notizen", [])
@@ -339,6 +366,7 @@ function WissenAnsicht({ onNavigate }) {
           projekte={projekte}
           notizen={notizen}
           onZielKlick={zielKlick}
+          onTagKlick={onTagKlick}
         />
       )}
     </div>
