@@ -6,6 +6,7 @@ import {
   intervallText,
   parseTxtImport,
   mische,
+  istFaellig,
 } from "../lib/spacedRepetition"
 
 // Bild einlesen und auf max. 900px herunterskalieren (als komprimierte
@@ -94,7 +95,7 @@ export default function ProjektKarten({ projekt }) {
   const karten = alleKarten.filter(
     (k) => k.projektId === projekt.id || k.kursId === projekt.id
   )
-  const faellig = karten.filter((k) => !k.faellig || k.faellig <= heute())
+  const faellig = karten.filter(istFaellig)
 
   function addKarte(e) {
     e.preventDefault()
@@ -277,7 +278,7 @@ export default function ProjektKarten({ projekt }) {
       {karten.length > 0 && (
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {karten.map((karte) => {
-            const dran = !karte.faellig || karte.faellig <= heute()
+            const dran = istFaellig(karte)
             return (
               <li
                 key={karte.id}
@@ -352,7 +353,7 @@ const STUFEN = [
   },
 ]
 
-function LernModus({ faellig, onBewerte, onEnde }) {
+export function LernModus({ faellig, onBewerte, onEnde }) {
   const [zeigeAntwort, setZeigeAntwort] = useState(false)
   const [start] = useState(faellig.length)
   // Gemischte Warteschlange der Karten-IDs; „Nochmal" reiht hinten ein,
