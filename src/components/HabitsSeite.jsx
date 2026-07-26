@@ -144,11 +144,11 @@ export function HabitKarten({
 }) {
   const ketten = alsKettenListe(habits)
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
       {ketten.map((kette) => (
         <div
           key={kette[0].id}
-          className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-4"
+          className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-3 sm:px-4"
         >
           {kette.map((habit, i) => (
             <HabitHeatmapKarte
@@ -182,14 +182,15 @@ function HabitHeatmapKarte({
 }) {
   const farbe = FARBEN[bereichVon(habit, bereiche).farbe] ?? FARBEN.gray
   const heuteKey = heute()
-  const spalten = wochenSpalten(wochenAnzahl)
+  const wochen = typeof window !== "undefined" && window.innerWidth < 640 ? 8 : wochenAnzahl
+  const spalten = wochenSpalten(wochen)
   const streak = wochenStreakVon(habit)
   const ziel = wochenZielVon(habit)
   const inDieserWoche = erledigtInWoche(habit, montagVon(new Date()))
 
   return (
-    <div className={`py-3 ${eingerueckt ? "pl-6" : ""}`}>
-      <div className="group flex items-center gap-2">
+    <div className={`group py-2 sm:py-3 ${eingerueckt ? "pl-6" : ""}`}>
+      <div className="flex items-center gap-2">
         {eingerueckt && <span className="-ml-4 text-xs text-gray-300">↳</span>}
         <span className={`h-2 w-2 shrink-0 rounded-full ${farbe.punkt}`} />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
@@ -199,7 +200,7 @@ function HabitHeatmapKarte({
           <button
             onClick={() => onRemove(habit.id)}
             title="Habit löschen"
-            className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+            className="shrink-0 text-gray-300 transition-colors hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"
           >
             ×
           </button>
@@ -207,13 +208,13 @@ function HabitHeatmapKarte({
       </div>
 
       <div className="mt-2 overflow-x-auto">
-        <div className="inline-flex gap-[3px]">
-          <div className="flex flex-col gap-[3px]">
-            <span className="h-3" />
+        <div className="inline-flex gap-[2px] sm:gap-[3px]">
+          <div className="flex flex-col gap-[2px] sm:gap-[3px]">
+            <span className="h-3 sm:h-3" />
             {TAG_LABELS.map((l, i) => (
               <span
                 key={i}
-                className="h-2.5 text-[8px] leading-[10px] text-gray-300"
+                className="h-3 text-[7px] leading-[9px] text-gray-300 sm:h-2.5 sm:text-[8px] sm:leading-[10px]"
               >
                 {l}
               </span>
@@ -223,8 +224,8 @@ function HabitHeatmapKarte({
             const vorMonat = i > 0 ? spalten[i - 1].getMonth() : null
             const zeigeMonat = i === 0 || montag.getMonth() !== vorMonat
             return (
-              <div key={i} className="flex flex-col items-center gap-[3px]">
-                <span className="h-3 whitespace-nowrap text-[8px] text-gray-400">
+              <div key={i} className="flex flex-col items-center gap-[2px] sm:gap-[3px]">
+                <span className="h-3 whitespace-nowrap text-[7px] text-gray-400 sm:text-[8px]">
                   {zeigeMonat
                     ? montag.toLocaleDateString("de-DE", { month: "short" })
                     : ""}
@@ -235,7 +236,7 @@ function HabitHeatmapKarte({
                   const tagKey = schluessel(tagDatum)
                   const erledigt = habit.erledigtAn.includes(tagKey)
                   if (tagKey > heuteKey) {
-                    return <span key={tagIndex} className="h-2.5 w-2.5" />
+                    return <span key={tagIndex} className="h-3 w-3 sm:h-2.5 sm:w-2.5" />
                   }
                   if (tagKey === heuteKey) {
                     return (
@@ -244,7 +245,7 @@ function HabitHeatmapKarte({
                         type="button"
                         onClick={() => onToggleHeute(habit)}
                         title="Heute umschalten"
-                        className={`h-2.5 w-2.5 rounded-sm ${
+                        className={`h-3 w-3 rounded-sm sm:h-2.5 sm:w-2.5 ${
                           erledigt
                             ? farbe.punkt
                             : `bg-white ring-1 ring-inset ${farbe.ring}`
@@ -256,7 +257,7 @@ function HabitHeatmapKarte({
                     <span
                       key={tagIndex}
                       title={tagDatum.toLocaleDateString("de-DE")}
-                      className={`h-2.5 w-2.5 rounded-sm ${
+                      className={`h-3 w-3 rounded-sm sm:h-2.5 sm:w-2.5 ${
                         erledigt ? farbe.punkt : "bg-gray-100"
                       }`}
                     />
@@ -511,7 +512,7 @@ export default function HabitsSeite() {
 
 function HabitsTodo({ habits, bereiche, toggle, setWochenZiel, remove, amZielCount }) {
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <Seitenkopf
         titel="Habits"
         aktion={
@@ -535,7 +536,7 @@ function HabitsTodo({ habits, bereiche, toggle, setWochenZiel, remove, amZielCou
           Noch keine Habits. Lege mit dem Plus dein erstes an.
         </p>
       ) : (
-        <div className="mt-8">
+        <div className="mt-6 sm:mt-8">
           <HabitKarten
             habits={habits}
             bereiche={bereiche}
@@ -546,7 +547,7 @@ function HabitsTodo({ habits, bereiche, toggle, setWochenZiel, remove, amZielCou
         </div>
       )}
 
-      <section className="mt-10">
+      <section className="mt-8 sm:mt-10">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
           Bereiche
         </h2>
@@ -557,7 +558,7 @@ function HabitsTodo({ habits, bereiche, toggle, setWochenZiel, remove, amZielCou
             return (
               <span
                 key={b.id}
-                className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600"
+                className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs text-gray-600"
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${farbe.punkt}`} />
                 {b.name} ({anzahl})
@@ -832,7 +833,7 @@ function HabitGamifiedKarte({
           <button
             onClick={() => onRemove(habit.id)}
             title="Fähigkeit löschen"
-            className="text-white/20 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+            className="shrink-0 text-white/30 transition-colors hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
           >
             ×
           </button>
