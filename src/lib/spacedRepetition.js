@@ -1,4 +1,4 @@
-import { inTagen } from "./datum"
+import { inTagen, heute } from "./datum"
 
 // Spaced Repetition nach einem optimierten SM-2 (tagesbasiert, wie Anki).
 // Jede Karte hat:
@@ -173,4 +173,8 @@ function bereinige(feld) {
     .replace(/""/g, '"')
     .replace(/\s+/g, " ")
     .trim()
+}
+
+export function istFaellig(karte) {
+  return karte.faellig && karte.faellig <= heute()
 }
