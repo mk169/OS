@@ -1,5 +1,6 @@
 import useStored from "../lib/useStored"
 import { heute, tageBis, montagVon } from "../lib/datum"
+import { istFaellig } from "../lib/spacedRepetition"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { datumLang } from "./Kalender"
@@ -11,12 +12,54 @@ import {
   wochenStreakVon,
   wochenZielErreicht,
 } from "./HabitsSeite"
+import { useTodayData } from "../lib/useTodayData"
+import { useDashboardFilters } from "../lib/useDashboardFilters"
+import { TodaySection } from "./TodaySection"
 
 function begruessung() {
   const stunde = new Date().getHours()
   if (stunde < 11) return "Guten Morgen"
   if (stunde < 18) return "Guten Tag"
   return "Guten Abend"
+}
+
+function LernBanner({ onNavigate, variant = "hell" }) {
+  const [karten] = useStored("karten", [])
+  const faellig = karten.filter(istFaellig).length
+  if (faellig === 0) return null
+
+  const dunkel = variant === "dunkel"
+  return (
+    <button
+      onClick={() => onNavigate("sammeln", "lernen")}
+      className={`mb-6 flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
+        dunkel
+          ? "border-accent-500/40 bg-accent-500/15 hover:bg-accent-500/25"
+          : "border-accent-200 bg-accent-50 hover:bg-accent-100"
+      }`}
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-500 text-lg">
+        🧠
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block text-sm font-semibold ${dunkel ? "text-accent-200" : "text-accent-700"}`}
+        >
+          {faellig} {faellig === 1 ? "Karte" : "Karten"} fällig
+        </span>
+        <span
+          className={`block text-xs ${dunkel ? "text-accent-200/70" : "text-accent-600/70"}`}
+        >
+          Karteikarten projektübergreifend wiederholen
+        </span>
+      </span>
+      <span
+        className={`shrink-0 text-sm font-medium ${dunkel ? "text-accent-300" : "text-accent-600"}`}
+      >
+        Lernen →
+      </span>
+    </button>
+  )
 }
 
 // Dekorative Schriftfamilien (Fonts via <link> in index.html geladen).
@@ -75,7 +118,7 @@ export default function Dashboard({ onNavigate }) {
   }
 
   const daten = todoGruppen(todos, projekte)
-  const gemeinsam = { todos, ...daten, toggle, onNavigate, appName }
+  const gemeinsam = { todos, projekte, ...daten, toggle, onNavigate, appName }
 
   if (stil === "gamified") return <DashboardGamified {...gemeinsam} />
   if (stil === "arcade") return <DashboardArcade {...gemeinsam} />
@@ -124,9 +167,13 @@ function StatKachel({ wert, label, akzent }) {
   )
 }
 
-function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate }) {
+function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate, projekte }) {
   const heuteFaellig = offene.filter((t) => t.datum && t.datum <= heute()).length
   const erledigt = todos.filter((t) => t.erledigt).length
+  const todayData = useTodayData()
+  const { filters, toggleFilter } = useDashboardFilters()
+  const { habits, setHabits, bereiche } = useHabitDaten()
+  const habitToggle = nutzeHabitToggle(habits, setHabits)
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6">
@@ -139,6 +186,19 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate 
           {begruessung()}
         </h1>
       </header>
+
+      <LernBanner onNavigate={onNavigate} />
+
+      <TodaySection
+        todayData={todayData}
+        filters={filters}
+        onFilterChange={toggleFilter}
+        onTodoToggle={toggle}
+        onHabitToggle={habitToggle}
+        onNavigate={onNavigate}
+        projekte={projekte}
+        bereiche={bereiche}
+      />
 
       <div className="mb-8 flex gap-3">
         <StatKachel wert={offene.length} label="offene Aufgaben" akzent />
@@ -278,11 +338,13 @@ function AktionsKachel({ label, meta, farbe, erledigt, onToggle }) {
   )
 }
 
-function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavigate }) {
+function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavigate, projekte }) {
   const { habits, setHabits, bereiche } = useHabitDaten()
   const habitToggle = nutzeHabitToggle(habits, setHabits)
   const heuteKey = heute()
   const wocheMontag = montagVon(new Date())
+  const todayData = useTodayData()
+  const { filters, toggleFilter } = useDashboardFilters()
 
   // Spielerische Kennzahlen aus vorhandenen Daten ableiten.
   const erledigtGesamt = todos.filter((t) => t.erledigt).length
@@ -347,6 +409,19 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
           </div>
         </div>
       </div>
+
+      <LernBanner onNavigate={onNavigate} />
+
+      <TodaySection
+        todayData={todayData}
+        filters={filters}
+        onFilterChange={toggleFilter}
+        onTodoToggle={toggle}
+        onHabitToggle={habitToggle}
+        onNavigate={onNavigate}
+        projekte={projekte}
+        bereiche={bereiche}
+      />
 
       {/* Fortschrittsbalken */}
       <div className="mb-8 space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-gray-100">
@@ -498,10 +573,12 @@ const GEISTER_FARBEN = {
   sonstige: "#00ffff",
 }
 
-function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate }) {
-  const { habits, setHabits } = useHabitDaten()
+function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate, projekte }) {
+  const { habits, setHabits, bereiche } = useHabitDaten()
   const habitToggle = nutzeHabitToggle(habits, setHabits)
   const heuteKey = heute()
+  const todayData = useTodayData()
+  const { filters, toggleFilter } = useDashboardFilters()
 
   const erledigtGesamt = todos.filter((t) => t.erledigt).length
   const level = Math.floor(erledigtGesamt / 10) + 1
@@ -544,6 +621,21 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
               {begruessung()} · {datumLang(heute())}
             </p>
           </div>
+        </div>
+
+        <LernBanner onNavigate={onNavigate} variant="dunkel" />
+
+        <div className="mb-7 rounded-lg border-2 border-yellow-400 bg-black/50 p-3">
+          <TodaySection
+            todayData={todayData}
+            filters={filters}
+            onFilterChange={toggleFilter}
+            onTodoToggle={toggle}
+            onHabitToggle={habitToggle}
+            onNavigate={onNavigate}
+            projekte={projekte}
+            bereiche={bereiche}
+          />
         </div>
 
         {/* Fortschritts-Bahnen */}
@@ -655,7 +747,11 @@ function CleanGirlZeile({ todo, onToggle }) {
   )
 }
 
-function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate }) {
+function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate, projekte }) {
+  const { habits, setHabits, bereiche } = useHabitDaten()
+  const habitToggle = nutzeHabitToggle(habits, setHabits)
+  const todayData = useTodayData()
+  const { filters, toggleFilter } = useDashboardFilters()
   const heuteFaellig = offene.filter((t) => t.datum && t.datum <= heute()).length
   const erledigt = todos.filter((t) => t.erledigt).length
 
@@ -676,6 +772,23 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
           <CleanPill wert={offene.length} label="offen" farbe="bg-rose-100/70 text-rose-600" />
           <CleanPill wert={heuteFaellig} label="heute" farbe="bg-purple-100/70 text-purple-600" />
           <CleanPill wert={erledigt} label="erledigt" farbe="bg-amber-100/70 text-amber-700" />
+        </div>
+
+        <LernBanner onNavigate={onNavigate} />
+
+        <div className="mb-8 rounded-3xl bg-white/60 shadow-[0_20px_50px_-30px_rgba(219,112,147,0.5)]">
+          <div className="p-5">
+            <TodaySection
+              todayData={todayData}
+              filters={filters}
+              onFilterChange={toggleFilter}
+              onTodoToggle={toggle}
+              onHabitToggle={habitToggle}
+              onNavigate={onNavigate}
+              projekte={projekte}
+              bereiche={bereiche}
+            />
+          </div>
         </div>
 
         <section className="mb-8">
@@ -769,7 +882,12 @@ function NotionZeile({ todo, onToggle }) {
   )
 }
 
-function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate }) {
+function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, projekte }) {
+  const { habits, setHabits, bereiche } = useHabitDaten()
+  const habitToggle = nutzeHabitToggle(habits, setHabits)
+  const todayData = useTodayData()
+  const { filters, toggleFilter } = useDashboardFilters()
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
       {/* Seitenkopf mit Emoji-„Cover" */}
@@ -783,6 +901,21 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate }) {
         </h1>
         <p className="mt-1.5 text-sm text-gray-400">{datumLang(heute())}</p>
       </div>
+
+      <LernBanner onNavigate={onNavigate} />
+
+      <section className="mb-12">
+        <TodaySection
+          todayData={todayData}
+          filters={filters}
+          onFilterChange={toggleFilter}
+          onTodoToggle={toggle}
+          onHabitToggle={habitToggle}
+          onNavigate={onNavigate}
+          projekte={projekte}
+          bereiche={bereiche}
+        />
+      </section>
 
       {/* Aufgaben */}
       <section className="mb-12">
