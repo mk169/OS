@@ -7,7 +7,11 @@ import {
   parseTxtImport,
   mische,
   istFaellig,
+  hatCloze,
+  clozeFrage,
+  clozeTeile,
 } from "../lib/spacedRepetition"
+import { protokolliereWiederholung } from "../lib/lernprotokoll"
 
 // Bild einlesen und auf max. 900px herunterskalieren (als komprimierte
 // JPEG-Data-URL, damit es kompakt im Speicher liegt).
@@ -84,21 +88,49 @@ function BildFeld({ bild, setBild, label }) {
 
 export default function ProjektKarten({ projekt }) {
   const [alleKarten, setAlleKarten] = useStored("karten", [])
+  const [modus, setModus] = useState("normal") // "normal" | "cloze"
   const [vorne, setVorne] = useState("")
   const [hinten, setHinten] = useState("")
+  const [clozeText, setClozeText] = useState("")
   const [bildVorne, setBildVorne] = useState(null)
   const [bildHinten, setBildHinten] = useState(null)
   const [lernModus, setLernModus] = useState(false)
   const [importMeldung, setImportMeldung] = useState("")
+  const [bearbeiteId, setBearbeiteId] = useState(null)
   const dateiInput = useRef(null)
+
+  const bearbeiteKarte = alleKarten.find((k) => k.id === bearbeiteId)
 
   const karten = alleKarten.filter(
     (k) => k.projektId === projekt.id || k.kursId === projekt.id
   )
   const faellig = karten.filter(istFaellig)
 
+  const SR_START = {
+    intervall: 0,
+    ease: 2.5,
+    wiederholungen: 0,
+    lapses: 0,
+    faellig: heute(),
+  }
+
   function addKarte(e) {
     e.preventDefault()
+    if (modus === "cloze") {
+      if (!hatCloze(clozeText)) return
+      setAlleKarten([
+        ...alleKarten,
+        {
+          id: Date.now(),
+          projektId: projekt.id,
+          typ: "cloze",
+          text: clozeText.trim(),
+          ...SR_START,
+        },
+      ])
+      setClozeText("")
+      return
+    }
     if ((!vorne.trim() && !bildVorne) || (!hinten.trim() && !bildHinten)) return
     setAlleKarten([
       ...alleKarten,
@@ -109,11 +141,7 @@ export default function ProjektKarten({ projekt }) {
         hinten: hinten.trim(),
         vorneBild: bildVorne,
         hintenBild: bildHinten,
-        intervall: 0,
-        ease: 2.5,
-        wiederholungen: 0,
-        lapses: 0,
-        faellig: heute(),
+        ...SR_START,
       },
     ])
     setVorne("")
@@ -126,11 +154,16 @@ export default function ProjektKarten({ projekt }) {
     setAlleKarten(alleKarten.filter((k) => k.id !== id))
   }
 
+  function updateKarte(neu) {
+    setAlleKarten(alleKarten.map((k) => (k.id === neu.id ? neu : k)))
+  }
+
   function bewerte(karte, stufe, sekunden = null) {
     const neu = bewerteKarte(karte, stufe, sekunden)
     setAlleKarten(
       alleKarten.map((k) => (k.id === karte.id ? { ...k, ...neu } : k))
     )
+    protokolliereWiederholung()
   }
 
   function starteLernen() {
@@ -245,34 +278,75 @@ export default function ProjektKarten({ projekt }) {
         onSubmit={addKarte}
         className="mt-4 space-y-2 border-b border-gray-100 pb-4"
       >
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="flex min-w-0 flex-1 flex-col text-xs text-gray-500">
-            Vorderseite
-            <input
-              value={vorne}
-              onChange={(e) => setVorne(e.target.value)}
-              placeholder="Frage"
-              className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-            />
-          </label>
-          <BildFeld bild={bildVorne} setBild={setBildVorne} label="Bild" />
-          <label className="flex min-w-0 flex-1 flex-col text-xs text-gray-500">
-            Rückseite
-            <input
-              value={hinten}
-              onChange={(e) => setHinten(e.target.value)}
-              placeholder="Antwort"
-              className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-            />
-          </label>
-          <BildFeld bild={bildHinten} setBild={setBildHinten} label="Bild" />
-          <button
-            type="submit"
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-          >
-            Hinzufügen
-          </button>
+        <div className="flex w-fit rounded-md border border-gray-200 p-0.5 text-xs">
+          {[
+            { key: "normal", label: "Frage/Antwort" },
+            { key: "cloze", label: "Lückentext" },
+          ].map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              onClick={() => setModus(o.key)}
+              className={`rounded px-2.5 py-1 font-medium transition-colors ${
+                modus === o.key
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
         </div>
+
+        {modus === "cloze" ? (
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex min-w-0 flex-1 flex-col text-xs text-gray-500">
+              Lückentext – markiere Lücken mit {"{{…}}"}
+              <textarea
+                value={clozeText}
+                onChange={(e) => setClozeText(e.target.value)}
+                rows={2}
+                placeholder="z.B. Die Hauptstadt von Frankreich ist {{Paris}}."
+                className="mt-1 resize-none rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+              />
+            </label>
+            <button
+              type="submit"
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Hinzufügen
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex min-w-0 flex-1 flex-col text-xs text-gray-500">
+              Vorderseite
+              <input
+                value={vorne}
+                onChange={(e) => setVorne(e.target.value)}
+                placeholder="Frage"
+                className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+              />
+            </label>
+            <BildFeld bild={bildVorne} setBild={setBildVorne} label="Bild" />
+            <label className="flex min-w-0 flex-1 flex-col text-xs text-gray-500">
+              Rückseite
+              <input
+                value={hinten}
+                onChange={(e) => setHinten(e.target.value)}
+                placeholder="Antwort"
+                className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+              />
+            </label>
+            <BildFeld bild={bildHinten} setBild={setBildHinten} label="Bild" />
+            <button
+              type="submit"
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Hinzufügen
+            </button>
+          </div>
+        )}
       </form>
 
       {karten.length > 0 && (
@@ -291,14 +365,21 @@ export default function ProjektKarten({ projekt }) {
                     className="h-10 w-10 shrink-0 rounded-md border border-gray-200 object-cover"
                   />
                 )}
-                <div className="min-w-0 flex-1">
+                <button
+                  onClick={() => setBearbeiteId(karte.id)}
+                  className="min-w-0 flex-1 text-left"
+                >
                   <p className="truncate text-sm font-medium text-gray-900">
-                    {karte.vorne || "Bildkarte"}
+                    {karte.typ === "cloze"
+                      ? clozeFrage(karte.text)
+                      : karte.vorne || "Bildkarte"}
                   </p>
                   <p className="truncate text-xs text-gray-400">
-                    {karte.hinten || (karte.hintenBild ? "Bild" : "")}
+                    {karte.typ === "cloze"
+                      ? "Lückentext"
+                      : karte.hinten || (karte.hintenBild ? "Bild" : "")}
                   </p>
-                </div>
+                </button>
                 <span
                   className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-medium ${
                     dran
@@ -322,6 +403,114 @@ export default function ProjektKarten({ projekt }) {
           })}
         </ul>
       )}
+
+      {bearbeiteKarte && (
+        <KarteBearbeiten
+          key={bearbeiteKarte.id}
+          karte={bearbeiteKarte}
+          onSpeichern={(neu) => {
+            updateKarte(neu)
+            setBearbeiteId(null)
+          }}
+          onLoeschen={() => {
+            removeKarte(bearbeiteKarte.id)
+            setBearbeiteId(null)
+          }}
+          onSchliessen={() => setBearbeiteId(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// Bearbeiten-Overlay für eine Karte (Text von Frage/Antwort bzw. Lückentext).
+// Bilder und Lernfortschritt bleiben unverändert erhalten.
+function KarteBearbeiten({ karte, onSpeichern, onLoeschen, onSchliessen }) {
+  const istCloze = karte.typ === "cloze"
+  const [vorne, setVorne] = useState(karte.vorne ?? "")
+  const [hinten, setHinten] = useState(karte.hinten ?? "")
+  const [text, setText] = useState(karte.text ?? "")
+
+  function speichern(e) {
+    e.preventDefault()
+    if (istCloze) {
+      if (!hatCloze(text)) return
+      onSpeichern({ ...karte, text: text.trim() })
+    } else {
+      onSpeichern({ ...karte, vorne: vorne.trim(), hinten: hinten.trim() })
+    }
+  }
+
+  return (
+    <div
+      onClick={onSchliessen}
+      className="fixed inset-0 z-50 flex items-start justify-center bg-gray-900/20 p-4 pt-[15vh] backdrop-blur-sm"
+    >
+      <form
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={speichern}
+        className="w-full max-w-md space-y-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-xl"
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-gray-900">Karte bearbeiten</p>
+          <button
+            type="button"
+            onClick={onSchliessen}
+            className="text-xs text-gray-400 hover:text-gray-900"
+          >
+            Schließen ×
+          </button>
+        </div>
+
+        {istCloze ? (
+          <label className="flex flex-col text-xs text-gray-500">
+            Lückentext – markiere Lücken mit {"{{…}}"}
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={3}
+              autoFocus
+              className="mt-1 resize-none rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+            />
+          </label>
+        ) : (
+          <>
+            <label className="flex flex-col text-xs text-gray-500">
+              Vorderseite
+              <input
+                value={vorne}
+                onChange={(e) => setVorne(e.target.value)}
+                autoFocus
+                className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+              />
+            </label>
+            <label className="flex flex-col text-xs text-gray-500">
+              Rückseite
+              <input
+                value={hinten}
+                onChange={(e) => setHinten(e.target.value)}
+                className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+              />
+            </label>
+          </>
+        )}
+
+        <div className="flex items-center justify-between pt-1">
+          <button
+            type="button"
+            onClick={onLoeschen}
+            className="text-sm text-gray-400 transition-colors hover:text-red-500"
+          >
+            Löschen
+          </button>
+          <button
+            type="submit"
+            className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            Speichern
+          </button>
+        </div>
+      </form>
     </div>
   )
 }
@@ -450,17 +639,25 @@ export function LernModus({ faellig, onBewerte, onEnde }) {
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
                 Frage
               </p>
-              {karte.vorne && (
+              {karte.typ === "cloze" ? (
                 <p className="mt-3 text-2xl font-medium text-gray-900">
-                  {karte.vorne}
+                  {clozeFrage(karte.text)}
                 </p>
-              )}
-              {karte.vorneBild && (
-                <img
-                  src={karte.vorneBild}
-                  alt=""
-                  className="mt-4 max-h-[40vh] max-w-full rounded-lg border border-gray-200"
-                />
+              ) : (
+                <>
+                  {karte.vorne && (
+                    <p className="mt-3 text-2xl font-medium text-gray-900">
+                      {karte.vorne}
+                    </p>
+                  )}
+                  {karte.vorneBild && (
+                    <img
+                      src={karte.vorneBild}
+                      alt=""
+                      className="mt-4 max-h-[40vh] max-w-full rounded-lg border border-gray-200"
+                    />
+                  )}
+                </>
               )}
 
               {zeigeAntwort && (
@@ -469,17 +666,36 @@ export function LernModus({ faellig, onBewerte, onEnde }) {
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
                     Antwort
                   </p>
-                  {karte.hinten && (
-                    <p className="mt-3 text-2xl text-gray-700">
-                      {karte.hinten}
+                  {karte.typ === "cloze" ? (
+                    <p className="mt-3 text-2xl leading-relaxed text-gray-700">
+                      {clozeTeile(karte.text).map((t, i) =>
+                        t.typ === "cloze" ? (
+                          <mark
+                            key={i}
+                            className="rounded bg-amber-100 px-1 text-gray-900"
+                          >
+                            {t.wert}
+                          </mark>
+                        ) : (
+                          <span key={i}>{t.wert}</span>
+                        )
+                      )}
                     </p>
-                  )}
-                  {karte.hintenBild && (
-                    <img
-                      src={karte.hintenBild}
-                      alt=""
-                      className="mt-4 max-h-[40vh] max-w-full rounded-lg border border-gray-200"
-                    />
+                  ) : (
+                    <>
+                      {karte.hinten && (
+                        <p className="mt-3 text-2xl text-gray-700">
+                          {karte.hinten}
+                        </p>
+                      )}
+                      {karte.hintenBild && (
+                        <img
+                          src={karte.hintenBild}
+                          alt=""
+                          className="mt-4 max-h-[40vh] max-w-full rounded-lg border border-gray-200"
+                        />
+                      )}
+                    </>
                   )}
                 </>
               )}

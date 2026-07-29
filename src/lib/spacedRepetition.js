@@ -98,6 +98,36 @@ export function bewerteKarte(karte, stufe, antwortSekunden = null) {
   }
 }
 
+// Cloze-Karten (Lückentext): markierte Stellen stehen im Text als {{…}}.
+// Auf der Vorderseite werden sie zu „[…]", auf der Rückseite hervorgehoben.
+export const CLOZE_REGEX = /\{\{([^{}]+)\}\}/g
+
+export function hatCloze(text) {
+  return /\{\{[^{}]+\}\}/.test(text || "")
+}
+
+// Vorderseite einer Cloze-Karte: alle markierten Stellen verdeckt.
+export function clozeFrage(text) {
+  return (text || "").replace(CLOZE_REGEX, "[…]")
+}
+
+// Zerlegt einen Cloze-Text in Stücke { typ: "text"|"cloze", wert } – für die
+// hervorgehobene Darstellung der Rückseite.
+export function clozeTeile(text) {
+  if (!text) return []
+  const teile = []
+  let zuletzt = 0
+  for (const m of text.matchAll(CLOZE_REGEX)) {
+    if (m.index > zuletzt)
+      teile.push({ typ: "text", wert: text.slice(zuletzt, m.index) })
+    teile.push({ typ: "cloze", wert: m[1] })
+    zuletzt = m.index + m[0].length
+  }
+  if (zuletzt < text.length)
+    teile.push({ typ: "text", wert: text.slice(zuletzt) })
+  return teile
+}
+
 // Ob eine Karte heute (oder überfällig) zur Wiederholung ansteht. Neue
 // Karten ohne `faellig`-Datum gelten als sofort fällig. Gemeinsam genutzt
 // von der Projekt-Ansicht und dem projektübergreifenden „Heute lernen".

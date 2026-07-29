@@ -7,6 +7,7 @@ import { heute } from "../lib/datum"
 import Seitenkopf from "./Seitenkopf"
 import { PROFILE } from "./Onboarding"
 import ZyklenEinstellungen from "./ZyklenEinstellungen"
+import { DASHBOARD_BLOECKE, dashboardConfig } from "../lib/dashboard"
 
 const FARBEN_OPTIONEN = Object.keys(FARBEN).filter((f) => f !== "gray")
 
@@ -376,6 +377,15 @@ export default function Einstellungen() {
     window.location.reload()
   }
 
+  const dashboard = dashboardConfig(einstellungen)
+  function dashboardUmschalten(key) {
+    setEinstellungen((e) => ({
+      ...e,
+      dashboard: { ...dashboardConfig(e), [key]: !dashboardConfig(e)[key] },
+    }))
+    zeigeSpeichert()
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
       <Seitenkopf titel="Einstellungen" unterzeile="Passe dein OS an deinen Workflow an." />
@@ -494,6 +504,30 @@ export default function Einstellungen() {
             </NavIcon>
           </div>
         </Zeile>
+      </Abschnitt>
+
+      {/* ── Dashboard ───────────────────────────────────────────────────────── */}
+      <Abschnitt
+        titel="Dashboard"
+        beschreibung="Welche Blöcke auf der Startseite erscheinen. Begrüßung & Aufgaben bleiben immer sichtbar."
+        icon={
+          <>
+            <rect x="3" y="3" width="7" height="9" rx="1.5" />
+            <rect x="14" y="3" width="7" height="5" rx="1.5" />
+            <rect x="14" y="12" width="7" height="9" rx="1.5" />
+            <rect x="3" y="16" width="7" height="5" rx="1.5" />
+          </>
+        }
+      >
+        {DASHBOARD_BLOECKE.map((b) => (
+          <Zeile key={b.key} titel={b.label} beschreibung={b.beschreibung}>
+            <Toggle
+              an={dashboard[b.key]}
+              onChange={() => dashboardUmschalten(b.key)}
+              title={dashboard[b.key] ? "Ausblenden" : "Einblenden"}
+            />
+          </Zeile>
+        ))}
       </Abschnitt>
 
       {/* ── App-Profil ──────────────────────────────────────────────────────── */}

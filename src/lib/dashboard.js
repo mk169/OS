@@ -1,0 +1,39 @@
+// Optionale Blöcke der Startseite, die sich in den Einstellungen ein- und
+// ausblenden lassen. Der Aufgaben-/Fokus-Kern bleibt immer sichtbar; hier
+// geht es um die ergänzenden Panels. Gilt stilübergreifend (Todo, Terminal,
+// Clean Girl, …), soweit ein Stil den jeweiligen Block überhaupt zeigt.
+
+export const DASHBOARD_BLOECKE = [
+  {
+    key: "fokusPeriode",
+    label: "Fokus-Periode",
+    beschreibung: "Laufende Zyklen mit Ziel & verknüpften Projekten",
+  },
+  {
+    key: "lernen",
+    label: "Lern-Erinnerung",
+    beschreibung: "Hinweis auf fällige Karteikarten",
+  },
+  {
+    key: "kennzahlen",
+    label: "Kennzahlen",
+    beschreibung: "Zahlen-Kacheln (offen, erledigt, …)",
+  },
+  {
+    key: "kalender",
+    label: "Heute (Kalender)",
+    beschreibung: "Heutige Termine direkt auf der Startseite",
+  },
+]
+
+const STANDARD = {
+  fokusPeriode: true,
+  lernen: true,
+  kennzahlen: true,
+  kalender: true,
+}
+
+// Dashboard-Konfiguration mit Standardwerten (fehlende Schlüssel = an).
+export function dashboardConfig(einstellungen) {
+  return { ...STANDARD, ...(einstellungen?.dashboard ?? {}) }
+}
