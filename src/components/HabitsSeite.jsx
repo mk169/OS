@@ -358,8 +358,8 @@ function HabitErstellen({
       onSubmit={speichern}
       className="w-full rounded-xl border border-gray-300 bg-white p-4"
     >
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex min-w-0 flex-1 flex-col text-xs text-gray-500">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+        <label className="flex min-w-0 flex-col text-xs text-gray-500 sm:min-w-[10rem] sm:flex-1">
           1. Name
           <input
             value={name}
@@ -510,7 +510,7 @@ export default function HabitsSeite() {
 // Stil: Todo (Standard) – Klassische Heatmap-Ansicht
 // ──────────────────────────────────────────────────────────────
 
-function HabitsTodo({ habits, bereiche, toggle, setWochenZiel, remove, amZielCount }) {
+function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWochenZiel, remove, amZielCount }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <Seitenkopf
@@ -518,9 +518,9 @@ function HabitsTodo({ habits, bereiche, toggle, setWochenZiel, remove, amZielCou
         aktion={
           <HabitErstellen
             habits={habits}
-            setHabits={habits}
+            setHabits={setHabits}
             bereiche={bereiche}
-            setBereiche={bereiche}
+            setBereiche={setBereiche}
           />
         }
       />
@@ -694,7 +694,7 @@ function HabitsCleanGirl({ habits, _bereiche, toggle, remove }) {
 // Stil: Notion – Minimal & subtil
 // ──────────────────────────────────────────────────────────────
 
-function HabitsNotion({ habits, _bereiche, toggle, remove }) {
+function HabitsNotion({ habits, bereiche, setHabits, setBereiche, toggle, remove }) {
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
       <div className="mb-10">
@@ -703,15 +703,21 @@ function HabitsNotion({ habits, _bereiche, toggle, remove }) {
       </div>
 
       <section className="mb-12">
-        <div className="mb-3 border-b border-gray-100 pb-1.5">
+        <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-1.5">
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
             Deine Fähigkeiten
           </p>
+          <HabitErstellen
+            habits={habits}
+            setHabits={setHabits}
+            bereiche={bereiche}
+            setBereiche={setBereiche}
+            knopfKlasse="text-sm text-gray-400 transition-colors hover:text-gray-800"
+            knopfInhalt="+ Neu"
+          />
         </div>
 
-        {habits.length === 0 ? (
-          <p className="px-2 py-3 text-sm text-gray-300">Noch keine Habits.</p>
-        ) : (
+        {habits.length > 0 && (
           <ul>
             {habits.map((h) => {
               const dran = h.erledigtAn.includes(heute())

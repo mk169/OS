@@ -106,8 +106,8 @@ export default function TodoErstellen({
       onSubmit={speichern}
       className="w-full rounded-xl border border-gray-300 bg-white p-4"
     >
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex min-w-0 flex-1 flex-col text-xs text-gray-500">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+        <label className="flex min-w-0 flex-col text-xs text-gray-500 sm:min-w-[10rem] sm:flex-1">
           Name
           <input
             value={name}

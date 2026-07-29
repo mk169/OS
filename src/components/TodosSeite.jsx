@@ -469,14 +469,26 @@ function TodosNotion({ offene, erledigte, toggle, remove, zuordnungsName }) {
           />
         </div>
 
-        {offene.length === 0 ? (
-          <p className="px-2 py-3 text-sm text-gray-300">Keine offenen Aufgaben.</p>
-        ) : (
-          <ul>
-            {offene.map((t) => (
-              <NotionZeile key={t.id} todo={t} onToggle={toggle} onRemove={remove} zuordnungsName={zuordnungsName(t)} />
-            ))}
-          </ul>
+        {offene.length > 0 && (
+          <div className="space-y-5">
+            {EINTEILUNGEN.map((e) => {
+              const gruppe = offene.filter((t) => einteilungVon(t)?.key === e.key)
+              if (gruppe.length === 0) return null
+              return (
+                <div key={e.key}>
+                  <p className="mb-1 flex items-center gap-2 px-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                    <span className={`h-2 w-2 rounded-full ${e.punkt}`} />
+                    {e.label}
+                  </p>
+                  <ul>
+                    {gruppe.map((t) => (
+                      <NotionZeile key={t.id} todo={t} onToggle={toggle} onRemove={remove} zuordnungsName={zuordnungsName(t)} />
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
         )}
       </section>
 
