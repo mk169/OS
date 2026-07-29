@@ -6,6 +6,7 @@ import { STILE, STIL_STANDARD } from "../lib/stil"
 import { heute } from "../lib/datum"
 import Seitenkopf from "./Seitenkopf"
 import { PROFILE } from "./Onboarding"
+import ZyklenEinstellungen from "./ZyklenEinstellungen"
 
 const FARBEN_OPTIONEN = Object.keys(FARBEN).filter((f) => f !== "gray")
 
@@ -699,6 +700,21 @@ export default function Einstellungen() {
             <NavIcon className="h-4 w-4"><path d="M12 5v14M5 12h14" /></NavIcon>
           </button>
         </div>
+      </Abschnitt>
+
+      {/* ── Fokus-Perioden ──────────────────────────────────────────────────── */}
+      <Abschnitt
+        titel="Fokus-Perioden"
+        beschreibung="Zeitlich begrenzte Zyklen (14/30/90 Tage, Halbjahr, Jahr) mit eigenem Ziel und verknüpften Projekten – nach dem Prinzip des 90-Day-Year. Laufende Perioden erscheinen auf dem Dashboard."
+        panel={false}
+        icon={
+          <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </>
+        }
+      >
+        <ZyklenEinstellungen />
       </Abschnitt>
 
       {/* ── Daten & Sicherung ───────────────────────────────────────────────── */}
