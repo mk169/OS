@@ -1,6 +1,7 @@
 import useStored from "../lib/useStored"
 import { heute, tageBis, montagVon } from "../lib/datum"
 import { istFaellig } from "../lib/spacedRepetition"
+import { dashboardConfig } from "../lib/dashboard"
 import ZyklusWidget from "./ZyklusWidget"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
@@ -118,7 +119,8 @@ export default function Dashboard({ onNavigate }) {
   }
 
   const daten = todoGruppen(todos, projekte)
-  const gemeinsam = { todos, ...daten, toggle, onNavigate, appName }
+  const dashboard = dashboardConfig(einstellungen)
+  const gemeinsam = { todos, ...daten, toggle, onNavigate, appName, dashboard }
 
   if (stil === "gamified") return <DashboardGamified {...gemeinsam} />
   if (stil === "arcade") return <DashboardArcade {...gemeinsam} />
@@ -167,7 +169,7 @@ function StatKachel({ wert, label, akzent }) {
   )
 }
 
-function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate }) {
+function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate, dashboard }) {
   const heuteFaellig = offene.filter((t) => t.datum && t.datum <= heute()).length
   const erledigt = todos.filter((t) => t.erledigt).length
 
@@ -183,27 +185,31 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate 
         </h1>
       </header>
 
-      <ZyklusWidget onNavigate={onNavigate} />
-      <LernBanner onNavigate={onNavigate} />
+      {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
+      {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
 
-      <div className="mb-8 flex gap-3">
-        <StatKachel wert={offene.length} label="offene Aufgaben" akzent />
-        <StatKachel wert={heuteFaellig} label="heute fällig" />
-        <StatKachel wert={erledigt} label="erledigt" />
-      </div>
-
-      <section className="mb-8">
-        <div className="mb-3 flex items-center justify-between">
-          <button
-            onClick={() => onNavigate("kalender")}
-            className="group flex items-center gap-1.5 text-sm font-semibold text-gray-900"
-          >
-            <span className="text-base">📅</span> Heute
-            <span className="text-gray-300 transition-colors group-hover:text-accent-600">→</span>
-          </button>
+      {dashboard.kennzahlen && (
+        <div className="mb-8 flex gap-3">
+          <StatKachel wert={offene.length} label="offene Aufgaben" akzent />
+          <StatKachel wert={heuteFaellig} label="heute fällig" />
+          <StatKachel wert={erledigt} label="erledigt" />
         </div>
-        <KalenderPanel nurHeute />
-      </section>
+      )}
+
+      {dashboard.kalender && (
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <button
+              onClick={() => onNavigate("kalender")}
+              className="group flex items-center gap-1.5 text-sm font-semibold text-gray-900"
+            >
+              <span className="text-base">📅</span> Heute
+              <span className="text-gray-300 transition-colors group-hover:text-accent-600">→</span>
+            </button>
+          </div>
+          <KalenderPanel nurHeute />
+        </section>
+      )}
 
       <section>
         <div className="mb-3 flex items-center justify-between">
@@ -324,7 +330,7 @@ function AktionsKachel({ label, meta, farbe, erledigt, onToggle }) {
   )
 }
 
-function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavigate }) {
+function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavigate, dashboard }) {
   const { habits, setHabits, bereiche } = useHabitDaten()
   const habitToggle = nutzeHabitToggle(habits, setHabits)
   const heuteKey = heute()
@@ -394,15 +400,17 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
         </div>
       </div>
 
-      <ZyklusWidget onNavigate={onNavigate} />
-      <LernBanner onNavigate={onNavigate} />
+      {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
+      {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
 
       {/* Fortschrittsbalken */}
-      <div className="mb-8 space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-gray-100">
-        <StatBalken wert={erledigtGesamt} max={erledigtGesamt + offene.length} label="Aufgaben" farbe="rose" />
-        <StatBalken wert={habitsHeute} max={Math.max(1, habits.length)} label="Habits heute" farbe="blue" einheit={` / ${habits.length}`} />
-        <StatBalken wert={habitsAmZiel} max={Math.max(1, habits.length)} label="Wochenziel erreicht" farbe="emerald" einheit={` / ${habits.length}`} />
-      </div>
+      {dashboard.kennzahlen && (
+        <div className="mb-8 space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-gray-100">
+          <StatBalken wert={erledigtGesamt} max={erledigtGesamt + offene.length} label="Aufgaben" farbe="rose" />
+          <StatBalken wert={habitsHeute} max={Math.max(1, habits.length)} label="Habits heute" farbe="blue" einheit={` / ${habits.length}`} />
+          <StatBalken wert={habitsAmZiel} max={Math.max(1, habits.length)} label="Wochenziel erreicht" farbe="emerald" einheit={` / ${habits.length}`} />
+        </div>
+      )}
 
       {/* Aktions-Kacheln */}
       <section className="mb-8">
@@ -448,16 +456,18 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
         )}
       </section>
 
-      <section>
-        <button
-          onClick={() => onNavigate("kalender")}
-          className="group mb-3 flex items-center gap-1.5 font-sans text-sm font-bold text-gray-900"
-        >
-          <span>📅</span> Heute im Kalender
-          <span className="text-gray-300 transition-colors group-hover:text-accent-600">→</span>
-        </button>
-        <KalenderPanel nurHeute />
-      </section>
+      {dashboard.kalender && (
+        <section>
+          <button
+            onClick={() => onNavigate("kalender")}
+            className="group mb-3 flex items-center gap-1.5 font-sans text-sm font-bold text-gray-900"
+          >
+            <span>📅</span> Heute im Kalender
+            <span className="text-gray-300 transition-colors group-hover:text-accent-600">→</span>
+          </button>
+          <KalenderPanel nurHeute />
+        </section>
+      )}
     </div>
   )
 }
@@ -522,7 +532,7 @@ function TermRow({ erledigt, onToggle, label, meta }) {
   )
 }
 
-function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate }) {
+function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate, dashboard }) {
   const { habits, setHabits } = useHabitDaten()
   const habitToggle = nutzeHabitToggle(habits, setHabits)
   const heuteKey = heute()
@@ -551,15 +561,19 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
           </h1>
         </div>
 
-        <ZyklusWidget onNavigate={onNavigate} variant="dunkel" />
-        <LernBanner onNavigate={onNavigate} variant="dunkel" />
+        {dashboard.fokusPeriode && (
+          <ZyklusWidget onNavigate={onNavigate} variant="dunkel" />
+        )}
+        {dashboard.lernen && <LernBanner onNavigate={onNavigate} variant="dunkel" />}
 
         {/* Readouts */}
-        <div className="mb-8 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 text-center">
-          <Readout label="offen" wert={offene.length} />
-          <Readout label="erledigt" wert={erledigt} accent />
-          <Readout label="streak" wert={bestStreak} suffix="w" />
-        </div>
+        {dashboard.kennzahlen && (
+          <div className="mb-8 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 text-center">
+            <Readout label="offen" wert={offene.length} />
+            <Readout label="erledigt" wert={erledigt} accent />
+            <Readout label="streak" wert={bestStreak} suffix="w" />
+          </div>
+        )}
 
         {/* Aufgaben & Habits */}
         <TermSection label="tasks" onClick={() => onNavigate("todos")}>
@@ -603,12 +617,14 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
         </div>
 
         {/* Kalender */}
-        <div className="mt-10">
-          <TermSection label="today" onClick={() => onNavigate("kalender")} />
-          <div className="overflow-hidden rounded-lg border border-white/10">
-            <KalenderPanel nurHeute />
+        {dashboard.kalender && (
+          <div className="mt-10">
+            <TermSection label="today" onClick={() => onNavigate("kalender")} />
+            <div className="overflow-hidden rounded-lg border border-white/10">
+              <KalenderPanel nurHeute />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
@@ -649,7 +665,7 @@ function CleanGirlZeile({ todo, onToggle }) {
   )
 }
 
-function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate }) {
+function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate, dashboard }) {
   const heuteFaellig = offene.filter((t) => t.datum && t.datum <= heute()).length
   const erledigt = todos.filter((t) => t.erledigt).length
 
@@ -666,27 +682,31 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
           </p>
         </header>
 
-        <div className="mb-8 flex gap-3">
-          <CleanPill wert={offene.length} label="offen" farbe="bg-rose-100/70 text-rose-600" />
-          <CleanPill wert={heuteFaellig} label="heute" farbe="bg-purple-100/70 text-purple-600" />
-          <CleanPill wert={erledigt} label="erledigt" farbe="bg-amber-100/70 text-amber-700" />
-        </div>
-
-        <ZyklusWidget onNavigate={onNavigate} />
-      <LernBanner onNavigate={onNavigate} />
-
-        <section className="mb-8">
-          <button
-            onClick={() => onNavigate("kalender")}
-            style={{ fontFamily: FONT_SERIF_ELEGANT }}
-            className="mb-3 text-lg italic text-rose-950/70 transition-colors hover:text-rose-500"
-          >
-            heute ☕
-          </button>
-          <div className="overflow-hidden rounded-3xl shadow-[0_20px_50px_-30px_rgba(219,112,147,0.7)]">
-            <KalenderPanel nurHeute />
+        {dashboard.kennzahlen && (
+          <div className="mb-8 flex gap-3">
+            <CleanPill wert={offene.length} label="offen" farbe="bg-rose-100/70 text-rose-600" />
+            <CleanPill wert={heuteFaellig} label="heute" farbe="bg-purple-100/70 text-purple-600" />
+            <CleanPill wert={erledigt} label="erledigt" farbe="bg-amber-100/70 text-amber-700" />
           </div>
-        </section>
+        )}
+
+        {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
+      {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
+
+        {dashboard.kalender && (
+          <section className="mb-8">
+            <button
+              onClick={() => onNavigate("kalender")}
+              style={{ fontFamily: FONT_SERIF_ELEGANT }}
+              className="mb-3 text-lg italic text-rose-950/70 transition-colors hover:text-rose-500"
+            >
+              heute ☕
+            </button>
+            <div className="overflow-hidden rounded-3xl shadow-[0_20px_50px_-30px_rgba(219,112,147,0.7)]">
+              <KalenderPanel nurHeute />
+            </div>
+          </section>
+        )}
 
         <section>
           <div className="mb-3 flex items-center justify-between">
@@ -766,7 +786,7 @@ function NotionZeile({ todo, onToggle }) {
   )
 }
 
-function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate }) {
+function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard }) {
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
       {/* Seitenkopf mit Emoji-„Cover" */}
@@ -781,8 +801,8 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate }) {
         <p className="mt-1.5 text-sm text-gray-400">{datumLang(heute())}</p>
       </div>
 
-      <ZyklusWidget onNavigate={onNavigate} />
-      <LernBanner onNavigate={onNavigate} />
+      {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
+      {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
 
       {/* Aufgaben */}
       <section className="mb-12">
@@ -834,17 +854,19 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate }) {
       </section>
 
       {/* Kalender */}
-      <section>
-        <div className="mb-2 border-b border-gray-100 pb-1.5">
-          <button
-            onClick={() => onNavigate("kalender")}
-            className="text-xs font-semibold uppercase tracking-widest text-gray-400 transition-colors hover:text-gray-700"
-          >
-            Heute
-          </button>
-        </div>
-        <KalenderPanel nurHeute />
-      </section>
+      {dashboard.kalender && (
+        <section>
+          <div className="mb-2 border-b border-gray-100 pb-1.5">
+            <button
+              onClick={() => onNavigate("kalender")}
+              className="text-xs font-semibold uppercase tracking-widest text-gray-400 transition-colors hover:text-gray-700"
+            >
+              Heute
+            </button>
+          </div>
+          <KalenderPanel nurHeute />
+        </section>
+      )}
     </div>
   )
 }
