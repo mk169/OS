@@ -1,6 +1,8 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
 import { bewerteKarte, istFaellig } from "../lib/spacedRepetition"
+import { kartenReife, faelligForecast } from "../lib/lernstatistik"
+import { protokolliereWiederholung, heuteGelernt } from "../lib/lernprotokoll"
 import { LernModus } from "./ProjektKarten"
 
 // Projektübergreifendes „Heute lernen": bündelt alle fälligen Karteikarten
@@ -11,6 +13,7 @@ import { LernModus } from "./ProjektKarten"
 export default function LernenGlobal() {
   const [alleKarten, setAlleKarten] = useStored("karten", [])
   const [projekte] = useStored("projekte", [])
+  const [protokoll] = useStored("lernprotokoll", {})
   const [lernModus, setLernModus] = useState(false)
 
   const faellig = alleKarten.filter(istFaellig)
@@ -38,6 +41,7 @@ export default function LernenGlobal() {
     setAlleKarten(
       alleKarten.map((k) => (k.id === karte.id ? { ...k, ...neu } : k))
     )
+    protokolliereWiederholung()
   }
 
   function starteLernen() {
@@ -123,6 +127,97 @@ export default function LernenGlobal() {
           </div>
         </div>
       )}
+
+      {alleKarten.length > 0 && (
+        <LernStatistik
+          karten={alleKarten}
+          heuteGelernt={heuteGelernt(protokoll)}
+        />
+      )}
     </div>
+  )
+}
+
+// Statistik-Panel im Stil von Anki: heute gelernt, Kartenreife und eine
+// Fälligkeits-Prognose für die nächsten sieben Tage.
+function LernStatistik({ karten, heuteGelernt }) {
+  const reife = kartenReife(karten)
+  const forecast = faelligForecast(karten, 7)
+  const maxForecast = Math.max(1, ...forecast.map((f) => f.anzahl))
+  const prozent = (n) => (reife.gesamt ? (n / reife.gesamt) * 100 : 0)
+  const wochentag = (key) =>
+    new Date(key).toLocaleDateString("de-DE", { weekday: "short" }).slice(0, 2)
+
+  return (
+    <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+        Statistik
+      </p>
+
+      <div className="mt-3 grid grid-cols-3 gap-3 text-center">
+        <Kennzahl wert={heuteGelernt} label="heute gelernt" />
+        <Kennzahl wert={karten.filter(istFaellig).length} label="fällig" />
+        <Kennzahl wert={reife.gesamt} label="Karten gesamt" />
+      </div>
+
+      {/* Kartenreife */}
+      <div className="mt-5">
+        <div className="flex h-2.5 overflow-hidden rounded-full bg-gray-100">
+          <div className="bg-gray-300" style={{ width: `${prozent(reife.neu)}%` }} />
+          <div className="bg-blue-400" style={{ width: `${prozent(reife.jung)}%` }} />
+          <div className="bg-emerald-500" style={{ width: `${prozent(reife.reif)}%` }} />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-500">
+          <LegendePunkt farbe="bg-gray-300" label="Neu" wert={reife.neu} />
+          <LegendePunkt farbe="bg-blue-400" label="Jung" wert={reife.jung} />
+          <LegendePunkt farbe="bg-emerald-500" label="Reif" wert={reife.reif} />
+        </div>
+      </div>
+
+      {/* Prognose */}
+      <div className="mt-5">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+          Fällig – nächste 7 Tage
+        </p>
+        <div className="flex items-end gap-1.5" style={{ height: 72 }}>
+          {forecast.map((f, i) => (
+            <div key={f.key} className="flex flex-1 flex-col items-center gap-1">
+              <span className="text-[10px] tabular-nums text-gray-400">
+                {f.anzahl || ""}
+              </span>
+              <div
+                className={`w-full rounded-t ${i === 0 ? "bg-accent-500" : "bg-accent-200"}`}
+                style={{
+                  height: `${(f.anzahl / maxForecast) * 48}px`,
+                  minHeight: f.anzahl ? 3 : 0,
+                }}
+              />
+              <span className="text-[10px] text-gray-400">
+                {i === 0 ? "heute" : wochentag(f.key)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Kennzahl({ wert, label }) {
+  return (
+    <div className="rounded-xl bg-gray-50 py-3">
+      <p className="text-2xl font-semibold tabular-nums text-gray-900">{wert}</p>
+      <p className="mt-0.5 text-[11px] text-gray-400">{label}</p>
+    </div>
+  )
+}
+
+function LegendePunkt({ farbe, label, wert }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`h-2 w-2 rounded-full ${farbe}`} />
+      {label}
+      <span className="tabular-nums text-gray-400">{wert}</span>
+    </span>
   )
 }

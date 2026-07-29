@@ -22,8 +22,7 @@ function begruessung() {
 }
 
 // Dekorative Schriftfamilien (Fonts via <link> in index.html geladen).
-const FONT_ARCADE = '"Press Start 2P", ui-monospace, monospace'
-const FONT_TERMINAL = '"VT323", ui-monospace, "SF Mono", Menlo, monospace'
+const FONT_MONO = 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace'
 const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
 
 // Hinweis auf fällige Karteikarten (projektübergreifend). Erscheint nur, wenn
@@ -464,88 +463,63 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Stil „Arcade" – Retro-Arcade im Pac-Man-Look (schwarz, gelb, Geister)
+ * Stil „Terminal" – minimalistisches Cyberpunk-Retro-Terminal (Mono, Neon)
  * ════════════════════════════════════════════════════════════════════════ */
 
-// Pac-Man-Keil (öffnet nach rechts).
-function PacIcon({ size = 16 }) {
+// Terminal-Kennzahl (Readout).
+function Readout({ label, wert, suffix = "", accent }) {
   return (
-    <svg viewBox="0 0 32 32" width={size} height={size} className="shrink-0">
-      <path fill="#ffd400" d="M16 16 L31 8.5 A16 16 0 1 0 31 23.5 Z" />
-    </svg>
-  )
-}
-
-// Klassischer Geist; „frightened" = gefressen/blau.
-function GhostIcon({ size = 24, color = "#ff0000", frightened = false }) {
-  const body = frightened ? "#2121ff" : color
-  const eye = frightened ? "#ffffff" : "#2121ff"
-  return (
-    <svg viewBox="0 0 32 32" width={size} height={size} className="shrink-0">
-      <path
-        fill={body}
-        d="M4 30 V15 a12 12 0 0 1 24 0 V30 l-4-3 -4 3 -4-3 -4 3 -4-3 -4 3 Z"
-      />
-      <circle cx="12" cy="15" r="3.4" fill="#fff" />
-      <circle cx="21" cy="15" r="3.4" fill="#fff" />
-      <circle cx="13" cy="15.5" r="1.7" fill={eye} />
-      <circle cx="22" cy="15.5" r="1.7" fill={eye} />
-    </svg>
-  )
-}
-
-// Fortschritt als Pac-Dot-Bahn: gefressene Punkte links leer, Pac-Man am Rand,
-// verbleibende als Pellets.
-function PacLane({ label, wert, max }) {
-  const n = 14
-  const gegessen = max > 0 ? Math.round((wert / max) * n) : 0
-  return (
-    <div>
-      <div className="flex items-center justify-between" style={{ fontFamily: FONT_ARCADE }}>
-        <span className="text-[8px] text-white/70">{label}</span>
-        <span className="text-[8px] text-yellow-300">
-          {wert}/{max}
-        </span>
-      </div>
-      <div className="mt-1.5 flex items-center gap-1 rounded border-2 border-blue-700 bg-black px-2 py-1.5">
-        {Array.from({ length: n }).map((_, i) => {
-          if (i < gegessen) return <span key={i} className="h-2 w-2 shrink-0" />
-          if (i === gegessen) return <PacIcon key={i} size={12} />
-          return (
-            <span key={i} className="h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-200/80" />
-          )
-        })}
-      </div>
+    <div className="bg-[#0a0b12] px-3 py-3">
+      <p className={`text-2xl font-medium tabular-nums ${accent ? "text-cyan-400" : "text-zinc-200"}`}>
+        {wert}
+        {suffix && <span className="text-sm text-zinc-600">{suffix}</span>}
+      </p>
+      <p className="mt-0.5 text-[10px] uppercase tracking-widest text-zinc-600">
+        {label}
+      </p>
     </div>
   )
 }
 
-function GhostRow({ label, meta, color, erledigt, onToggle }) {
+// Abschnitts-Kopf im Terminal-Stil („// label"), optional anklickbar.
+function TermSection({ label, onClick, children }) {
   return (
-    <button
-      onClick={onToggle}
-      title={erledigt ? "Rückgängig" : "Fressen!"}
-      className="flex w-full items-center gap-3 rounded border-2 border-blue-800 bg-blue-950/40 px-3 py-2.5 text-left transition-colors hover:border-blue-400"
-    >
-      <GhostIcon size={26} color={color} frightened={erledigt} />
-      <span className="min-w-0 flex-1">
-        <span className={`block truncate text-lg leading-tight ${erledigt ? "text-white/40 line-through" : "text-white"}`}>
-          {label}
-        </span>
-        {meta && <span className="block truncate text-sm text-white/40">{meta}</span>}
-      </span>
-      <span style={{ fontFamily: FONT_ARCADE }} className="shrink-0 text-[8px] text-yellow-300">
-        {erledigt ? "200" : "•••"}
-      </span>
-    </button>
+    <div className="mb-2 flex items-center justify-between">
+      <button
+        onClick={onClick}
+        className="text-xs uppercase tracking-widest text-zinc-500 transition-colors hover:text-cyan-400"
+      >
+        <span className="text-zinc-700">// </span>
+        {label}
+      </button>
+      {children}
+    </div>
   )
 }
 
-const GEISTER_FARBEN = {
-  "wichtig-dringend": "#ff0000",
-  wichtig: "#ffb8ff",
-  dringend: "#ffb852",
-  sonstige: "#00ffff",
+// Zeile mit „[ ]"/„[x]"-Checkbox im Monospace-Terminal.
+function TermRow({ erledigt, onToggle, label, meta }) {
+  return (
+    <div className="group flex items-center gap-3 px-3 py-2.5">
+      <button
+        onClick={onToggle}
+        title={erledigt ? "Rückgängig" : "Erledigt"}
+        className={`shrink-0 text-sm ${
+          erledigt ? "text-cyan-400" : "text-zinc-600 hover:text-cyan-400"
+        }`}
+      >
+        [{erledigt ? "x" : " "}]
+      </button>
+      <span
+        className={`min-w-0 flex-1 truncate text-sm ${
+          erledigt ? "text-zinc-600 line-through" : "text-zinc-300"
+        }`}
+      >
+        {label}
+      </span>
+      {meta && <span className="shrink-0 text-xs text-zinc-600">{meta}</span>}
+    </div>
+  )
 }
 
 function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate }) {
@@ -553,118 +527,85 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
   const habitToggle = nutzeHabitToggle(habits, setHabits)
   const heuteKey = heute()
 
-  const erledigtGesamt = todos.filter((t) => t.erledigt).length
-  const level = Math.floor(erledigtGesamt / 10) + 1
-  const xpInLevel = erledigtGesamt % 10
-  const score = erledigtGesamt * 100
-  const hiScore = (erledigtGesamt + offene.length) * 100
-  const habitsHeute = habits.filter((h) => h.erledigtAn.includes(heuteKey)).length
+  const erledigt = todos.filter((t) => t.erledigt).length
   const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
-
-  const todoQuests = [...gruppen.flatMap((g) => g.todos), ...ohneGruppe].slice(0, 5)
-  const ghostFor = (t) => GEISTER_FARBEN[einteilungVon(t).key] ?? "#00ffff"
+  const tasks = [...gruppen.flatMap((g) => g.todos), ...ohneGruppe].slice(0, 6)
 
   return (
-    <div style={{ fontFamily: FONT_TERMINAL }} className="min-h-screen bg-black px-4 py-6 text-white sm:px-6">
+    <div
+      style={{ fontFamily: FONT_MONO }}
+      className="min-h-screen bg-[#0a0b12] px-4 py-8 text-zinc-400 sm:px-6"
+    >
       <div className="mx-auto max-w-2xl">
-        {/* Scoreboard */}
-        <div className="mb-6 grid grid-cols-3 items-start" style={{ fontFamily: FONT_ARCADE }}>
-          <div>
-            <p className="text-[8px] text-white/70">1UP</p>
-            <p className="mt-1.5 text-[12px] text-white">{String(score).padStart(5, "0")}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-[8px] text-red-500">HIGH SCORE</p>
-            <p className="mt-1.5 text-[12px] text-yellow-300">{String(hiScore).padStart(5, "0")}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[8px] text-white/70">LEVEL</p>
-            <p className="mt-1.5 text-[12px] text-yellow-300">{level}</p>
-          </div>
-        </div>
-
-        {/* Begrüßung */}
-        <div className="mb-6 flex items-center gap-3">
-          <PacIcon size={30} />
-          <div className="min-w-0">
-            <h1 style={{ fontFamily: FONT_ARCADE }} className="text-[13px] leading-tight text-yellow-300">
-              READY!
-            </h1>
-            <p className="truncate text-xl leading-tight text-white/70">
-              {begruessung()} · {datumLang(heute())}
-            </p>
-          </div>
+        {/* Prompt-Kopf */}
+        <div className="mb-8">
+          <p className="text-xs text-zinc-600">
+            <span className="text-cyan-400">os</span>@
+            <span className="text-fuchsia-400">system</span>
+            <span className="text-zinc-600"> ~ {datumLang(heute())}</span>
+          </p>
+          <h1 className="mt-2 flex items-center text-2xl font-medium tracking-tight text-zinc-100">
+            <span className="mr-2 text-fuchsia-400">❯</span>
+            {begruessung().toLowerCase()}
+            <span className="ml-1.5 inline-block h-5 w-2.5 animate-pulse bg-cyan-400" />
+          </h1>
         </div>
 
         <ZyklusWidget onNavigate={onNavigate} variant="dunkel" />
         <LernBanner onNavigate={onNavigate} variant="dunkel" />
 
-        {/* Fortschritts-Bahnen */}
-        <div className="mb-7 space-y-3">
-          <PacLane label="XP" wert={xpInLevel} max={10} />
-          <PacLane label="AUFGABEN" wert={erledigtGesamt} max={erledigtGesamt + offene.length} />
-          <PacLane label="HABITS" wert={habitsHeute} max={Math.max(1, habits.length)} />
+        {/* Readouts */}
+        <div className="mb-8 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 text-center">
+          <Readout label="offen" wert={offene.length} />
+          <Readout label="erledigt" wert={erledigt} accent />
+          <Readout label="streak" wert={bestStreak} suffix="w" />
         </div>
 
-        {/* Quests */}
-        <div className="mb-3 flex items-center justify-between">
-          <h2 style={{ fontFamily: FONT_ARCADE }} className="text-[10px] text-white">
-            ◄ QUESTS ►
-          </h2>
-          <span style={{ fontFamily: FONT_ARCADE }} className="text-[8px] text-yellow-300">
-            🔥 {bestStreak}
+        {/* Aufgaben & Habits */}
+        <TermSection label="tasks" onClick={() => onNavigate("todos")}>
+          <span className="text-xs text-zinc-600">
+            {erledigt}/{erledigt + offene.length}
           </span>
-        </div>
+        </TermSection>
 
-        {todoQuests.length === 0 && habits.length === 0 ? (
-          <p className="rounded border-2 border-blue-800 py-8 text-center text-xl text-white/50">
-            GAME OVER — keine Quests
+        {tasks.length === 0 && habits.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-white/10 py-8 text-center text-sm text-zinc-600">
+            // keine offenen tasks
           </p>
         ) : (
-          <div className="space-y-2">
-            {todoQuests.map((t) => (
-              <GhostRow
+          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-white/10">
+            {tasks.map((t) => (
+              <TermRow
                 key={t.id}
-                label={t.text}
-                meta={t.datum ? tageBis(t.datum) : null}
-                color={ghostFor(t)}
                 erledigt={false}
                 onToggle={() => toggle(t.id)}
+                label={t.text}
+                meta={t.datum ? tageBis(t.datum) : null}
               />
             ))}
-            {habits.map((h) => {
-              const dran = h.erledigtAn.includes(heuteKey)
-              return (
-                <GhostRow
-                  key={`h-${h.id}`}
-                  label={h.name}
-                  meta={`HABIT · 🔥 ${wochenStreakVon(h)}`}
-                  color="#00ffff"
-                  erledigt={dran}
-                  onToggle={() => habitToggle(h)}
-                />
-              )
-            })}
+            {habits.map((h) => (
+              <TermRow
+                key={`h-${h.id}`}
+                erledigt={h.erledigtAn.includes(heuteKey)}
+                onToggle={() => habitToggle(h)}
+                label={h.name}
+                meta={`habit · ${wochenStreakVon(h)}w`}
+              />
+            ))}
           </div>
         )}
 
         <div className="mt-4">
           <TodoErstellen
-            knopfKlasse="inline-flex items-center gap-2 rounded border-2 border-yellow-400 bg-black px-4 py-2 text-sm text-yellow-300 transition-colors hover:bg-yellow-400 hover:text-black"
-            knopfInhalt="+ INSERT COIN"
+            knopfKlasse="inline-flex items-center gap-2 rounded-md border border-cyan-400/40 px-4 py-2 text-sm text-cyan-400 transition-colors hover:bg-cyan-400/10"
+            knopfInhalt="+ neue_aufgabe"
           />
         </div>
 
         {/* Kalender */}
-        <div className="mt-8">
-          <button
-            onClick={() => onNavigate("kalender")}
-            style={{ fontFamily: FONT_ARCADE }}
-            className="mb-3 text-[9px] text-white transition-colors hover:text-yellow-300"
-          >
-            ► HEUTE
-          </button>
-          <div className="overflow-hidden rounded-lg border-2 border-blue-700">
+        <div className="mt-10">
+          <TermSection label="today" onClick={() => onNavigate("kalender")} />
+          <div className="overflow-hidden rounded-lg border border-white/10">
             <KalenderPanel nurHeute />
           </div>
         </div>

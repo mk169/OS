@@ -87,9 +87,9 @@ export default function Suche({ onNavigate, onClose }) {
         {
           typ: "Karteikarten",
           treffer: karten
-            .filter((k) => passt(k.vorne, k.hinten))
+            .filter((k) => passt(k.vorne, k.hinten, k.text))
             .map((k) => ({
-              label: k.vorne || "Bildkarte",
+              label: k.vorne || k.text || "Bildkarte",
               detail: projektName(k.projektId ?? k.kursId),
               ziel: ["projekte", k.projektId ?? k.kursId],
             })),

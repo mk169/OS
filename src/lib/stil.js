@@ -21,9 +21,9 @@ export const STILE = [
   },
   {
     id: "arcade",
-    name: "Arcade",
-    beschreibung: "Retro-Arcade im Pac-Man-Stil",
-    emoji: "🕹️",
+    name: "Terminal",
+    beschreibung: "Minimalistisches Cyberpunk-Retro-Terminal",
+    emoji: "🖥️",
   },
   {
     id: "cleangirl",
