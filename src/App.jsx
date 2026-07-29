@@ -10,6 +10,7 @@ import TodosSeite from "./components/TodosSeite"
 import HabitsSeite from "./components/HabitsSeite"
 import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
+import FinanzenSeite from "./components/FinanzenSeite"
 import SammelnSeite from "./components/SammelnSeite"
 import ReviewSeite from "./components/ReviewSeite"
 import Suche from "./components/Suche"
@@ -46,6 +47,24 @@ function migriereAlteKurse() {
       })),
   ])
   schreibeStore("kurse", [], [])
+}
+
+// Einmalige Ergänzung des neuen Bereichs „Finanzen" für bestehende Nutzer:
+// wird der aktiven Navigation hinzugefügt, sofern noch nicht vorhanden. Der
+// Merker `finanzenErgaenzt` sorgt dafür, dass ein späteres Ausblenden bleibt.
+function migriereFinanzen() {
+  const roh = localStorage.getItem("einstellungen")
+  if (!roh) return // Neue Nutzer erhalten den Standard (inkl. „finanzen").
+  try {
+    const e = JSON.parse(roh)
+    if (e.finanzenErgaenzt) return
+    const seiten = e.sichtbareSeiten ?? []
+    const neu = { ...e, finanzenErgaenzt: true }
+    if (!seiten.includes("finanzen")) neu.sichtbareSeiten = [...seiten, "finanzen"]
+    schreibeStore("einstellungen", {}, neu)
+  } catch {
+    /* defektes JSON – ignorieren */
+  }
 }
 
 // Schlichtes Linien-Icon (24er-Raster, currentColor).
@@ -127,12 +146,23 @@ const NAV = [
       <path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
     ),
   },
+  {
+    key: "finanzen",
+    label: "Finanzen",
+    icon: (
+      <>
+        <rect x="2.5" y="6" width="19" height="12" rx="2" />
+        <circle cx="12" cy="12" r="2.5" />
+        <path d="M6 9v6M18 9v6" />
+      </>
+    ),
+  },
 ]
 
 const EINSTELLUNGEN_STANDARD = {
   onboardingAbgeschlossen: false,
   profil: "komplett",
-  sichtbareSeiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte"],
+  sichtbareSeiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen"],
   appName: "OS",
   startseite: "dashboard",
   akzent: "indigo",
@@ -157,7 +187,10 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [authBereit, setAuthBereit] = useState(!cloudAktiv)
 
-  useEffect(() => { migriereAlteKurse() }, [])
+  useEffect(() => {
+    migriereAlteKurse()
+    migriereFinanzen()
+  }, [])
 
   // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den Einstellungen).
   useEffect(() => {
@@ -378,6 +411,7 @@ export default function App() {
             onNavigate={navigiere}
           />
         )}
+        {seite === "finanzen" && <FinanzenSeite />}
         {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
         {seite === "einstellungen" && <Einstellungen />}
       </main>

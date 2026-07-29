@@ -74,6 +74,18 @@ const ALLE_SEITEN = [
       <path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
     ),
   },
+  {
+    key: "finanzen",
+    label: "Finanzen",
+    beschreibung: "Konten, Budgets & Ausgaben",
+    icon: (
+      <>
+        <rect x="2.5" y="6" width="19" height="12" rx="2" />
+        <circle cx="12" cy="12" r="2.5" />
+        <path d="M6 9v6M18 9v6" />
+      </>
+    ),
+  },
 ]
 
 const DASHBOARD_ICON = <path d="M3 10.75 12 3l9 7.75M5 9.5V21h14V9.5" />
