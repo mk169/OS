@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { WIKILINK_REGEX, findeZiel, sammleBacklinks } from "../lib/wikilinks"
 import { teileMitTags, sammleTags } from "../lib/tags"
+import { leseDateiAlsDataUri, istBild, formatBytes } from "../lib/wissen"
 
 // Lehrinhalte: eigene Notizen und Zusammenfassungen zum Projekt, als
 // Karten-Raster zum Sammeln und Stapeln. Klick öffnet die Notiz groß in
@@ -294,10 +295,36 @@ export function NotizBearbeiten({
   notizen = [],
   onZielKlick,
   onTagKlick,
+  // Nur im Wissens-Kontext (SammelnSeite) gesetzt: Ordner-Zuordnung & Anheften.
+  ordner = null,
+  onOrdnerWechsel,
+  onPinToggle,
 }) {
   const [bearbeiten, setBearbeiten] = useState(false)
   const [mention, setMention] = useState(null) // { modus: "link"|"tag", query }
   const [mentionIndex, setMentionIndex] = useState(0)
+  const dateiInput = useRef(null)
+  const [anhangFehler, setAnhangFehler] = useState("")
+
+  const anhaenge = notiz.anhaenge ?? []
+
+  async function dateienHinzufuegen(dateiListe) {
+    const neue = []
+    const fehler = []
+    for (const datei of Array.from(dateiListe)) {
+      try {
+        neue.push(await leseDateiAlsDataUri(datei))
+      } catch (e) {
+        fehler.push(e.message)
+      }
+    }
+    setAnhangFehler(fehler.join(" "))
+    if (neue.length) onChange({ ...notiz, anhaenge: [...anhaenge, ...neue] })
+  }
+
+  function anhangEntfernen(id) {
+    onChange({ ...notiz, anhaenge: anhaenge.filter((a) => a.id !== id) })
+  }
 
   // Vorhandene Schlagworte für die #-Autovervollständigung.
   const alleTags = useMemo(
@@ -399,8 +426,37 @@ export function NotizBearbeiten({
       }}
     >
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-5 sm:py-8">
-        <div className="flex items-center justify-between text-xs text-gray-400">
-          <span>Notiz</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+          {ordner ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onPinToggle?.()}
+                title={notiz.angepinnt ? "Nicht mehr anheften" : "Anheften"}
+                className={
+                  notiz.angepinnt
+                    ? "font-medium text-amber-500"
+                    : "hover:text-gray-900"
+                }
+              >
+                {notiz.angepinnt ? "📌 Angeheftet" : "📌 Anheften"}
+              </button>
+              <select
+                value={notiz.ordnerId ?? ""}
+                onChange={(e) => onOrdnerWechsel?.(e.target.value || null)}
+                title="Ordner"
+                className="rounded-sm border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-600 outline-none focus:border-gray-900"
+              >
+                <option value="">📁 Kein Ordner</option>
+                {ordner.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <span>Notiz</span>
+          )}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setBearbeiten(!bearbeiten)}
@@ -508,6 +564,78 @@ export function NotizBearbeiten({
             )}
           </div>
         )}
+
+        <div className="mt-6 border-t border-gray-100 pt-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+              Anhänge
+            </p>
+            <button
+              onClick={() => dateiInput.current?.click()}
+              className="text-xs text-gray-400 transition-colors hover:text-gray-900"
+            >
+              + Datei hochladen
+            </button>
+            <input
+              ref={dateiInput}
+              type="file"
+              multiple
+              onChange={(e) => {
+                dateienHinzufuegen(e.target.files)
+                e.target.value = ""
+              }}
+              className="hidden"
+            />
+          </div>
+          {anhangFehler && (
+            <p className="mt-2 text-xs text-red-500">{anhangFehler}</p>
+          )}
+          {anhaenge.length === 0 ? (
+            <p className="mt-2 text-xs text-gray-300">
+              Bilder, PDFs oder Dateien hierher hochladen.
+            </p>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {anhaenge.map((a) => (
+                <div
+                  key={a.id}
+                  className="group/anhang relative overflow-hidden rounded-lg border border-gray-200 bg-gray-50"
+                >
+                  {istBild(a.typ) ? (
+                    <a href={a.datenUri} target="_blank" rel="noreferrer">
+                      <img
+                        src={a.datenUri}
+                        alt={a.name}
+                        className="h-28 w-full object-cover"
+                      />
+                    </a>
+                  ) : (
+                    <a
+                      href={a.datenUri}
+                      download={a.name}
+                      className="flex h-28 flex-col items-center justify-center gap-1 p-2 text-center"
+                    >
+                      <span className="text-2xl">📄</span>
+                      <span className="w-full truncate text-[11px] text-gray-600">
+                        {a.name}
+                      </span>
+                    </a>
+                  )}
+                  <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-black/60 px-1 text-[9px] text-white">
+                    {formatBytes(a.groesse)}
+                  </span>
+                  <button
+                    onClick={() => anhangEntfernen(a.id)}
+                    title="Anhang entfernen"
+                    className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-xs text-white opacity-0 transition-opacity group-hover/anhang:opacity-100"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {backlinks.length > 0 && (
           <div className="mt-6 border-t border-gray-100 pt-4">
