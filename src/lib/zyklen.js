@@ -78,6 +78,33 @@ export function zyklusStatus(zyklus) {
   }
 }
 
+// Verknüpfte Projekte eines Zyklus in einheitlicher Form:
+// [{ projektId, ziel, erledigt }]. Migriert verlustfrei die frühere Struktur,
+// die nur `projektIds` (ohne eigene Ziele) kannte.
+export function zyklusProjekte(zyklus) {
+  if (Array.isArray(zyklus.projekte)) return zyklus.projekte
+  return (zyklus.projektIds ?? []).map((projektId) => ({
+    projektId,
+    ziel: "",
+    erledigt: false,
+  }))
+}
+
+// Aktualisiert einen Zyklus und legt dabei die verknüpften Projekte in der
+// neuen Struktur ab (entfernt das alte `projektIds`-Feld). `aenderung`
+// überschreibt einzelne Felder gezielt.
+export function aktualisiereZyklus(zyklus, aenderung = {}) {
+  // eslint-disable-next-line no-unused-vars
+  const { projektIds, ...rest } = zyklus
+  return { ...rest, projekte: zyklusProjekte(zyklus), ...aenderung }
+}
+
+// Erreichte Projektziele / Gesamtzahl verknüpfter Projekte einer Periode.
+export function zieleErreicht(zyklus) {
+  const p = zyklusProjekte(zyklus)
+  return { erreicht: p.filter((x) => x.erledigt).length, gesamt: p.length }
+}
+
 // Kurzer Text für die Restlaufzeit eines aktiven Zyklus.
 export function restText(tageUebrig) {
   if (tageUebrig <= 0) return "letzter Tag"

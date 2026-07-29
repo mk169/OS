@@ -6,19 +6,21 @@ import {
   berechneEnde,
   laengeLabel,
   zyklusStatus,
+  zyklusProjekte,
+  aktualisiereZyklus,
+  zieleErreicht,
   restText,
 } from "../lib/zyklen"
 
 // Verwaltung der Fokus-Perioden (Zyklen) in den Einstellungen: anlegen,
-// Ziel/Titel bearbeiten, Projekte verknüpfen und löschen. Die Anzeige auf
-// dem Dashboard übernimmt ZyklusWidget.
+// Titel/Ziel bearbeiten, Projekte mit je eigenem Periodenziel verknüpfen und
+// löschen. Die Anzeige auf dem Dashboard übernimmt ZyklusWidget.
 export default function ZyklenEinstellungen() {
   const [zyklen, setZyklen] = useStored("zyklen", [])
   const [projekte] = useStored("projekte", [])
   const [formOffen, setFormOffen] = useState(false)
 
   const aktiveProjekte = projekte.filter((p) => !p.archiviert)
-  // Neueste Perioden zuerst (nach Startdatum).
   const sortiert = [...zyklen].sort((a, b) =>
     (b.start ?? "").localeCompare(a.start ?? "")
   )
@@ -73,12 +75,106 @@ export default function ZyklenEinstellungen() {
   )
 }
 
-// Bestehende Periode: Titel & Ziel inline editierbar, Projekte per Chip
-// zu-/abschaltbar. Länge/Start/Ende sind Anlege-Werte und werden hier nicht
-// verändert (bei Bedarf löschen und neu anlegen).
+// Wiederverwendbare Liste „Projekt + eigenes Periodenziel". Wird beim Anlegen
+// und beim Bearbeiten genutzt. eintraege = [{ projektId, ziel, erledigt }].
+// mitErledigt blendet die Erreicht-Checkbox ein (nur beim Bearbeiten sinnvoll).
+function ProjektZiele({ eintraege, alleProjekte, onChange, mitErledigt = false }) {
+  const verknuepft = new Set(eintraege.map((e) => e.projektId))
+  const verfuegbar = alleProjekte.filter((p) => !verknuepft.has(p.id))
+  const name = (pid) => alleProjekte.find((p) => p.id === pid)?.name ?? "Projekt"
+
+  function setZiel(pid, ziel) {
+    onChange(eintraege.map((e) => (e.projektId === pid ? { ...e, ziel } : e)))
+  }
+  function toggleErledigt(pid) {
+    onChange(
+      eintraege.map((e) =>
+        e.projektId === pid ? { ...e, erledigt: !e.erledigt } : e
+      )
+    )
+  }
+  function entferne(pid) {
+    onChange(eintraege.filter((e) => e.projektId !== pid))
+  }
+  function fuegeHinzu(pid) {
+    if (!pid) return
+    onChange([
+      ...eintraege,
+      { projektId: Number(pid), ziel: "", erledigt: false },
+    ])
+  }
+
+  return (
+    <div className="space-y-2">
+      {eintraege.map((e) => (
+        <div
+          key={e.projektId}
+          className="rounded-lg border border-gray-200 bg-gray-50 p-2.5"
+        >
+          <div className="flex items-center gap-2">
+            {mitErledigt && (
+              <input
+                type="checkbox"
+                checked={!!e.erledigt}
+                onChange={() => toggleErledigt(e.projektId)}
+                title="Ziel erreicht"
+                className="h-4 w-4 shrink-0 accent-gray-900"
+              />
+            )}
+            <span
+              className={`min-w-0 flex-1 truncate text-sm font-medium ${
+                e.erledigt ? "text-gray-400 line-through" : "text-gray-800"
+              }`}
+            >
+              {name(e.projektId)}
+            </span>
+            <button
+              type="button"
+              onClick={() => entferne(e.projektId)}
+              title="Projekt entfernen"
+              className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
+            >
+              ×
+            </button>
+          </div>
+          <input
+            value={e.ziel}
+            onChange={(ev) => setZiel(e.projektId, ev.target.value)}
+            placeholder="Konkretes Ziel für dieses Projekt in dieser Periode…"
+            className="mt-1.5 w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-800 outline-none transition-colors focus:border-accent-400 placeholder:text-gray-300"
+          />
+        </div>
+      ))}
+
+      {verfuegbar.length > 0 ? (
+        <select
+          value=""
+          onChange={(ev) => fuegeHinzu(ev.target.value)}
+          className="w-full cursor-pointer rounded-lg border border-dashed border-gray-300 bg-white px-3 py-2 text-sm text-gray-500 outline-none transition-colors focus:border-accent-400"
+        >
+          <option value="">+ Projekt verknüpfen …</option>
+          {verfuegbar.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        eintraege.length === 0 && (
+          <p className="text-xs text-gray-400">Noch keine Projekte angelegt.</p>
+        )
+      )}
+    </div>
+  )
+}
+
+// Bestehende Periode: Titel & Ziel inline editierbar, Projekte mit eigenen
+// Periodenzielen verwaltbar. Länge/Start/Ende sind Anlege-Werte und werden
+// hier nicht verändert (bei Bedarf löschen und neu anlegen).
 function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
   const s = zyklusStatus(zyklus)
-  const gewaehlt = new Set(zyklus.projektIds ?? [])
+  const eintraege = zyklusProjekte(zyklus)
+  const ziele = zieleErreicht(zyklus)
 
   const badge = s.aktiv
     ? { text: `Aktiv · ${restText(s.tageUebrig)}`, stil: "bg-emerald-50 text-emerald-700" }
@@ -86,19 +182,15 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
       ? { text: `Startet in ${s.tageBisStart} Tagen`, stil: "bg-blue-50 text-blue-700" }
       : { text: "Abgeschlossen", stil: "bg-gray-100 text-gray-500" }
 
-  function toggleProjekt(pid) {
-    const neu = new Set(gewaehlt)
-    if (neu.has(pid)) neu.delete(pid)
-    else neu.add(pid)
-    onUpdate({ ...zyklus, projektIds: [...neu] })
-  }
+  // Jede Änderung persistiert die Periode in der aktuellen Datenstruktur.
+  const patch = (aenderung) => onUpdate(aktualisiereZyklus(zyklus, aenderung))
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-gray-100">
       <div className="flex items-start justify-between gap-3">
         <input
           value={zyklus.titel}
-          onChange={(e) => onUpdate({ ...zyklus, titel: e.target.value })}
+          onChange={(e) => patch({ titel: e.target.value })}
           className="min-w-0 flex-1 border-none bg-transparent text-sm font-semibold text-gray-900 outline-none"
         />
         <button
@@ -121,43 +213,30 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
         <span className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-gray-500">
           {laengeLabel(zyklus.laenge)}
         </span>
+        {ziele.gesamt > 0 && (
+          <span className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-gray-500">
+            {ziele.erreicht}/{ziele.gesamt} Ziele
+          </span>
+        )}
       </div>
 
       <textarea
         value={zyklus.ziel ?? ""}
-        onChange={(e) => onUpdate({ ...zyklus, ziel: e.target.value })}
-        placeholder="Ziel dieser Periode – woran misst du den Erfolg?"
+        onChange={(e) => patch({ ziel: e.target.value })}
+        placeholder="Übergeordnetes Ziel dieser Periode – woran misst du den Erfolg?"
         rows={2}
         className="mt-3 w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 outline-none transition-colors focus:border-accent-400 focus:bg-white placeholder:text-gray-300"
       />
 
-      <p className="mt-3 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-        Verknüpfte Projekte
+      <p className="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+        Projekte & ihre Periodenziele
       </p>
-      {projekte.length === 0 ? (
-        <p className="mt-1.5 text-xs text-gray-400">
-          Noch keine Projekte angelegt.
-        </p>
-      ) : (
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {projekte.map((p) => {
-            const an = gewaehlt.has(p.id)
-            return (
-              <button
-                key={p.id}
-                onClick={() => toggleProjekt(p.id)}
-                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  an
-                    ? "border-accent-500 bg-accent-50 text-accent-700"
-                    : "border-gray-200 bg-white text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                {p.name}
-              </button>
-            )
-          })}
-        </div>
-      )}
+      <ProjektZiele
+        eintraege={eintraege}
+        alleProjekte={projekte}
+        onChange={(neu) => patch({ projekte: neu })}
+        mitErledigt
+      />
     </div>
   )
 }
@@ -169,16 +248,10 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
   const [laenge, setLaenge] = useState("90")
   const [start, setStart] = useState(heute())
   const [ende, setEnde] = useState("")
-  const [projektIds, setProjektIds] = useState([])
+  const [projektZiele, setProjektZiele] = useState([])
   const [fehler, setFehler] = useState("")
 
   const istCustom = laenge === "custom"
-
-  function toggleProjekt(pid) {
-    setProjektIds((ids) =>
-      ids.includes(pid) ? ids.filter((x) => x !== pid) : [...ids, pid]
-    )
-  }
 
   function speichern(e) {
     e.preventDefault()
@@ -186,8 +259,7 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
     if (!start) return setFehler("Bitte wähle ein Startdatum.")
     const endDatum = istCustom ? ende : berechneEnde(start, laenge)
     if (!endDatum) return setFehler("Bitte wähle ein Enddatum.")
-    if (endDatum < start)
-      return setFehler("Das Enddatum liegt vor dem Start.")
+    if (endDatum < start) return setFehler("Das Enddatum liegt vor dem Start.")
     onSpeichern({
       id: Date.now(),
       titel: titel.trim(),
@@ -195,7 +267,7 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
       laenge,
       start,
       ende: endDatum,
-      projektIds,
+      projekte: projektZiele,
     })
   }
 
@@ -267,33 +339,20 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
       <textarea
         value={ziel}
         onChange={(e) => setZiel(e.target.value)}
-        placeholder="Ziel dieser Periode – woran misst du den Erfolg?"
+        placeholder="Übergeordnetes Ziel dieser Periode – woran misst du den Erfolg?"
         rows={2}
         className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 outline-none transition-colors focus:border-accent-400 focus:bg-white placeholder:text-gray-300"
       />
 
       <div>
-        <p className="mb-1.5 text-xs text-gray-500">Projekte verknüpfen</p>
-        {projekte.length === 0 ? (
-          <p className="text-xs text-gray-400">Noch keine Projekte angelegt.</p>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {projekte.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => toggleProjekt(p.id)}
-                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  projektIds.includes(p.id)
-                    ? "border-accent-500 bg-accent-50 text-accent-700"
-                    : "border-gray-200 bg-white text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                {p.name}
-              </button>
-            ))}
-          </div>
-        )}
+        <p className="mb-1.5 text-xs text-gray-500">
+          Projekte & ihre Periodenziele
+        </p>
+        <ProjektZiele
+          eintraege={projektZiele}
+          alleProjekte={projekte}
+          onChange={setProjektZiele}
+        />
       </div>
 
       {fehler && <p className="text-xs text-red-500">{fehler}</p>}
