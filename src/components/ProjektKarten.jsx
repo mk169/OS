@@ -11,7 +11,13 @@ import {
   clozeFrage,
   clozeTeile,
 } from "../lib/spacedRepetition"
-import { protokolliereWiederholung } from "../lib/lernprotokoll"
+import {
+  protokolliereWiederholung,
+  protokolliereKarte,
+  gelerntHeuteSet,
+  tageslimitVon,
+  tagesPortion,
+} from "../lib/lernprotokoll"
 
 // Bild einlesen und auf max. 900px herunterskalieren (als komprimierte
 // JPEG-Data-URL, damit es kompakt im Speicher liegt).
@@ -88,6 +94,8 @@ function BildFeld({ bild, setBild, label }) {
 
 export default function ProjektKarten({ projekt }) {
   const [alleKarten, setAlleKarten] = useStored("karten", [])
+  const [lernTag] = useStored("lernTag", {})
+  const [limits, setLimits] = useStored("kartenLimits", {})
   const [modus, setModus] = useState("normal") // "normal" | "cloze"
   const [vorne, setVorne] = useState("")
   const [hinten, setHinten] = useState("")
@@ -105,6 +113,17 @@ export default function ProjektKarten({ projekt }) {
     (k) => k.projektId === projekt.id || k.kursId === projekt.id
   )
   const faellig = karten.filter(istFaellig)
+
+  // Tägliches Freischalten: nur `limit` Karten pro Tag zum Lernen.
+  const limit = tageslimitVon(limits, projekt.id)
+  const heuteSet = gelerntHeuteSet(lernTag, projekt.id)
+  const tagesKarten = tagesPortion(faellig, heuteSet, limit)
+  const heuteGelernt = heuteSet.size
+
+  function setzeLimit(wert) {
+    const n = Math.max(1, Math.min(999, Math.round(Number(wert) || 0)))
+    setLimits({ ...limits, [projekt.id]: n })
+  }
 
   const SR_START = {
     intervall: 0,
@@ -164,6 +183,7 @@ export default function ProjektKarten({ projekt }) {
       alleKarten.map((k) => (k.id === karte.id ? { ...k, ...neu } : k))
     )
     protokolliereWiederholung()
+    protokolliereKarte(projekt.id, karte.id)
   }
 
   function starteLernen() {
@@ -222,11 +242,16 @@ export default function ProjektKarten({ projekt }) {
 
   if (lernModus) {
     return (
-      <LernModus faellig={faellig} onBewerte={bewerte} onEnde={beendeLernen} />
+      <LernModus
+        faellig={tagesKarten}
+        onBewerte={bewerte}
+        onEnde={beendeLernen}
+      />
     )
   }
 
   const gelernt = karten.length - faellig.length
+  const verfuegbar = tagesKarten.length
 
   return (
     <div>
@@ -241,12 +266,28 @@ export default function ProjektKarten({ projekt }) {
             )}
           </p>
           <p className="text-xs text-gray-400">
-            {faellig.length === 0
-              ? "Nichts fällig – alles wiederholt."
-              : "Bereit zum Wiederholen."}
+            {karten.length === 0
+              ? "Noch keine Karten."
+              : verfuegbar > 0
+                ? `${verfuegbar} heute freigeschaltet · ${heuteGelernt}/${limit} gelernt`
+                : heuteGelernt >= limit && faellig.length > 0
+                  ? `Tageslimit erreicht (${heuteGelernt}/${limit}) – morgen geht's weiter.`
+                  : `Nichts fällig – alles wiederholt. (${heuteGelernt} heute gelernt)`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-500">
+            <span className="whitespace-nowrap">Pro Tag</span>
+            <input
+              type="number"
+              min="1"
+              max="999"
+              value={limit}
+              onChange={(e) => setzeLimit(e.target.value)}
+              title="Wie viele Karten pro Tag freigeschaltet werden"
+              className="w-12 rounded-sm border border-gray-200 bg-white px-1.5 py-0.5 text-center text-sm text-gray-900 outline-none focus:border-gray-900"
+            />
+          </label>
           <button
             onClick={() => dateiInput.current?.click()}
             className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -262,7 +303,7 @@ export default function ProjektKarten({ projekt }) {
           />
           <button
             onClick={starteLernen}
-            disabled={faellig.length === 0}
+            disabled={verfuegbar === 0}
             className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
           >
             Jetzt lernen

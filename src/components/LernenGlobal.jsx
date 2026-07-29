@@ -2,7 +2,15 @@ import { useState } from "react"
 import useStored from "../lib/useStored"
 import { bewerteKarte, istFaellig } from "../lib/spacedRepetition"
 import { kartenReife, faelligForecast } from "../lib/lernstatistik"
-import { protokolliereWiederholung, heuteGelernt } from "../lib/lernprotokoll"
+import {
+  protokolliereWiederholung,
+  protokolliereKarte,
+  heuteGelernt,
+  gelerntHeuteSet,
+  tageslimitVon,
+  tagesPortion,
+} from "../lib/lernprotokoll"
+import { heute } from "../lib/datum"
 import { LernModus } from "./ProjektKarten"
 
 // Projektübergreifendes „Heute lernen": bündelt alle fälligen Karteikarten
@@ -14,27 +22,48 @@ export default function LernenGlobal() {
   const [alleKarten, setAlleKarten] = useStored("karten", [])
   const [projekte] = useStored("projekte", [])
   const [protokoll] = useStored("lernprotokoll", {})
+  const [lernTag] = useStored("lernTag", {})
+  const [limits] = useStored("kartenLimits", {})
   const [lernModus, setLernModus] = useState(false)
 
   const faellig = alleKarten.filter(istFaellig)
-
-  // Fällige Karten nach Projekt gruppieren (für die Übersicht). Karten ohne
-  // passendes Projekt landen unter „Ohne Projekt".
+  const kartenSchluessel = (k) => k.projektId ?? k.kursId ?? "ohne"
   const projektName = (id) => projekte.find((p) => p.id === id)?.name
-  const gruppen = []
+
+  // Fällige Karten nach Projekt gruppieren und je Projekt das Tageslimit
+  // anwenden. Die kombinierte Tagesportion ist die Summe der freigeschalteten
+  // Karten aller Projekte – so respektiert auch die globale Session die Limits.
   const nachProjekt = new Map()
   for (const k of faellig) {
-    const pid = k.projektId ?? k.kursId ?? null
-    const schluessel = projektName(pid) ? pid : "ohne"
-    nachProjekt.set(schluessel, (nachProjekt.get(schluessel) ?? 0) + 1)
+    const s = projektName(k.projektId ?? k.kursId) ? kartenSchluessel(k) : "ohne"
+    if (!nachProjekt.has(s)) nachProjekt.set(s, [])
+    nachProjekt.get(s).push(k)
   }
-  for (const [pid, anzahl] of nachProjekt) {
+  const gruppen = []
+  const tagesKarten = []
+  for (const [schluessel, kartenDesProjekts] of nachProjekt) {
+    const limit = tageslimitVon(limits, schluessel)
+    const portion = tagesPortion(
+      kartenDesProjekts,
+      gelerntHeuteSet(lernTag, schluessel),
+      limit
+    )
+    tagesKarten.push(...portion)
     gruppen.push({
-      name: pid === "ohne" ? "Ohne Projekt" : projektName(pid),
-      anzahl,
+      name: schluessel === "ohne" ? "Ohne Projekt" : projektName(schluessel),
+      faellig: kartenDesProjekts.length,
+      verfuegbar: portion.length,
+      limit,
     })
   }
-  gruppen.sort((a, b) => b.anzahl - a.anzahl)
+  gruppen.sort((a, b) => b.verfuegbar - a.verfuegbar || b.faellig - a.faellig)
+
+  // Heute insgesamt gelernte Karten (projektübergreifend, ohne Doppelzählung).
+  const heuteGesamt = Object.values(lernTag ?? {}).reduce(
+    (s, e) => s + (e?.datum === heute() ? e.karten.length : 0),
+    0
+  )
+  const verfuegbar = tagesKarten.length
 
   function bewerte(karte, stufe, sekunden = null) {
     const neu = bewerteKarte(karte, stufe, sekunden)
@@ -42,6 +71,7 @@ export default function LernenGlobal() {
       alleKarten.map((k) => (k.id === karte.id ? { ...k, ...neu } : k))
     )
     protokolliereWiederholung()
+    protokolliereKarte(kartenSchluessel(karte), karte.id)
   }
 
   function starteLernen() {
@@ -64,22 +94,26 @@ export default function LernenGlobal() {
 
   if (lernModus) {
     return (
-      <LernModus faellig={faellig} onBewerte={bewerte} onEnde={beendeLernen} />
+      <LernModus
+        faellig={tagesKarten}
+        onBewerte={bewerte}
+        onEnde={beendeLernen}
+      />
     )
   }
 
   return (
     <div className="mt-4">
-      {alleKarten.length === 0 ? null : faellig.length === 0 ? (
+      {alleKarten.length === 0 ? null : verfuegbar === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <p className="text-2xl">🎉</p>
+          <p className="text-2xl">{faellig.length > 0 ? "✅" : "🎉"}</p>
           <h3 className="mt-2 text-sm font-medium text-gray-900">
-            Nichts fällig – alles wiederholt.
+            {faellig.length > 0
+              ? "Tageslimit erreicht – morgen geht's weiter."
+              : "Nichts fällig – alles wiederholt."}
           </h3>
           <p className="mt-1 text-xs text-gray-400">
-            {alleKarten.length}{" "}
-            {alleKarten.length === 1 ? "Karte" : "Karten"} im Plan. Schau später
-            wieder vorbei.
+            {heuteGesamt} heute gelernt · {faellig.length} noch fällig
           </p>
         </div>
       ) : (
@@ -87,11 +121,12 @@ export default function LernenGlobal() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-2xl font-semibold tracking-tight text-gray-900">
-                {faellig.length} {faellig.length === 1 ? "Karte" : "Karten"}{" "}
-                fällig
+                {verfuegbar} {verfuegbar === 1 ? "Karte" : "Karten"}{" "}
+                freigeschaltet
               </p>
               <p className="mt-0.5 text-sm text-gray-400">
-                projektübergreifend – in einer Session wiederholen
+                projektübergreifend · {heuteGesamt} heute gelernt ·{" "}
+                {faellig.length} fällig
               </p>
             </div>
             <button
@@ -104,7 +139,7 @@ export default function LernenGlobal() {
 
           <div className="mt-5 border-t border-gray-100 pt-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-              Verteilung
+              Heute freigeschaltet je Projekt
             </p>
             <ul className="mt-2.5 space-y-1.5">
               {gruppen.map((g) => (
@@ -113,8 +148,13 @@ export default function LernenGlobal() {
                   className="flex items-center gap-3 text-sm text-gray-700"
                 >
                   <span className="min-w-0 flex-1 truncate">{g.name}</span>
+                  {g.faellig > g.verfuegbar && (
+                    <span className="shrink-0 text-xs text-gray-400">
+                      {g.faellig} fällig
+                    </span>
+                  )}
                   <span className="shrink-0 rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs tabular-nums text-gray-500">
-                    {g.anzahl}
+                    {g.verfuegbar}
                   </span>
                 </li>
               ))}
