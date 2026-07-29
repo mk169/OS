@@ -54,6 +54,12 @@
 
 html {
   background: #18181b; /* Sidebar-Ton als html-BG – kein weisser Flash */
+  /* Verhindert horizontales Scrollen/„Durchscheinen“ des dunklen html-BGs,
+   * falls ein einzelnes Element mal breiter als der Viewport wird (v. a. auf
+   * schmalen Handys). `clip` statt `hidden`, damit position:sticky (mobile
+   * Kopfzeile, Modul-Tabs) weiter funktioniert. Bewusste innere
+   * Scrollflächen (overflow-x-auto) bleiben davon unberührt. */
+  overflow-x: clip;
 }
 
 body {
@@ -65,6 +71,7 @@ body {
   text-rendering: optimizeLegibility;
   letter-spacing: -0.011em;
   background: #fafafa;
+  overflow-x: clip;
 }
 
 /* Serif für alle Seitentitel */

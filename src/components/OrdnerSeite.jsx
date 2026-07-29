@@ -489,13 +489,17 @@ const ANSICHTEN = [
 const PRIO_RANG = { hoch: 3, mittel: 2, niedrig: 1, "": 0 }
 
 function AnsichtToggle({ ansicht, setAnsicht }) {
+  // Auf schmalen Handys passen die sechs Ansichten nicht nebeneinander. Statt
+  // die Seite zu verbreitern (horizontaler Overflow), wird die Leiste auf die
+  // Viewport-Breite begrenzt und scrollt bei Bedarf intern. `100vw − 3rem`
+  // entspricht der Seitenpolsterung (px-6) des umgebenden Containers.
   return (
-    <div className="flex rounded-md border border-gray-200 p-0.5 text-xs">
+    <div className="flex max-w-[calc(100vw-3rem)] overflow-x-auto rounded-md border border-gray-200 p-0.5 text-xs">
       {ANSICHTEN.map((a) => (
         <button
           key={a.key}
           onClick={() => setAnsicht(a.key)}
-          className={`rounded px-2.5 py-1 font-medium transition-colors ${
+          className={`shrink-0 whitespace-nowrap rounded px-2.5 py-1 font-medium transition-colors ${
             ansicht === a.key
               ? "bg-gray-900 text-white"
               : "text-gray-500 hover:text-gray-900"
