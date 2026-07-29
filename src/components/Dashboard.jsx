@@ -230,11 +230,7 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
           />
         </div>
 
-        {gruppen.length === 0 && ohneGruppe.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-400">
-            Alles erledigt – keine offenen Aufgaben. 🎉
-          </div>
-        ) : (
+        {gruppen.length === 0 && ohneGruppe.length === 0 ? null : (
           <div className="space-y-6">
             {gruppen.map(({ projekt, todos: projektTodos }) => (
               <div key={projekt.id}>
@@ -422,11 +418,7 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
           />
         </div>
 
-        {todoKacheln.length === 0 && habits.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-400">
-            Noch keine Quests. Leg mit „+ Quest" los! 🚀
-          </div>
-        ) : (
+        {todoKacheln.length === 0 && habits.length === 0 ? null : (
           <div className="space-y-2.5">
             {todoKacheln.map((t) => (
               <AktionsKachel
@@ -582,11 +574,7 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
           </span>
         </TermSection>
 
-        {tasks.length === 0 && habits.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-white/10 py-8 text-center text-sm text-zinc-600">
-            // keine offenen tasks
-          </p>
-        ) : (
+        {tasks.length === 0 && habits.length === 0 ? null : (
           <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-white/10">
             {tasks.map((t) => (
               <TermRow

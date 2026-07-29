@@ -70,12 +70,7 @@ export default function LernenGlobal() {
 
   return (
     <div className="mt-4">
-      {alleKarten.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-          Noch keine Karteikarten. Lege sie im Bereich „Karteikarten" eines
-          Projekts an – hier sammeln sich dann alle fälligen Karten.
-        </p>
-      ) : faellig.length === 0 ? (
+      {alleKarten.length === 0 ? null : faellig.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
           <p className="text-2xl">🎉</p>
           <h3 className="mt-2 text-sm font-medium text-gray-900">

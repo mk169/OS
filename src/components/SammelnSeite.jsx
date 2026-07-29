@@ -156,11 +156,7 @@ function InboxAnsicht() {
         </button>
       </form>
 
-      {inbox.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
-          Inbox leer. Alles verarbeitet.
-        </p>
-      ) : (
+      {inbox.length === 0 ? null : (
         <>
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-gray-400">

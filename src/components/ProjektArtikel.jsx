@@ -89,11 +89,7 @@ export default function ProjektArtikel({ projekt }) {
         </button>
       </form>
 
-      {artikel.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
-          Noch kein Artikel. Gib oben einen Titel ein und leg los.
-        </p>
-      ) : (
+      {artikel.length === 0 ? null : (
         <ul className="mt-4 space-y-2">
           {[...artikel]
             .sort((a, b) => (b.aktualisiertAm ?? b.id) - (a.aktualisiertAm ?? a.id))

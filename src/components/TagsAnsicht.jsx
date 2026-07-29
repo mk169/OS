@@ -59,13 +59,7 @@ export default function TagsAnsicht({ onNavigate, startTag = null }) {
   }
 
   if (tags.length === 0) {
-    return (
-      <p className="mt-4 rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-        Noch keine Schlagworte. Schreibe „#Thema" in eine Wissen-Notiz, eine
-        Projekt-Notiz oder die Beschreibung eines Projekts – hier laufen dann
-        alle zusammen.
-      </p>
-    )
+    return null
   }
 
   return (

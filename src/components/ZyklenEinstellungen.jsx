@@ -40,12 +40,6 @@ export default function ZyklenEinstellungen() {
 
   return (
     <div className="space-y-3">
-      {sortiert.length === 0 && !formOffen && (
-        <p className="rounded-2xl border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-400">
-          Noch keine Fokus-Periode. Lege eine an – ein klarer Zeitraum mit Ziel
-          und wenigen Projekten, die du wirklich umsetzen willst.
-        </p>
-      )}
 
       {sortiert.map((z) => (
         <ZyklusKarte

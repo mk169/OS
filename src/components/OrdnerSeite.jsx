@@ -466,11 +466,6 @@ export default function OrdnerSeite({
         </section>
       )}
 
-      {unterordner.length === 0 && hiesigeProjekte.length === 0 && (
-        <p className="mt-6 rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-          Dieser Ordner ist leer. Lege einen Unterordner oder ein Projekt an.
-        </p>
-      )}
         </div>
       )}
     </div>
@@ -672,11 +667,7 @@ function AlleAnsicht({ projekte, todos, onOeffnen, onRemove }) {
         </label>
       </div>
 
-      {liste.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-          Keine Projekte für diese Auswahl.
-        </p>
-      ) : (
+      {liste.length === 0 ? null : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {liste.map((p) => (
             <ProjektKarte
@@ -699,11 +690,7 @@ function AreasAnsicht({ projekte, todos, onOeffnen, onRemove }) {
   const areas = projekte.filter((p) => (p.typ ?? "projekt") === "area")
   return (
     <div className="mt-4">
-      {areas.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-          Noch keine Areas. Lege über „+ Projekt" eine an und wähle „Area".
-        </p>
-      ) : (
+      {areas.length === 0 ? null : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {areas.map((p) => (
             <ProjektKarte
@@ -842,11 +829,7 @@ function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
 
   return (
     <div className="mt-4">
-      {liste.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-          Nichts Anstehendes – keine Deadlines, Schritte oder Todos mit Termin.
-        </p>
-      ) : (
+      {liste.length === 0 ? null : (
         <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
           {liste.map((e, i) => (
             <li
@@ -888,12 +871,7 @@ function ArchivAnsicht({ archivierte, projekte, setProjekte, onOeffnen }) {
 
   return (
     <div className="mt-4">
-      {archivierte.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-          Kein archiviertes Projekt. Archivieren kannst du im geöffneten
-          Projekt.
-        </p>
-      ) : (
+      {archivierte.length === 0 ? null : (
         <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
           {archivierte.map((p) => (
             <li

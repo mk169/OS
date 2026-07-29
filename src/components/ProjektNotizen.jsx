@@ -120,15 +120,8 @@ export function NotizenRaster({
   onOeffnen,
   onRemove,
   layout = "raster",
-  leerText = "Noch keine Lehrinhalte. Lege eine Notiz an und schreibe direkt los.",
 }) {
-  if (notizen.length === 0) {
-    return (
-      <p className="mt-6 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
-        {leerText}
-      </p>
-    )
-  }
+  if (notizen.length === 0) return null
 
   if (layout === "liste") {
     return (

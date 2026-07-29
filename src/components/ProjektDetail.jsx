@@ -641,11 +641,7 @@ function WorkflowModul({ projekt, onUpdate }) {
         </div>
       )}
 
-      {workflow.length === 0 ? (
-        <p className="mt-4 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
-          Noch keine Schritte. Plane deinen Workflow von oben nach unten.
-        </p>
-      ) : ansicht === "timeline" ? (
+      {workflow.length === 0 ? null : ansicht === "timeline" ? (
         <WorkflowTimeline
           workflow={workflow}
           onToggle={toggle}
@@ -701,13 +697,7 @@ function WorkflowTimeline({ workflow, onToggle, onRemove }) {
   const mitDatum = workflow.filter((s) => s.datum)
   const ohneDatum = workflow.filter((s) => !s.datum)
 
-  if (mitDatum.length === 0) {
-    return (
-      <p className="mt-4 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
-        Gib den Schritten ein Datum, damit sie auf der Timeline erscheinen.
-      </p>
-    )
-  }
+  if (mitDatum.length === 0) return null
 
   const heuteMs = new Date(heute()).getTime()
   const zeiten = mitDatum.map((s) => new Date(s.datum).getTime())
@@ -877,11 +867,7 @@ function TodosModul({ projekt }) {
         <TodoErstellen fest={{ projektId: projekt.id }} />
       </div>
 
-      {todos.length === 0 ? (
-        <p className="mt-4 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
-          Noch keine Todos in diesem Projekt.
-        </p>
-      ) : (
+      {todos.length === 0 ? null : (
         <ul className="mt-4 space-y-1.5">
           {[...offen, ...erledigt].map((t) => (
             <TodoZeile key={t.id} todo={t} onToggle={toggle} onRemove={remove} />

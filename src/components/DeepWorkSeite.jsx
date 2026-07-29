@@ -280,11 +280,7 @@ export default function DeepWorkSeite() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
           Letzte Sessions
         </h2>
-        {letzte.length === 0 ? (
-          <p className="mt-3 rounded-xl border border-dashed border-gray-300 py-8 text-center text-sm text-gray-400">
-            Noch keine abgeschlossenen Sessions.
-          </p>
-        ) : (
+        {letzte.length === 0 ? null : (
           <ul className="mt-3 space-y-1.5">
             {letzte.map((s) => (
               <li

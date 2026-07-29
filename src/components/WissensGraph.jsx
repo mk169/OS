@@ -197,12 +197,7 @@ export default function WissensGraph({ onNavigate, onTagKlick }) {
 
   return (
     <div className="mt-4">
-      {knoten.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-          Noch nichts zu verlinken. Lege Wissen-Einträge oder Projekte an und
-          verweise mit „@" aufeinander.
-        </p>
-      ) : (
+      {knoten.length === 0 ? null : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <svg viewBox={`0 0 ${BREITE} ${HOEHE}`} className="h-[480px] w-full">
             {kanten.map((k, i) => {

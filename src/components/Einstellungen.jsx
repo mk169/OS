@@ -159,6 +159,22 @@ function Abschnitt({ icon, titel, beschreibung, children, panel = true }) {
   )
 }
 
+// Ober-Gruppe: bündelt mehrere Abschnitte unter einer dezenten Überschrift,
+// damit die Seite klar in „Aussehen", „Module & Inhalte" und „Daten & Konto"
+// gegliedert ist. Die erste Gruppe kommt ohne Trennlinie (folgt direkt auf den
+// Seitenkopf).
+function Gruppe({ titel, erste = false }) {
+  return (
+    <h2
+      className={`mb-4 text-[11px] font-semibold uppercase tracking-widest text-gray-400 ${
+        erste ? "mt-2" : "mt-12 border-t border-gray-200 pt-8"
+      }`}
+    >
+      {titel}
+    </h2>
+  )
+}
+
 // Einstellungs-Zeile: Label/Beschreibung links, Control rechts.
 function Zeile({ titel, beschreibung, children }) {
   return (
@@ -404,6 +420,8 @@ export default function Einstellungen() {
         </div>
       </div>
 
+      <Gruppe titel="Aussehen" erste />
+
       {/* ── Darstellung ─────────────────────────────────────────────────────── */}
       <Abschnitt
         titel="Darstellung"
@@ -505,6 +523,8 @@ export default function Einstellungen() {
           </div>
         </Zeile>
       </Abschnitt>
+
+      <Gruppe titel="Module & Inhalte" />
 
       {/* ── Dashboard ───────────────────────────────────────────────────────── */}
       <Abschnitt
@@ -750,6 +770,8 @@ export default function Einstellungen() {
       >
         <ZyklenEinstellungen />
       </Abschnitt>
+
+      <Gruppe titel="Daten & Konto" />
 
       {/* ── Daten & Sicherung ───────────────────────────────────────────────── */}
       <Abschnitt

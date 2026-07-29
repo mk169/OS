@@ -612,11 +612,7 @@ function TodosGamified({ todos, offene, erledigte, toggle, remove, zuordnungsNam
           />
         </div>
 
-        {offene.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/15 py-12 text-center text-sm text-white/40">
-            Alle Quests erledigt, Held! 🏆
-          </div>
-        ) : (
+        {offene.length === 0 ? null : (
           <div className="space-y-6">
             {EINTEILUNGEN.map((gruppe) => {
               const eintraege = offene

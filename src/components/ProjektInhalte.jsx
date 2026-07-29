@@ -258,13 +258,7 @@ export default function ProjektInhalte({ projekt }) {
         ))}
       </div>
 
-      {sichtbar.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-gray-300 py-10 text-center text-sm text-gray-400">
-          {eintraege.length === 0
-            ? "Noch keine Inhalte. Trage Themen ein oder lade Dateien hoch."
-            : "Nichts entspricht dem Filter."}
-        </p>
-      ) : (
+      {sichtbar.length === 0 ? null : (
         <ul className="mt-4 space-y-1.5">
           {sichtbar.map((eintrag) => (
             <li

@@ -531,11 +531,7 @@ function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWoche
         </div>
       )}
 
-      {habits.length === 0 ? (
-        <p className="mt-8 rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-400">
-          Noch keine Habits. Lege mit dem Plus dein erstes an.
-        </p>
-      ) : (
+      {habits.length === 0 ? null : (
         <div className="mt-6 sm:mt-8">
           <HabitKarten
             habits={habits}
@@ -973,11 +969,7 @@ function HabitsGamified({
           />
         </div>
 
-        {habits.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/15 py-12 text-center text-sm text-white/40">
-            Noch keine Fähigkeiten. Trainiere deine erste! 🗡️
-          </div>
-        ) : (
+        {habits.length === 0 ? null : (
           <div className="space-y-3">
             {ketten.map((kette) => (
               <div key={kette[0].id} className="space-y-2">
