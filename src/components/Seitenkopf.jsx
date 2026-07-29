@@ -19,7 +19,13 @@ export default function Seitenkopf({ eyebrow, titel, unterzeile, aktion }) {
             </p>
           )}
         </div>
-        {aktion && <div className="shrink-0 mt-1">{aktion}</div>}
+        {/* Der Aktions-Slot darf nicht breiter als der verfügbare Platz werden:
+         * `max-w-full` begrenzt ihn auf die Container-/Viewport-Breite, damit
+         * darin liegende `w-full`-Formulare (z. B. Todo-Erstellen) und
+         * `flex-wrap`-Button-Gruppen tatsächlich umbrechen statt die Seite
+         * horizontal zu überlaufen. Kein `shrink-0` mehr – sonst wächst der
+         * Slot auf seine Inhaltsbreite und sprengt schmale Handys. */}
+        {aktion && <div className="mt-1 min-w-0 max-w-full">{aktion}</div>}
       </div>
     </div>
   )
