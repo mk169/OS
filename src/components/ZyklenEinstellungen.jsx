@@ -7,6 +7,7 @@ import {
   laengeLabel,
   zyklusStatus,
   zyklusProjekte,
+  zyklusZiele,
   aktualisiereZyklus,
   zieleErreicht,
   restText,
@@ -162,6 +163,97 @@ function ProjektZiele({ eintraege, alleProjekte, onChange, mitErledigt = false }
   )
 }
 
+// Eigene, projektunabhängige Ziele einer Periode: konkrete Vorhaben zum
+// Abhaken. ziele = [{ id, text, erledigt }]. mitErledigt blendet die
+// Erreicht-Checkbox ein (nur beim Bearbeiten sinnvoll).
+function EigeneZiele({ ziele, onChange, mitErledigt = false }) {
+  const [entwurf, setEntwurf] = useState("")
+
+  function hinzufuegen() {
+    const t = entwurf.trim()
+    if (!t) return
+    onChange([
+      ...ziele,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        text: t,
+        erledigt: false,
+      },
+    ])
+    setEntwurf("")
+  }
+  function toggle(id) {
+    onChange(
+      ziele.map((z) => (z.id === id ? { ...z, erledigt: !z.erledigt } : z))
+    )
+  }
+  function setText(id, text) {
+    onChange(ziele.map((z) => (z.id === id ? { ...z, text } : z)))
+  }
+  function entferne(id) {
+    onChange(ziele.filter((z) => z.id !== id))
+  }
+
+  return (
+    <div className="space-y-2">
+      {ziele.map((z) => (
+        <div
+          key={z.id}
+          className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2.5"
+        >
+          {mitErledigt && (
+            <input
+              type="checkbox"
+              checked={!!z.erledigt}
+              onChange={() => toggle(z.id)}
+              title="Ziel erreicht"
+              className="h-4 w-4 shrink-0 accent-gray-900"
+            />
+          )}
+          <input
+            value={z.text}
+            onChange={(e) => setText(z.id, e.target.value)}
+            placeholder="Konkretes Ziel…"
+            className={`min-w-0 flex-1 border-none bg-transparent text-sm outline-none placeholder:text-gray-300 ${
+              z.erledigt ? "text-gray-400 line-through" : "text-gray-800"
+            }`}
+          />
+          <button
+            type="button"
+            onClick={() => entferne(z.id)}
+            title="Ziel entfernen"
+            className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+
+      <div className="flex gap-2">
+        <input
+          value={entwurf}
+          onChange={(e) => setEntwurf(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              hinzufuegen()
+            }
+          }}
+          placeholder="Konkretes Ziel, z.B. 3x pro Woche laufen"
+          className="min-w-0 flex-1 rounded-lg border border-dashed border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition-colors focus:border-accent-400 placeholder:text-gray-400"
+        />
+        <button
+          type="button"
+          onClick={hinzufuegen}
+          className="shrink-0 rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+        >
+          Hinzufügen
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Bestehende Periode: Titel & Ziel inline editierbar, Projekte mit eigenen
 // Periodenzielen verwaltbar. Länge/Start/Ende sind Anlege-Werte und werden
 // hier nicht verändert (bei Bedarf löschen und neu anlegen).
@@ -231,6 +323,15 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
         onChange={(neu) => patch({ projekte: neu })}
         mitErledigt
       />
+
+      <p className="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+        Eigene Ziele
+      </p>
+      <EigeneZiele
+        ziele={zyklusZiele(zyklus)}
+        onChange={(neu) => patch({ ziele: neu })}
+        mitErledigt
+      />
     </div>
   )
 }
@@ -243,6 +344,7 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
   const [start, setStart] = useState(heute())
   const [ende, setEnde] = useState("")
   const [projektZiele, setProjektZiele] = useState([])
+  const [eigeneZiele, setEigeneZiele] = useState([])
   const [fehler, setFehler] = useState("")
 
   const istCustom = laenge === "custom"
@@ -262,6 +364,7 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
       start,
       ende: endDatum,
       projekte: projektZiele,
+      ziele: eigeneZiele,
     })
   }
 
@@ -347,6 +450,11 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
           alleProjekte={projekte}
           onChange={setProjektZiele}
         />
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-xs text-gray-500">Eigene Ziele</p>
+        <EigeneZiele ziele={eigeneZiele} onChange={setEigeneZiele} />
       </div>
 
       {fehler && <p className="text-xs text-red-500">{fehler}</p>}

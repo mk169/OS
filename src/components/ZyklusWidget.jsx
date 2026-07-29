@@ -2,6 +2,7 @@ import useStored from "../lib/useStored"
 import {
   zyklusStatus,
   zyklusProjekte,
+  zyklusZiele,
   aktualisiereZyklus,
   zieleErreicht,
   restText,
@@ -34,6 +35,14 @@ export default function ZyklusWidget({ onNavigate, variant = "hell" }) {
     setZyklen(zyklen.map((z) => (z.id === zyklus.id ? aktualisiert : z)))
   }
 
+  function toggleZiel(zyklus, zielId) {
+    const neu = zyklusZiele(zyklus).map((z) =>
+      z.id === zielId ? { ...z, erledigt: !z.erledigt } : z
+    )
+    const aktualisiert = aktualisiereZyklus(zyklus, { ziele: neu })
+    setZyklen(zyklen.map((z) => (z.id === zyklus.id ? aktualisiert : z)))
+  }
+
   return (
     <div className="mb-6 space-y-3">
       {aktive.map(({ zyklus, status }) => (
@@ -45,6 +54,7 @@ export default function ZyklusWidget({ onNavigate, variant = "hell" }) {
           todos={todos}
           onNavigate={onNavigate}
           onToggleErledigt={toggleErledigt}
+          onToggleZiel={toggleZiel}
           dunkel={variant === "dunkel"}
         />
       ))}
@@ -70,12 +80,14 @@ function ZyklusKarte({
   todos,
   onNavigate,
   onToggleErledigt,
+  onToggleZiel,
   dunkel,
 }) {
   // Verknüpfte Projekte mit ihren Periodenzielen; archivierte/gelöschte raus.
   const eintraege = zyklusProjekte(zyklus)
     .map((e) => ({ ...e, projekt: projekte.find((p) => p.id === e.projektId) }))
     .filter((e) => e.projekt && !e.projekt.archiviert)
+  const eigeneZiele = zyklusZiele(zyklus)
   const ziele = zieleErreicht(zyklus)
 
   return (
@@ -177,6 +189,41 @@ function ZyklusKarte({
               </button>
               <span className="w-20 shrink-0 sm:w-24">
                 <Fortschrittsbalken {...projektFortschrittWerte(e.projekt, todos)} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Eigene, projektunabhängige Ziele – direkt abhakbar */}
+      {eigeneZiele.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {eigeneZiele.map((z) => (
+            <li
+              key={z.id}
+              className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 ${
+                dunkel ? "hover:bg-white/5" : "hover:bg-gray-50"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={!!z.erledigt}
+                onChange={() => onToggleZiel(zyklus, z.id)}
+                title="Ziel erreicht"
+                className="h-4 w-4 shrink-0 accent-accent-500"
+              />
+              <span
+                className={`min-w-0 flex-1 truncate text-sm ${
+                  z.erledigt
+                    ? dunkel
+                      ? "text-white/40 line-through"
+                      : "text-gray-400 line-through"
+                    : dunkel
+                      ? "text-white/90"
+                      : "text-gray-800"
+                }`}
+              >
+                {z.text}
               </span>
             </li>
           ))}
