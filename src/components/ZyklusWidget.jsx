@@ -1,13 +1,20 @@
 import useStored from "../lib/useStored"
-import { zyklusStatus, restText } from "../lib/zyklen"
+import {
+  zyklusStatus,
+  zyklusProjekte,
+  aktualisiereZyklus,
+  zieleErreicht,
+  restText,
+} from "../lib/zyklen"
 import { projektFortschrittWerte, Fortschrittsbalken } from "./OrdnerSeite"
 
 // Dashboard-Karte(n) für die aktuell laufenden Fokus-Perioden: zeigt Ziel,
 // Restlaufzeit, verstrichenen Zeitanteil und die verknüpften Projekte mit
-// ihrem Fortschritt. Erscheint nur, wenn gerade ein Zyklus aktiv ist.
-// „dunkel" für dunkle Dashboard-Stile (Arcade).
+// ihrem eigenen Periodenziel und Fortschritt. Projektziele lassen sich direkt
+// hier abhaken. Erscheint nur, wenn gerade ein Zyklus aktiv ist. „dunkel" für
+// dunkle Dashboard-Stile (Arcade).
 export default function ZyklusWidget({ onNavigate, variant = "hell" }) {
-  const [zyklen] = useStored("zyklen", [])
+  const [zyklen, setZyklen] = useStored("zyklen", [])
   const [projekte] = useStored("projekte", [])
   const [todos] = useStored("todos", [])
 
@@ -19,6 +26,14 @@ export default function ZyklusWidget({ onNavigate, variant = "hell" }) {
 
   if (aktive.length === 0) return null
 
+  function toggleErledigt(zyklus, projektId) {
+    const neu = zyklusProjekte(zyklus).map((e) =>
+      e.projektId === projektId ? { ...e, erledigt: !e.erledigt } : e
+    )
+    const aktualisiert = aktualisiereZyklus(zyklus, { projekte: neu })
+    setZyklen(zyklen.map((z) => (z.id === zyklus.id ? aktualisiert : z)))
+  }
+
   return (
     <div className="mb-6 space-y-3">
       {aktive.map(({ zyklus, status }) => (
@@ -29,6 +44,7 @@ export default function ZyklusWidget({ onNavigate, variant = "hell" }) {
           projekte={projekte}
           todos={todos}
           onNavigate={onNavigate}
+          onToggleErledigt={toggleErledigt}
           dunkel={variant === "dunkel"}
         />
       ))}
@@ -47,10 +63,20 @@ function restStil(tageUebrig, dunkel) {
   return dunkel ? "bg-white/10 text-white/70" : "bg-gray-100 text-gray-500"
 }
 
-function ZyklusKarte({ zyklus, status, projekte, todos, onNavigate, dunkel }) {
-  const verknuepft = (zyklus.projektIds ?? [])
-    .map((id) => projekte.find((p) => p.id === id))
-    .filter((p) => p && !p.archiviert)
+function ZyklusKarte({
+  zyklus,
+  status,
+  projekte,
+  todos,
+  onNavigate,
+  onToggleErledigt,
+  dunkel,
+}) {
+  // Verknüpfte Projekte mit ihren Periodenzielen; archivierte/gelöschte raus.
+  const eintraege = zyklusProjekte(zyklus)
+    .map((e) => ({ ...e, projekt: projekte.find((p) => p.id === e.projektId) }))
+    .filter((e) => e.projekt && !e.projekt.archiviert)
+  const ziele = zieleErreicht(zyklus)
 
   return (
     <div
@@ -93,6 +119,7 @@ function ZyklusKarte({ zyklus, status, projekte, todos, onNavigate, dunkel }) {
             Tag {status.verstrichen} von {status.tageGesamt}
           </span>
           <span className={dunkel ? "text-white/50" : "text-gray-400"}>
+            {ziele.gesamt > 0 && `${ziele.erreicht}/${ziele.gesamt} Ziele · `}
             {status.prozentZeit}%
           </span>
         </div>
@@ -106,26 +133,51 @@ function ZyklusKarte({ zyklus, status, projekte, todos, onNavigate, dunkel }) {
         </div>
       </div>
 
-      {/* Verknüpfte Projekte mit ihrem Fortschritt */}
-      {verknuepft.length > 0 && (
-        <ul className="mt-3 space-y-1.5">
-          {verknuepft.map((p) => (
-            <li key={p.id}>
+      {/* Verknüpfte Projekte mit Periodenziel, Abhaken & Fortschritt */}
+      {eintraege.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {eintraege.map((e) => (
+            <li
+              key={e.projektId}
+              className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 ${
+                dunkel ? "hover:bg-white/5" : "hover:bg-gray-50"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={!!e.erledigt}
+                onChange={() => onToggleErledigt(zyklus, e.projektId)}
+                title="Periodenziel erreicht"
+                className="h-4 w-4 shrink-0 accent-accent-500"
+              />
               <button
-                onClick={() => onNavigate?.("projekte", p.id)}
-                className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors ${
-                  dunkel ? "hover:bg-white/5" : "hover:bg-gray-50"
-                }`}
+                onClick={() => onNavigate?.("projekte", e.projektId)}
+                className="min-w-0 flex-1 text-left"
               >
                 <span
-                  className={`min-w-0 flex-1 truncate text-sm ${dunkel ? "text-white/90" : "text-gray-800"}`}
+                  className={`block truncate text-sm ${
+                    e.erledigt
+                      ? dunkel
+                        ? "text-white/40 line-through"
+                        : "text-gray-400 line-through"
+                      : dunkel
+                        ? "text-white/90"
+                        : "text-gray-800"
+                  }`}
                 >
-                  {p.name}
+                  {e.projekt.name}
                 </span>
-                <span className="w-28 shrink-0">
-                  <Fortschrittsbalken {...projektFortschrittWerte(p, todos)} />
-                </span>
+                {e.ziel && (
+                  <span
+                    className={`block truncate text-xs ${dunkel ? "text-white/50" : "text-gray-400"}`}
+                  >
+                    {e.ziel}
+                  </span>
+                )}
               </button>
+              <span className="w-20 shrink-0 sm:w-24">
+                <Fortschrittsbalken {...projektFortschrittWerte(e.projekt, todos)} />
+              </span>
             </li>
           ))}
         </ul>
