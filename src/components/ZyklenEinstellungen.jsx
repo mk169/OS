@@ -8,6 +8,8 @@ import {
   zyklusStatus,
   zyklusProjekte,
   zyklusZiele,
+  zielSchritte,
+  zielFortschritt,
   aktualisiereZyklus,
   zieleErreicht,
   restText,
@@ -163,71 +165,97 @@ function ProjektZiele({ eintraege, alleProjekte, onChange, mitErledigt = false }
   )
 }
 
-// Eigene, projektunabhängige Ziele einer Periode: konkrete Vorhaben zum
-// Abhaken. ziele = [{ id, text, erledigt }]. mitErledigt blendet die
-// Erreicht-Checkbox ein (nur beim Bearbeiten sinnvoll).
-function EigeneZiele({ ziele, onChange, mitErledigt = false }) {
+// Eigene, projektunabhängige Ziele einer Periode. Jedes Ziel ist ein Feld,
+// das man aufklappt und in dem man konkrete Teilschritte abhakt (wie ein
+// Mini-Projekt für Vorhaben ohne eigenes Projekt).
+// ziele = [{ id, text, schritte: [{ id, text, erledigt }] }].
+function EigeneZiele({ ziele, onChange }) {
   const [entwurf, setEntwurf] = useState("")
+  const [offenId, setOffenId] = useState(null)
+
+  const neueId = () =>
+    `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
   function hinzufuegen() {
     const t = entwurf.trim()
     if (!t) return
-    onChange([
-      ...ziele,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        text: t,
-        erledigt: false,
-      },
-    ])
+    const id = neueId()
+    onChange([...ziele, { id, text: t, schritte: [] }])
     setEntwurf("")
+    setOffenId(id)
   }
-  function toggle(id) {
-    onChange(
-      ziele.map((z) => (z.id === id ? { ...z, erledigt: !z.erledigt } : z))
-    )
-  }
-  function setText(id, text) {
-    onChange(ziele.map((z) => (z.id === id ? { ...z, text } : z)))
+  function setZiel(id, patch) {
+    onChange(ziele.map((z) => (z.id === id ? { ...z, ...patch } : z)))
   }
   function entferne(id) {
     onChange(ziele.filter((z) => z.id !== id))
   }
+  function setSchritte(id, schritte) {
+    setZiel(id, { schritte })
+  }
 
   return (
     <div className="space-y-2">
-      {ziele.map((z) => (
-        <div
-          key={z.id}
-          className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2.5"
-        >
-          {mitErledigt && (
-            <input
-              type="checkbox"
-              checked={!!z.erledigt}
-              onChange={() => toggle(z.id)}
-              title="Ziel erreicht"
-              className="h-4 w-4 shrink-0 accent-gray-900"
-            />
-          )}
-          <input
-            value={z.text}
-            onChange={(e) => setText(z.id, e.target.value)}
-            placeholder="Konkretes Ziel…"
-            className={`min-w-0 flex-1 border-none bg-transparent text-sm outline-none placeholder:text-gray-300 ${
-              z.erledigt ? "text-gray-400 line-through" : "text-gray-800"
-            }`}
-          />
-          <button
-            type="button"
-            onClick={() => entferne(z.id)}
-            title="Ziel entfernen"
-            className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
+      {ziele.map((z) => {
+        const schritte = zielSchritte(z)
+        const { erledigt, gesamt } = zielFortschritt(z)
+        const fertig = gesamt > 0 && erledigt === gesamt
+        const offen = offenId === z.id
+        return (
+          <div
+            key={z.id}
+            className="rounded-lg border border-gray-200 bg-gray-50"
           >
-            ×
-          </button>
-        </div>
-      ))}
+            <div className="flex items-center gap-2 p-2.5">
+              <button
+                type="button"
+                onClick={() => setOffenId(offen ? null : z.id)}
+                title={offen ? "Zuklappen" : "Aufklappen"}
+                className={`shrink-0 text-gray-400 transition-transform hover:text-gray-700 ${offen ? "rotate-90" : ""}`}
+              >
+                ▸
+              </button>
+              <input
+                value={z.text}
+                onChange={(e) => setZiel(z.id, { text: e.target.value })}
+                placeholder="Zieltitel…"
+                className={`min-w-0 flex-1 border-none bg-transparent text-sm font-medium outline-none placeholder:text-gray-300 ${
+                  fertig ? "text-gray-400 line-through" : "text-gray-800"
+                }`}
+              />
+              {gesamt > 0 && (
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                    fertig
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {erledigt}/{gesamt}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => entferne(z.id)}
+                title="Ziel entfernen"
+                className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
+              >
+                ×
+              </button>
+            </div>
+
+            {offen && (
+              <div className="border-t border-gray-200 px-2.5 pb-2.5 pt-2">
+                <ZielSchritte
+                  schritte={schritte}
+                  onChange={(neu) => setSchritte(z.id, neu)}
+                  neueId={neueId}
+                />
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       <div className="flex gap-2">
         <input
@@ -239,7 +267,7 @@ function EigeneZiele({ ziele, onChange, mitErledigt = false }) {
               hinzufuegen()
             }
           }}
-          placeholder="Konkretes Ziel, z.B. 3x pro Woche laufen"
+          placeholder="Neues Ziel, z.B. Fit werden"
           className="min-w-0 flex-1 rounded-lg border border-dashed border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition-colors focus:border-accent-400 placeholder:text-gray-400"
         />
         <button
@@ -250,6 +278,72 @@ function EigeneZiele({ ziele, onChange, mitErledigt = false }) {
           Hinzufügen
         </button>
       </div>
+    </div>
+  )
+}
+
+// Teilschritte eines Ziels: abhaken, umbenennen, entfernen, hinzufügen.
+function ZielSchritte({ schritte, onChange, neueId }) {
+  const [entwurf, setEntwurf] = useState("")
+
+  function add() {
+    const t = entwurf.trim()
+    if (!t) return
+    onChange([...schritte, { id: neueId(), text: t, erledigt: false }])
+    setEntwurf("")
+  }
+  function toggle(id) {
+    onChange(
+      schritte.map((s) => (s.id === id ? { ...s, erledigt: !s.erledigt } : s))
+    )
+  }
+  function setText(id, text) {
+    onChange(schritte.map((s) => (s.id === id ? { ...s, text } : s)))
+  }
+  function entferne(id) {
+    onChange(schritte.filter((s) => s.id !== id))
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {schritte.map((s) => (
+        <div key={s.id} className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={!!s.erledigt}
+            onChange={() => toggle(s.id)}
+            className="h-4 w-4 shrink-0 accent-gray-900"
+          />
+          <input
+            value={s.text}
+            onChange={(e) => setText(s.id, e.target.value)}
+            placeholder="Teilschritt…"
+            className={`min-w-0 flex-1 border-none bg-transparent text-sm outline-none placeholder:text-gray-300 ${
+              s.erledigt ? "text-gray-400 line-through" : "text-gray-700"
+            }`}
+          />
+          <button
+            type="button"
+            onClick={() => entferne(s.id)}
+            title="Teilschritt entfernen"
+            className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      <input
+        value={entwurf}
+        onChange={(e) => setEntwurf(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault()
+            add()
+          }
+        }}
+        placeholder="+ Teilschritt, z.B. 3x pro Woche laufen"
+        className="w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 outline-none transition-colors focus:border-accent-400 placeholder:text-gray-400"
+      />
     </div>
   )
 }
@@ -330,7 +424,6 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
       <EigeneZiele
         ziele={zyklusZiele(zyklus)}
         onChange={(neu) => patch({ ziele: neu })}
-        mitErledigt
       />
     </div>
   )

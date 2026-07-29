@@ -1,8 +1,11 @@
 import useStored from "../lib/useStored"
+import { useState } from "react"
 import {
   zyklusStatus,
   zyklusProjekte,
   zyklusZiele,
+  zielSchritte,
+  zielFortschritt,
   aktualisiereZyklus,
   zieleErreicht,
   restText,
@@ -35,12 +38,33 @@ export default function ZyklusWidget({ onNavigate, variant = "hell" }) {
     setZyklen(zyklen.map((z) => (z.id === zyklus.id ? aktualisiert : z)))
   }
 
-  function toggleZiel(zyklus, zielId) {
+  // Teilschritte eines eigenen Ziels ändern (abhaken / hinzufügen). Die
+  // Änderungsfunktion bekommt die aktuelle Schrittliste und gibt die neue.
+  function aendereZielSchritte(zyklus, zielId, aenderung) {
     const neu = zyklusZiele(zyklus).map((z) =>
-      z.id === zielId ? { ...z, erledigt: !z.erledigt } : z
+      z.id === zielId ? { ...z, schritte: aenderung(zielSchritte(z)) } : z
     )
     const aktualisiert = aktualisiereZyklus(zyklus, { ziele: neu })
     setZyklen(zyklen.map((z) => (z.id === zyklus.id ? aktualisiert : z)))
+  }
+  function toggleSchritt(zyklus, zielId, schrittId) {
+    aendereZielSchritte(zyklus, zielId, (schritte) =>
+      schritte.map((s) =>
+        s.id === schrittId ? { ...s, erledigt: !s.erledigt } : s
+      )
+    )
+  }
+  function addSchritt(zyklus, zielId, text) {
+    const t = text.trim()
+    if (!t) return
+    aendereZielSchritte(zyklus, zielId, (schritte) => [
+      ...schritte,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        text: t,
+        erledigt: false,
+      },
+    ])
   }
 
   return (
@@ -54,7 +78,8 @@ export default function ZyklusWidget({ onNavigate, variant = "hell" }) {
           todos={todos}
           onNavigate={onNavigate}
           onToggleErledigt={toggleErledigt}
-          onToggleZiel={toggleZiel}
+          onToggleSchritt={toggleSchritt}
+          onAddSchritt={addSchritt}
           dunkel={variant === "dunkel"}
         />
       ))}
@@ -80,9 +105,11 @@ function ZyklusKarte({
   todos,
   onNavigate,
   onToggleErledigt,
-  onToggleZiel,
+  onToggleSchritt,
+  onAddSchritt,
   dunkel,
 }) {
+  const [offenZielId, setOffenZielId] = useState(null)
   // Verknüpfte Projekte mit ihren Periodenzielen; archivierte/gelöschte raus.
   const eintraege = zyklusProjekte(zyklus)
     .map((e) => ({ ...e, projekt: projekte.find((p) => p.id === e.projektId) }))
@@ -195,40 +222,127 @@ function ZyklusKarte({
         </ul>
       )}
 
-      {/* Eigene, projektunabhängige Ziele – direkt abhakbar */}
+      {/* Eigene, projektunabhängige Ziele – anklicken und Teilschritte abhaken */}
       {eigeneZiele.length > 0 && (
         <ul className="mt-3 space-y-1">
-          {eigeneZiele.map((z) => (
-            <li
-              key={z.id}
-              className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 ${
-                dunkel ? "hover:bg-white/5" : "hover:bg-gray-50"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={!!z.erledigt}
-                onChange={() => onToggleZiel(zyklus, z.id)}
-                title="Ziel erreicht"
-                className="h-4 w-4 shrink-0 accent-accent-500"
-              />
-              <span
-                className={`min-w-0 flex-1 truncate text-sm ${
-                  z.erledigt
-                    ? dunkel
-                      ? "text-white/40 line-through"
-                      : "text-gray-400 line-through"
-                    : dunkel
-                      ? "text-white/90"
-                      : "text-gray-800"
-                }`}
-              >
-                {z.text}
-              </span>
-            </li>
-          ))}
+          {eigeneZiele.map((z) => {
+            const schritte = zielSchritte(z)
+            const { erledigt, gesamt } = zielFortschritt(z)
+            const fertig = gesamt > 0 && erledigt === gesamt
+            const offen = offenZielId === z.id
+            return (
+              <li key={z.id}>
+                <button
+                  onClick={() => setOffenZielId(offen ? null : z.id)}
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left ${
+                    dunkel ? "hover:bg-white/5" : "hover:bg-gray-50"
+                  }`}
+                >
+                  <span
+                    className={`shrink-0 text-xs transition-transform ${
+                      offen ? "rotate-90" : ""
+                    } ${dunkel ? "text-white/40" : "text-gray-400"}`}
+                  >
+                    ▸
+                  </span>
+                  <span
+                    className={`min-w-0 flex-1 truncate text-sm ${
+                      fertig
+                        ? dunkel
+                          ? "text-white/40 line-through"
+                          : "text-gray-400 line-through"
+                        : dunkel
+                          ? "text-white/90"
+                          : "text-gray-800"
+                    }`}
+                  >
+                    {z.text}
+                  </span>
+                  {gesamt > 0 && (
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                        fertig
+                          ? dunkel
+                            ? "bg-emerald-500/20 text-emerald-300"
+                            : "bg-emerald-50 text-emerald-600"
+                          : dunkel
+                            ? "bg-white/10 text-white/60"
+                            : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {erledigt}/{gesamt}
+                    </span>
+                  )}
+                </button>
+
+                {offen && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {schritte.map((s) => (
+                      <label
+                        key={s.id}
+                        className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!!s.erledigt}
+                          onChange={() => onToggleSchritt(zyklus, z.id, s.id)}
+                          className="h-4 w-4 shrink-0 accent-accent-500"
+                        />
+                        <span
+                          className={`min-w-0 flex-1 text-sm ${
+                            s.erledigt
+                              ? dunkel
+                                ? "text-white/40 line-through"
+                                : "text-gray-400 line-through"
+                              : dunkel
+                                ? "text-white/80"
+                                : "text-gray-700"
+                          }`}
+                        >
+                          {s.text}
+                        </span>
+                      </label>
+                    ))}
+                    <SchrittEingabe
+                      dunkel={dunkel}
+                      onAdd={(text) => onAddSchritt(zyklus, z.id, text)}
+                    />
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
+  )
+}
+
+// Kleines Eingabefeld, um im Dashboard direkt einen Teilschritt zu ergänzen.
+function SchrittEingabe({ onAdd, dunkel }) {
+  const [text, setText] = useState("")
+  function add() {
+    if (!text.trim()) return
+    onAdd(text)
+    setText("")
+  }
+  return (
+    <input
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault()
+          add()
+        }
+      }}
+      onBlur={add}
+      placeholder="+ Teilschritt"
+      className={`w-full rounded-md border px-2 py-1 text-sm outline-none transition-colors ${
+        dunkel
+          ? "border-white/10 bg-white/5 text-white placeholder:text-white/30 focus:border-white/30"
+          : "border-gray-200 bg-white text-gray-700 placeholder:text-gray-400 focus:border-accent-400"
+      }`}
+    />
   )
 }

@@ -99,17 +99,39 @@ export function aktualisiereZyklus(zyklus, aenderung = {}) {
   return { ...rest, projekte: zyklusProjekte(zyklus), ...aenderung }
 }
 
-// Eigene, projektunabhängige Ziele einer Periode: [{ id, text, erledigt }].
-// Konkrete Vorhaben ohne Projektbezug (z. B. „3x pro Woche laufen").
+// Eigene, projektunabhängige Ziele einer Periode. Jedes Ziel ist – wie ein
+// kleines Projekt – ein Behälter mit konkreten Teilschritten, die man abhakt:
+//   { id, text, schritte: [ { id, text, erledigt } ] }
+// (Für einige Vorhaben gibt es kein Projekt, sie brauchen aber trotzdem
+// Struktur.) Ältere Ziele ohne `schritte` bleiben gültig.
 export function zyklusZiele(zyklus) {
   return Array.isArray(zyklus.ziele) ? zyklus.ziele : []
 }
 
-// Erreichte Ziele / Gesamtzahl einer Periode – zählt sowohl die
-// projektgebundenen Periodenziele als auch die eigenen Ziele.
+export function zielSchritte(ziel) {
+  return Array.isArray(ziel.schritte) ? ziel.schritte : []
+}
+
+// Fortschritt eines Ziels aus seinen Teilschritten.
+export function zielFortschritt(ziel) {
+  const s = zielSchritte(ziel)
+  return { erledigt: s.filter((x) => x.erledigt).length, gesamt: s.length }
+}
+
+// Ein Ziel gilt als erreicht, wenn es Teilschritte hat und alle erledigt sind.
+export function zielErreicht(ziel) {
+  const s = zielSchritte(ziel)
+  return s.length > 0 && s.every((x) => x.erledigt)
+}
+
+// Erreichte Ziele / Gesamtzahl einer Periode – zählt die projektgebundenen
+// Periodenziele (erledigt) und die eigenen Ziele (alle Teilschritte erledigt).
 export function zieleErreicht(zyklus) {
-  const alle = [...zyklusProjekte(zyklus), ...zyklusZiele(zyklus)]
-  return { erreicht: alle.filter((x) => x.erledigt).length, gesamt: alle.length }
+  const p = zyklusProjekte(zyklus)
+  const z = zyklusZiele(zyklus)
+  const erreicht =
+    p.filter((x) => x.erledigt).length + z.filter(zielErreicht).length
+  return { erreicht, gesamt: p.length + z.length }
 }
 
 // Kurzer Text für die Restlaufzeit eines aktiven Zyklus.
