@@ -68,6 +68,73 @@ function LernBanner({ onNavigate, variant = "hell" }) {
   )
 }
 
+// Heutige Habits als abhakbare Liste – für die Startseiten-Stile, die keine
+// eigene Habit-Darstellung haben (Todo, Clean Girl, Notion). Nutzt dieselbe
+// Habit-Logik wie die Habits-Seite. Nichts anzeigen, wenn keine Habits da sind.
+function HabitsPanel({ onNavigate }) {
+  const { habits, setHabits } = useHabitDaten()
+  const habitToggle = nutzeHabitToggle(habits, setHabits)
+  const heuteKey = heute()
+  if (habits.length === 0) return null
+
+  return (
+    <section className="mb-8">
+      <button
+        onClick={() => onNavigate("habits")}
+        className="group mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-900"
+      >
+        <span className="text-base">🔁</span> Habits
+        <span className="text-gray-300 transition-colors group-hover:text-accent-600">
+          →
+        </span>
+      </button>
+      <ul className="space-y-2">
+        {habits.map((h) => {
+          const dran = h.erledigtAn.includes(heuteKey)
+          return (
+            <li
+              key={h.id}
+              className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm shadow-gray-100"
+            >
+              <button
+                onClick={() => habitToggle(h)}
+                title={dran ? "Rückgängig" : "Erledigt"}
+                className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors ${
+                  dran
+                    ? "border-accent-500 bg-accent-500 text-white"
+                    : "border-gray-300 text-transparent hover:border-accent-400"
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-2.5 w-2.5"
+                >
+                  <path d="m5 12 5 5L20 7" />
+                </svg>
+              </button>
+              <span
+                className={`min-w-0 flex-1 truncate text-sm ${
+                  dran ? "text-gray-400 line-through" : "text-gray-800"
+                }`}
+              >
+                {h.name}
+              </span>
+              <span className="shrink-0 text-xs text-gray-400">
+                🔥 {wochenStreakVon(h)}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
 // Offene Todos nach laufendem Projekt gruppieren (+ „Ohne Projekt"), innerhalb
 // jeder Gruppe nach Eisenhower und Datum sortiert. Von allen drei Stilen
 // gemeinsam genutzt, damit die Logik nur einmal existiert.
@@ -210,6 +277,8 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
           <KalenderPanel nurHeute />
         </section>
       )}
+
+      {dashboard.habits && <HabitsPanel onNavigate={onNavigate} />}
 
       <section>
         <div className="mb-3 flex items-center justify-between">
@@ -438,7 +507,7 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
                 onToggle={() => toggle(t.id)}
               />
             ))}
-            {habits.map((h) => {
+            {dashboard.habits && habits.map((h) => {
               const dran = h.erledigtAn.includes(heuteKey)
               const bereich = bereiche.find((b) => b.id === h.bereichId)
               return (
@@ -597,15 +666,16 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
                 meta={t.datum ? tageBis(t.datum) : null}
               />
             ))}
-            {habits.map((h) => (
-              <TermRow
-                key={`h-${h.id}`}
-                erledigt={h.erledigtAn.includes(heuteKey)}
-                onToggle={() => habitToggle(h)}
-                label={h.name}
-                meta={`habit · ${wochenStreakVon(h)}w`}
-              />
-            ))}
+            {dashboard.habits &&
+              habits.map((h) => (
+                <TermRow
+                  key={`h-${h.id}`}
+                  erledigt={h.erledigtAn.includes(heuteKey)}
+                  onToggle={() => habitToggle(h)}
+                  label={h.name}
+                  meta={`habit · ${wochenStreakVon(h)}w`}
+                />
+              ))}
           </div>
         )}
 
@@ -668,6 +738,9 @@ function CleanGirlZeile({ todo, onToggle }) {
 function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate, dashboard }) {
   const heuteFaellig = offene.filter((t) => t.datum && t.datum <= heute()).length
   const erledigt = todos.filter((t) => t.erledigt).length
+  const { habits, setHabits } = useHabitDaten()
+  const habitToggle = nutzeHabitToggle(habits, setHabits)
+  const heuteKey = heute()
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-pink-50 to-purple-50 px-5 py-10 sm:px-6">
@@ -705,6 +778,61 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
             <div className="overflow-hidden rounded-3xl shadow-[0_20px_50px_-30px_rgba(219,112,147,0.7)]">
               <KalenderPanel nurHeute />
             </div>
+          </section>
+        )}
+
+        {dashboard.habits && habits.length > 0 && (
+          <section className="mb-8">
+            <button
+              onClick={() => onNavigate("habits")}
+              style={{ fontFamily: FONT_SERIF_ELEGANT }}
+              className="mb-3 text-lg italic text-rose-950/70 transition-colors hover:text-rose-500"
+            >
+              habits ♡
+            </button>
+            <ul className="space-y-2">
+              {habits.map((h) => {
+                const dran = h.erledigtAn.includes(heuteKey)
+                return (
+                  <li
+                    key={h.id}
+                    className="flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3 shadow-[0_10px_30px_-20px_rgba(219,112,147,0.6)] backdrop-blur-sm"
+                  >
+                    <button
+                      onClick={() => habitToggle(h)}
+                      title={dran ? "Rückgängig" : "Erledigt"}
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                        dran
+                          ? "border-rose-400 bg-rose-400 text-white"
+                          : "border-rose-300 text-transparent hover:bg-rose-100"
+                      }`}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-3 w-3"
+                      >
+                        <path d="m5 12 5 5L20 7" />
+                      </svg>
+                    </button>
+                    <span
+                      className={`min-w-0 flex-1 truncate text-[15px] ${
+                        dran ? "text-rose-300 line-through" : "text-rose-950/80"
+                      }`}
+                    >
+                      {h.name}
+                    </span>
+                    <span className="shrink-0 text-xs text-rose-400">
+                      🔥 {wochenStreakVon(h)}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
           </section>
         )}
 
@@ -852,6 +980,8 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard })
           </div>
         )}
       </section>
+
+      {dashboard.habits && <HabitsPanel onNavigate={onNavigate} />}
 
       {/* Kalender */}
       {dashboard.kalender && (

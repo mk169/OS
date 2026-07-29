@@ -15,6 +15,11 @@ export const DASHBOARD_BLOECKE = [
     beschreibung: "Hinweis auf fällige Karteikarten",
   },
   {
+    key: "habits",
+    label: "Habits",
+    beschreibung: "Heutige Gewohnheiten zum Abhaken",
+  },
+  {
     key: "kennzahlen",
     label: "Kennzahlen",
     beschreibung: "Zahlen-Kacheln (offen, erledigt, …)",
@@ -29,6 +34,7 @@ export const DASHBOARD_BLOECKE = [
 const STANDARD = {
   fokusPeriode: true,
   lernen: true,
+  habits: true,
   kennzahlen: true,
   kalender: true,
 }
