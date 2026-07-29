@@ -1,6 +1,7 @@
 import useStored from "../lib/useStored"
 import { heute, tageBis, montagVon } from "../lib/datum"
 import { istFaellig } from "../lib/spacedRepetition"
+import ZyklusWidget from "./ZyklusWidget"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { datumLang } from "./Kalender"
@@ -183,6 +184,7 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate 
         </h1>
       </header>
 
+      <ZyklusWidget onNavigate={onNavigate} />
       <LernBanner onNavigate={onNavigate} />
 
       <div className="mb-8 flex gap-3">
@@ -393,6 +395,7 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
         </div>
       </div>
 
+      <ZyklusWidget onNavigate={onNavigate} />
       <LernBanner onNavigate={onNavigate} />
 
       {/* Fortschrittsbalken */}
@@ -593,6 +596,7 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
           </div>
         </div>
 
+        <ZyklusWidget onNavigate={onNavigate} variant="dunkel" />
         <LernBanner onNavigate={onNavigate} variant="dunkel" />
 
         {/* Fortschritts-Bahnen */}
@@ -727,7 +731,8 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
           <CleanPill wert={erledigt} label="erledigt" farbe="bg-amber-100/70 text-amber-700" />
         </div>
 
-        <LernBanner onNavigate={onNavigate} />
+        <ZyklusWidget onNavigate={onNavigate} />
+      <LernBanner onNavigate={onNavigate} />
 
         <section className="mb-8">
           <button
@@ -835,6 +840,7 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate }) {
         <p className="mt-1.5 text-sm text-gray-400">{datumLang(heute())}</p>
       </div>
 
+      <ZyklusWidget onNavigate={onNavigate} />
       <LernBanner onNavigate={onNavigate} />
 
       {/* Aufgaben */}
