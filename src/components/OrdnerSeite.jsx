@@ -216,7 +216,14 @@ export default function OrdnerSeite({
   }
 
   function removeProjekt(id) {
-    setProjekte(projekte.filter((p) => p.id !== id))
+    const p = projekte.find((x) => x.id === id)
+    if (
+      !window.confirm(
+        `Projekt${p?.name ? ` „${p.name}"` : ""} wirklich löschen? Das kann nicht rückgängig gemacht werden.`
+      )
+    )
+      return
+    setProjekte(projekte.filter((x) => x.id !== id))
   }
 
   return (
@@ -524,7 +531,7 @@ function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
             onRemove(p.id)
           }}
           title="Projekt löschen"
-          className="absolute right-3 top-3 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+          className="absolute right-3 top-3 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 max-md:opacity-100"
         >
           ×
         </button>
@@ -583,7 +590,7 @@ function ProjektZeile({ p, todos, onOeffnen, onRemove }) {
             onRemove(p.id)
           }}
           title="Projekt löschen"
-          className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+          className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 max-md:opacity-100"
         >
           ×
         </button>

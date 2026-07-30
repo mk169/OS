@@ -51,7 +51,7 @@ export const PROFILE = [
       </>
     ),
     farbe: "gray",
-    seiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen"],
+    seiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
   },
 ]
 

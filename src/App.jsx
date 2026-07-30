@@ -11,6 +11,9 @@ import HabitsSeite from "./components/HabitsSeite"
 import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
 import FinanzenSeite from "./components/FinanzenSeite"
+import BerufSeite from "./components/BerufSeite"
+import LeisureSeite from "./components/LeisureSeite"
+import DailyOpsSeite from "./components/DailyOpsSeite"
 import SammelnSeite from "./components/SammelnSeite"
 import ReviewSeite from "./components/ReviewSeite"
 import Suche from "./components/Suche"
@@ -49,19 +52,35 @@ function migriereAlteKurse() {
   schreibeStore("kurse", [], [])
 }
 
-// Einmalige Ergänzung des neuen Bereichs „Finanzen" für bestehende Nutzer:
-// wird der aktiven Navigation hinzugefügt, sofern noch nicht vorhanden. Der
-// Merker `finanzenErgaenzt` sorgt dafür, dass ein späteres Ausblenden bleibt.
-function migriereFinanzen() {
+// Neu eingeführte Bereiche, die bestehenden Nutzern einmalig zur Navigation
+// hinzugefügt werden. Pro Schlüssel nur einmal (Merker `bereicheErgaenzt`),
+// damit ein späteres bewusstes Ausblenden erhalten bleibt.
+const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops"]
+
+function migriereBereiche() {
   const roh = localStorage.getItem("einstellungen")
-  if (!roh) return // Neue Nutzer erhalten den Standard (inkl. „finanzen").
+  if (!roh) return // Neue Nutzer erhalten bereits den vollständigen Standard.
   try {
     const e = JSON.parse(roh)
-    if (e.finanzenErgaenzt) return
-    const seiten = e.sichtbareSeiten ?? []
-    const neu = { ...e, finanzenErgaenzt: true }
-    if (!seiten.includes("finanzen")) neu.sichtbareSeiten = [...seiten, "finanzen"]
-    schreibeStore("einstellungen", {}, neu)
+    // Alten Einzel-Merker `finanzenErgaenzt` übernehmen.
+    const ergaenzt = new Set(
+      e.bereicheErgaenzt ?? (e.finanzenErgaenzt ? ["finanzen"] : [])
+    )
+    let seiten = e.sichtbareSeiten ?? []
+    let geaendert = false
+    for (const key of AUTO_BEREICHE) {
+      if (ergaenzt.has(key)) continue
+      ergaenzt.add(key)
+      if (!seiten.includes(key)) seiten = [...seiten, key]
+      geaendert = true
+    }
+    if (geaendert) {
+      schreibeStore("einstellungen", {}, {
+        ...e,
+        sichtbareSeiten: seiten,
+        bereicheErgaenzt: [...ergaenzt],
+      })
+    }
   } catch {
     /* defektes JSON – ignorieren */
   }
@@ -157,12 +176,42 @@ const NAV = [
       </>
     ),
   },
+  {
+    key: "beruf",
+    label: "Beruf & Karriere",
+    icon: (
+      <>
+        <rect x="3" y="7" width="18" height="13" rx="2" />
+        <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7M3 12.5h18" />
+      </>
+    ),
+  },
+  {
+    key: "leisure",
+    label: "Leisure & Kultur",
+    icon: (
+      <>
+        <rect x="3" y="4.5" width="18" height="15" rx="2" />
+        <path d="M10 9v6l5-3-5-3Z" />
+      </>
+    ),
+  },
+  {
+    key: "dailyops",
+    label: "Daily Operations",
+    icon: (
+      <>
+        <path d="M4 12a8 8 0 0 1 13.7-5.7M20 12a8 8 0 0 1-13.7 5.7" />
+        <path d="M17 3.5V7h-3.5M7 20.5V17h3.5" />
+      </>
+    ),
+  },
 ]
 
 const EINSTELLUNGEN_STANDARD = {
   onboardingAbgeschlossen: false,
   profil: "komplett",
-  sichtbareSeiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen"],
+  sichtbareSeiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
   appName: "OS",
   startseite: "dashboard",
   akzent: "indigo",
@@ -189,7 +238,7 @@ export default function App() {
 
   useEffect(() => {
     migriereAlteKurse()
-    migriereFinanzen()
+    migriereBereiche()
   }, [])
 
   // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den Einstellungen).
@@ -412,6 +461,9 @@ export default function App() {
           />
         )}
         {seite === "finanzen" && <FinanzenSeite />}
+        {seite === "beruf" && <BerufSeite />}
+        {seite === "leisure" && <LeisureSeite />}
+        {seite === "dailyops" && <DailyOpsSeite />}
         {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
         {seite === "einstellungen" && <Einstellungen />}
       </main>
