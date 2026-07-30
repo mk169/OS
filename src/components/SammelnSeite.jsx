@@ -298,8 +298,10 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
     const q = suche.trim().toLowerCase()
     let liste = wissen
     if (aktiverOrdner === "angepinnt") liste = liste.filter((w) => w.angepinnt)
-    else if (aktiverOrdner !== "alle")
-      liste = liste.filter((w) => (w.ordnerId ?? null) === aktiverOrdner)
+    else if (aktiverOrdner !== "alle") {
+      const ids = ordnerMitNachkommen(aktiverOrdner, ordner)
+      liste = liste.filter((w) => ids.has(w.ordnerId))
+    }
     if (q)
       liste = liste.filter(
         (w) =>
@@ -316,7 +318,7 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
     return [...sortiert].sort(
       (a, b) => (b.angepinnt ? 1 : 0) - (a.angepinnt ? 1 : 0)
     )
-  }, [wissen, suche, sort, aktiverOrdner])
+  }, [wissen, suche, sort, aktiverOrdner, ordner])
 
   function erstelle(vorlage) {
     const neu = {
@@ -354,17 +356,31 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
     setWissen(wissen.map((w) => (w.id === id ? { ...w, ordnerId } : w)))
   }
 
+  // Neuer Ordner: liegt im gerade aktiven Ordner (→ Unterordner), sonst oben.
   function addOrdner(name) {
     const n = name.trim()
     if (!n) return
-    const neu = { id: `o-${Date.now()}`, name: n }
+    const parentId =
+      aktiverOrdner !== "alle" && aktiverOrdner !== "angepinnt"
+        ? aktiverOrdner
+        : null
+    const neu = { id: `o-${Date.now()}`, name: n, parentId }
     setOrdner([...ordner, neu])
     setAktiverOrdner(neu.id)
   }
+  // Löschen: Unterordner und Notizen wandern eine Ebene nach oben (zum
+  // übergeordneten Ordner bzw. „ohne Ordner"), nichts geht verloren.
   function removeOrdner(id) {
-    setOrdner(ordner.filter((o) => o.id !== id))
-    setWissen(wissen.map((w) => (w.ordnerId === id ? { ...w, ordnerId: null } : w)))
-    if (aktiverOrdner === id) setAktiverOrdner("alle")
+    const elternId = ordner.find((o) => o.id === id)?.parentId ?? null
+    setOrdner(
+      ordner
+        .filter((o) => o.id !== id)
+        .map((o) => (o.parentId === id ? { ...o, parentId: elternId } : o))
+    )
+    setWissen(
+      wissen.map((w) => (w.ordnerId === id ? { ...w, ordnerId: elternId } : w))
+    )
+    if (aktiverOrdner === id) setAktiverOrdner(elternId ?? "alle")
   }
   function renameOrdner(id, name) {
     setOrdner(ordner.map((o) => (o.id === id ? { ...o, name } : o)))
@@ -540,7 +556,8 @@ function OrdnerLeiste({
               }}
               title="Klicken zum Filtern · Doppelklick zum Umbenennen"
             >
-              📁 {o.name}{" "}
+              {o.parentId ? "› " : "📁 "}
+              {o.name}{" "}
               <span className={aktiv === o.id ? "text-white/60" : "text-gray-400"}>
                 {ordnerCounts.get(o.id) ?? 0}
               </span>
@@ -550,7 +567,7 @@ function OrdnerLeiste({
                 onClick={() => {
                   if (
                     window.confirm(
-                      `Ordner „${o.name}" löschen? Die Einträge bleiben erhalten (dann ohne Ordner).`
+                      `Ordner „${o.name}" löschen? Unterordner und Einträge wandern eine Ebene nach oben.`
                     )
                   )
                     onRemove(o.id)
@@ -583,9 +600,14 @@ function OrdnerLeiste({
       ) : (
         <button
           onClick={() => setFormOffen(true)}
+          title={
+            aktiv !== "alle" && aktiv !== "angepinnt"
+              ? "Unterordner im aktiven Ordner anlegen"
+              : "Ordner anlegen"
+          }
           className="shrink-0 whitespace-nowrap rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-900"
         >
-          + Ordner
+          {aktiv !== "alle" && aktiv !== "angepinnt" ? "+ Unterordner" : "+ Ordner"}
         </button>
       )}
     </div>
@@ -693,21 +715,6 @@ function WissenListe({
     )
   }
 
-  // Nach Ordner gruppieren (Reihenfolge: Ordner wie angelegt, dann „Ohne Ordner").
-  const proOrdner = new Map()
-  for (const w of eintraege) {
-    const k = w.ordnerId ?? "__ohne__"
-    if (!proOrdner.has(k)) proOrdner.set(k, [])
-    proOrdner.get(k).push(w)
-  }
-  const gruppen = []
-  for (const o of ordner) {
-    const items = proOrdner.get(o.id)
-    if (items?.length) gruppen.push({ key: o.id, name: o.name, items })
-  }
-  const ohne = proOrdner.get("__ohne__")
-  if (ohne?.length) gruppen.push({ key: "__ohne__", name: "Ohne Ordner", items: ohne })
-
   const toggle = (k) =>
     setZu((s) => {
       const n = new Set(s)
@@ -716,34 +723,89 @@ function WissenListe({
       return n
     })
 
-  return (
-    <div className="mt-4 space-y-3">
-      {gruppen.map((g) => {
-        const offen = !zu.has(g.key)
-        return (
-          <div key={g.key}>
-            <button
-              onClick={() => toggle(g.key)}
-              className="flex w-full items-center gap-2 px-1 py-1 text-left"
-            >
-              <span
-                className={`text-[11px] text-gray-400 transition-transform ${offen ? "rotate-90" : ""}`}
-              >
-                ▸
-              </span>
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                {g.name}
-              </span>
-              <span className="text-xs text-gray-300">{g.items.length}</span>
-            </button>
-            {offen && (
-              <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-                {g.items.map(zeile)}
-              </ul>
-            )}
+  // Notizen je Ordner und Unterordner je Elternteil (für den Ordnerbaum).
+  const notizenProOrdner = new Map()
+  for (const w of eintraege) {
+    const k = w.ordnerId ?? "__ohne__"
+    if (!notizenProOrdner.has(k)) notizenProOrdner.set(k, [])
+    notizenProOrdner.get(k).push(w)
+  }
+  const kinder = new Map()
+  for (const o of ordner) {
+    const p = o.parentId ?? "__root__"
+    if (!kinder.has(p)) kinder.set(p, [])
+    kinder.get(p).push(o)
+  }
+
+  const renderOrdner = (o, tiefe) => {
+    const offen = !zu.has(o.id)
+    const subs = kinder.get(o.id) ?? []
+    const notizen = notizenProOrdner.get(o.id) ?? []
+    return (
+      <div key={o.id}>
+        <button
+          onClick={() => toggle(o.id)}
+          style={{ paddingLeft: 12 + tiefe * 16 }}
+          className="flex w-full items-center gap-1.5 py-1.5 pr-3 text-left transition-colors hover:bg-gray-50"
+        >
+          <span
+            className={`text-[11px] text-gray-400 transition-transform ${offen ? "rotate-90" : ""}`}
+          >
+            ▸
+          </span>
+          <span className="text-sm">📁</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">
+            {o.name}
+          </span>
+          <span className="shrink-0 text-xs text-gray-300">
+            {notizen.length}
+          </span>
+        </button>
+        {offen && (subs.length > 0 || notizen.length > 0) && (
+          <div>
+            {subs.map((s) => renderOrdner(s, tiefe + 1))}
+            <ul style={{ paddingLeft: (tiefe + 1) * 16 }}>
+              {notizen.map(zeile)}
+            </ul>
           </div>
-        )
-      })}
+        )}
+      </div>
+    )
+  }
+
+  const topOrdner = kinder.get("__root__") ?? []
+  const ohne = notizenProOrdner.get("__ohne__") ?? []
+
+  return (
+    <div className="mt-4 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      {topOrdner.map((o) => renderOrdner(o, 0))}
+      {ohne.length > 0 && (
+        <div>
+          {topOrdner.length > 0 && (
+            <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              Ohne Ordner
+            </p>
+          )}
+          <ul>{ohne.map(zeile)}</ul>
+        </div>
+      )}
     </div>
   )
+}
+
+// Alle Nachkommen-Ordner-IDs eines Ordners (inklusive des Ordners selbst),
+// damit ein übergeordneter Ordner auch die Notizen seiner Unterordner zeigt.
+function ordnerMitNachkommen(id, ordner) {
+  const set = new Set([id])
+  let neu = true
+  while (neu) {
+    neu = false
+    for (const o of ordner) {
+      if (o.parentId != null && set.has(o.parentId) && !set.has(o.id)) {
+        set.add(o.id)
+        neu = true
+      }
+    }
+  }
+  return set
 }
