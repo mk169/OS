@@ -5,7 +5,7 @@ import { NotizBearbeiten } from "./ProjektNotizen"
 import WissensGraph from "./WissensGraph"
 import TagsAnsicht from "./TagsAnsicht"
 import LernenGlobal from "./LernenGlobal"
-import { Suchfeld, SortMenu, LayoutUmschalter } from "./ListenControls"
+import { Suchfeld, SortMenu } from "./ListenControls"
 import { erkenneDatum, erkenneProjekt } from "../lib/erkennung"
 import { tageBis } from "../lib/datum"
 import { VORLAGEN } from "../lib/wissen"
@@ -265,7 +265,6 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
   const [bearbeiteId, setBearbeiteId] = useState(null)
   const [suche, setSuche] = useState("")
   const [sort, setSort] = useStored("wissenSort", "bearbeitet")
-  const [layout, setLayout] = useStored("wissenLayout", "raster")
   // Aktiver Ordner-Filter: "alle" | "angepinnt" | <ordnerId>.
   const [aktiverOrdner, setAktiverOrdner] = useState("alle")
   const [neuOffen, setNeuOffen] = useState(false)
@@ -380,8 +379,6 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
     else onNavigate?.("projekte", ziel.id)
   }
 
-  const ordnerName = (id) => ordner.find((o) => o.id === id)?.name
-
   return (
     <div>
       {/* Erstellen mit Vorlagen */}
@@ -433,15 +430,15 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
         <div className="mt-3 flex items-center gap-2">
           <Suchfeld wert={suche} onChange={setSuche} placeholder="Wissen durchsuchen…" />
           <SortMenu wert={sort} onChange={setSort} optionen={WISSEN_SORT} />
-          <LayoutUmschalter layout={layout} setLayout={setLayout} />
         </div>
       )}
 
-      <WissenKarten
+      <WissenListe
         eintraege={sichtbareWissen}
-        layout={layout}
+        ordner={ordner}
+        aktiverOrdner={aktiverOrdner}
+        suche={suche}
         eingehend={eingehend}
-        ordnerName={ordnerName}
         onOeffnen={setBearbeiteId}
         onPin={togglePin}
         onRemove={removeWissen}
@@ -595,86 +592,154 @@ function OrdnerLeiste({
   )
 }
 
-// Wissens-Karten mit Titel, Ausschnitt und Metazeile: Ordner, Anhänge (📎),
-// ausgehende (🔗) und eingehende (↩) Verlinkungen. Klick öffnet den Editor.
-function WissenKarten({
+// Kleines Dokument-Icon für die ruhige Notizliste.
+function DocIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className="h-4 w-4 shrink-0 text-gray-300"
+      aria-hidden="true"
+    >
+      <path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+      <path d="M14 3v4h4" />
+    </svg>
+  )
+}
+
+// Eine ruhige Notizzeile: Icon + Titel, dezente Meta-Symbole (nur Desktop),
+// Anheften/Löschen bei Hover bzw. auf dem Handy sichtbar.
+function WissenZeile({ w, eingehend, onOeffnen, onPin, onRemove }) {
+  const aus = extrahiereWikilinks(w.inhalt).length
+  const ein = eingehend.get((w.titel ?? "").toLowerCase()) ?? 0
+  const anh = (w.anhaenge ?? []).length
+  return (
+    <li
+      onClick={() => onOeffnen(w.id)}
+      className="group flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-gray-50"
+    >
+      <DocIcon />
+      <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
+        {w.angepinnt && <span className="mr-1 text-amber-500">📌</span>}
+        {w.titel || "Ohne Titel"}
+      </span>
+      {(anh > 0 || aus > 0 || ein > 0) && (
+        <span className="hidden shrink-0 items-center gap-2 text-[11px] text-gray-300 sm:flex">
+          {anh > 0 && <span title="Anhänge">📎 {anh}</span>}
+          {aus > 0 && <span title="Verlinkt auf">🔗 {aus}</span>}
+          {ein > 0 && <span title="Erwähnt in">↩ {ein}</span>}
+        </span>
+      )}
+      <div className="flex shrink-0 items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onPin(w.id)
+          }}
+          title={w.angepinnt ? "Nicht mehr anheften" : "Anheften"}
+          className={w.angepinnt ? "text-amber-500" : "text-gray-300 hover:text-amber-500"}
+        >
+          📌
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(w.id)
+          }}
+          title="Löschen"
+          className="text-gray-300 hover:text-red-500"
+        >
+          ×
+        </button>
+      </div>
+    </li>
+  )
+}
+
+// Ruhige Notizliste im Datei-Explorer-Stil. In der „Alle"-Ansicht (ohne Suche)
+// nach Ordnern gruppiert – jede Gruppe aufklappbar. Sonst eine flache Liste.
+function WissenListe({
   eintraege,
-  layout,
+  ordner,
+  aktiverOrdner,
+  suche,
   eingehend,
-  ordnerName,
   onOeffnen,
   onPin,
   onRemove,
 }) {
+  const [zu, setZu] = useState(() => new Set())
   if (eintraege.length === 0) return null
+
+  const zeile = (w) => (
+    <WissenZeile
+      key={w.id}
+      w={w}
+      eingehend={eingehend}
+      onOeffnen={onOeffnen}
+      onPin={onPin}
+      onRemove={onRemove}
+    />
+  )
+
+  const gruppiert = aktiverOrdner === "alle" && !suche.trim()
+  if (!gruppiert) {
+    return (
+      <ul className="mt-4 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+        {eintraege.map(zeile)}
+      </ul>
+    )
+  }
+
+  // Nach Ordner gruppieren (Reihenfolge: Ordner wie angelegt, dann „Ohne Ordner").
+  const proOrdner = new Map()
+  for (const w of eintraege) {
+    const k = w.ordnerId ?? "__ohne__"
+    if (!proOrdner.has(k)) proOrdner.set(k, [])
+    proOrdner.get(k).push(w)
+  }
+  const gruppen = []
+  for (const o of ordner) {
+    const items = proOrdner.get(o.id)
+    if (items?.length) gruppen.push({ key: o.id, name: o.name, items })
+  }
+  const ohne = proOrdner.get("__ohne__")
+  if (ohne?.length) gruppen.push({ key: "__ohne__", name: "Ohne Ordner", items: ohne })
+
+  const toggle = (k) =>
+    setZu((s) => {
+      const n = new Set(s)
+      if (n.has(k)) n.delete(k)
+      else n.add(k)
+      return n
+    })
+
   return (
-    <div
-      className={`mt-4 ${
-        layout === "liste"
-          ? "space-y-1.5"
-          : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-      }`}
-    >
-      {eintraege.map((w) => {
-        const snippet = (w.inhalt ?? "")
-          .replace(/[#>*[\]`]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-        const aus = extrahiereWikilinks(w.inhalt).length
-        const ein = eingehend.get((w.titel ?? "").toLowerCase()) ?? 0
-        const anh = (w.anhaenge ?? []).length
+    <div className="mt-4 space-y-3">
+      {gruppen.map((g) => {
+        const offen = !zu.has(g.key)
         return (
-          <div
-            key={w.id}
-            onClick={() => onOeffnen(w.id)}
-            className="group relative cursor-pointer rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-gray-400"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="min-w-0 flex-1 truncate font-medium text-gray-900">
-                {w.angepinnt && <span className="mr-1 text-amber-500">📌</span>}
-                {w.titel || "Ohne Titel"}
-              </h3>
-              <div className="flex shrink-0 items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onPin(w.id)
-                  }}
-                  title={w.angepinnt ? "Nicht mehr anheften" : "Anheften"}
-                  className={
-                    w.angepinnt
-                      ? "text-amber-500"
-                      : "text-gray-300 hover:text-amber-500"
-                  }
-                >
-                  📌
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onRemove(w.id)
-                  }}
-                  title="Löschen"
-                  className="text-gray-300 hover:text-red-500"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-            {snippet && (
-              <p className="mt-1 line-clamp-2 text-sm text-gray-500">{snippet}</p>
-            )}
-            {(w.ordnerId || anh > 0 || aus > 0 || ein > 0) && (
-              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-400">
-                {w.ordnerId && ordnerName(w.ordnerId) && (
-                  <span className="rounded-sm bg-gray-100 px-1.5 py-0.5">
-                    📁 {ordnerName(w.ordnerId)}
-                  </span>
-                )}
-                {anh > 0 && <span title="Anhänge">📎 {anh}</span>}
-                {aus > 0 && <span title="Verlinkt auf">🔗 {aus}</span>}
-                {ein > 0 && <span title="Erwähnt in">↩ {ein}</span>}
-              </div>
+          <div key={g.key}>
+            <button
+              onClick={() => toggle(g.key)}
+              className="flex w-full items-center gap-2 px-1 py-1 text-left"
+            >
+              <span
+                className={`text-[11px] text-gray-400 transition-transform ${offen ? "rotate-90" : ""}`}
+              >
+                ▸
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                {g.name}
+              </span>
+              <span className="text-xs text-gray-300">{g.items.length}</span>
+            </button>
+            {offen && (
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                {g.items.map(zeile)}
+              </ul>
             )}
           </div>
         )
