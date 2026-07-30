@@ -234,6 +234,31 @@ function TextMitLinks({ text, wissen, projekte, notizen, onZielKlick, onTagKlick
   )
 }
 
+// Einfache Inline-Formatierung im Markdown-Stil: **fett**, *kursiv*, `Code`,
+// ~~durchgestrichen~~. Bewusst schlank gehalten (keine Abhängigkeit).
+const INLINE_FORMAT = /(\*\*[^*\n]+\*\*|`[^`\n]+`|~~[^~\n]+~~|\*[^*\n]+\*)/g
+function formatiereInline(text) {
+  return text.split(INLINE_FORMAT).map((t, i) => {
+    if (!t) return null
+    if (t.startsWith("**") && t.endsWith("**"))
+      return <strong key={i}>{t.slice(2, -2)}</strong>
+    if (t.startsWith("~~") && t.endsWith("~~"))
+      return <del key={i}>{t.slice(2, -2)}</del>
+    if (t.startsWith("`") && t.endsWith("`"))
+      return (
+        <code
+          key={i}
+          className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[0.9em] text-gray-800"
+        >
+          {t.slice(1, -1)}
+        </code>
+      )
+    if (t.length > 2 && t.startsWith("*") && t.endsWith("*"))
+      return <em key={i}>{t.slice(1, -1)}</em>
+    return <span key={i}>{t}</span>
+  })
+}
+
 // Rendert einen Klartext-Abschnitt und hebt darin "#Schlagworte" als Chips
 // hervor (Klick öffnet die Tag-Übersicht, falls ein Handler übergeben ist).
 function TextMitTags({ text, onTagKlick }) {
@@ -253,11 +278,80 @@ function TextMitTags({ text, onTagKlick }) {
             #{s.wert}
           </button>
         ) : (
-          <span key={i}>{s.wert}</span>
+          <span key={i}>{formatiereInline(s.wert)}</span>
         )
       )}
     </>
   )
+}
+
+// Rendert Notiz-Inhalt als leichtes Markdown-Dokument: Überschriften (#/##/###),
+// Aufzählungen (- / *), Zitate (>) und Absätze – mit Inline-Formatierung sowie
+// den bestehenden "[[Links]]" und "#Tags". Macht Notizen zu übersichtlichen,
+// lesbaren Wissenseinträgen statt reinem Fließtext.
+function NotizInhalt(props) {
+  const { text } = props
+  const zeilen = (text ?? "").split("\n")
+  const nodes = []
+  let liste = null
+  const flush = () => {
+    if (liste) {
+      nodes.push(
+        <ul key={`ul-${nodes.length}`} className="list-disc space-y-0.5 pl-5">
+          {liste}
+        </ul>
+      )
+      liste = null
+    }
+  }
+  zeilen.forEach((zeile, i) => {
+    const h = zeile.match(/^(#{1,3})\s+(.*)$/)
+    const li = zeile.match(/^\s*[-*]\s+(.*)$/)
+    const q = zeile.match(/^>\s+(.*)$/)
+    if (li) {
+      liste = liste ?? []
+      liste.push(
+        <li key={i}>
+          <TextMitLinks {...props} text={li[1]} />
+        </li>
+      )
+      return
+    }
+    flush()
+    if (h) {
+      const lvl = h[1].length
+      const cls =
+        lvl === 1
+          ? "mt-4 text-xl font-semibold"
+          : lvl === 2
+            ? "mt-4 text-lg font-semibold"
+            : "mt-3 text-base font-semibold"
+      nodes.push(
+        <p key={i} className={`${cls} text-gray-900`}>
+          <TextMitLinks {...props} text={h[2]} />
+        </p>
+      )
+    } else if (q) {
+      nodes.push(
+        <blockquote
+          key={i}
+          className="border-l-2 border-gray-300 pl-3 italic text-gray-500"
+        >
+          <TextMitLinks {...props} text={q[1]} />
+        </blockquote>
+      )
+    } else if (zeile.trim() === "") {
+      nodes.push(<div key={i} className="h-2.5" />)
+    } else {
+      nodes.push(
+        <p key={i} className="leading-relaxed">
+          <TextMitLinks {...props} text={zeile} />
+        </p>
+      )
+    }
+  })
+  flush()
+  return <div className="space-y-1">{nodes}</div>
 }
 
 function LinkChip({ titel, wissen, projekte, notizen, onZielKlick }) {
@@ -286,6 +380,22 @@ function LinkChip({ titel, wissen, projekte, notizen, onZielKlick }) {
 // (optional – Aufrufer ohne Navigationskontext lassen Chips nicht-klickbar
 // wirken, indem sie onZielKlick weglassen; Wissen-Ziele lassen sich dann
 // trotzdem visuell erkennen, nur Rücksprung fehlt).
+// Knopf der Formatierungsleiste. onMouseDown/preventDefault hält den Fokus
+// im Textarea, damit die aktuelle Auswahl beim Klick erhalten bleibt.
+function FmtBtn({ onClick, title, children, className = "" }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className={`rounded px-2 py-1 text-sm leading-none transition-colors hover:bg-gray-100 hover:text-gray-900 ${className}`}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function NotizBearbeiten({
   notiz,
   onChange,
@@ -304,7 +414,51 @@ export function NotizBearbeiten({
   const [mention, setMention] = useState(null) // { modus: "link"|"tag", query }
   const [mentionIndex, setMentionIndex] = useState(0)
   const dateiInput = useRef(null)
+  const textRef = useRef(null)
   const [anhangFehler, setAnhangFehler] = useState("")
+
+  // ── Formatierungsleiste: bearbeitet den Text direkt im Textarea ───────────
+  // Umschließt die Auswahl mit einem Marker (z. B. ** für fett).
+  function umschliesse(marker) {
+    const el = textRef.current
+    if (!el) return
+    const { selectionStart: s, selectionEnd: e, value } = el
+    const sel = value.slice(s, e)
+    const neu = value.slice(0, s) + marker + sel + marker + value.slice(e)
+    onChange({ ...notiz, inhalt: neu })
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(s + marker.length, e + marker.length)
+    })
+  }
+  // Setzt am Zeilenanfang ein Präfix (z. B. „## " oder „- ").
+  function zeilenPraefix(praefix) {
+    const el = textRef.current
+    if (!el) return
+    const { selectionStart: s, value } = el
+    const zeilenStart = value.lastIndexOf("\n", s - 1) + 1
+    const neu = value.slice(0, zeilenStart) + praefix + value.slice(zeilenStart)
+    onChange({ ...notiz, inhalt: neu })
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(s + praefix.length, s + praefix.length)
+    })
+  }
+  // Fügt am Cursor ein (nutzt inhaltOnChange, damit @/# die Vorschläge auslösen).
+  function einfuegen(str) {
+    const el = textRef.current
+    if (!el) {
+      inhaltOnChange((notiz.inhalt ?? "") + str)
+      return
+    }
+    const { selectionStart: s, selectionEnd: e, value } = el
+    const neu = value.slice(0, s) + str + value.slice(e)
+    inhaltOnChange(neu)
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(s + str.length, s + str.length)
+    })
+  }
 
   const anhaenge = notiz.anhaenge ?? []
 
@@ -478,15 +632,53 @@ export function NotizBearbeiten({
         />
 
         {bearbeiten ? (
-          <div className="relative mt-4 flex-1">
+          <div className="relative mt-4 flex flex-1 flex-col">
+            <div className="mb-2 flex flex-wrap items-center gap-0.5 border-b border-gray-100 pb-2 text-gray-500">
+              <FmtBtn onClick={() => zeilenPraefix("## ")} title="Überschrift">
+                H
+              </FmtBtn>
+              <FmtBtn onClick={() => umschliesse("**")} title="Fett">
+                <b>B</b>
+              </FmtBtn>
+              <FmtBtn onClick={() => umschliesse("*")} title="Kursiv">
+                <i>I</i>
+              </FmtBtn>
+              <FmtBtn
+                onClick={() => umschliesse("`")}
+                title="Code"
+                className="font-mono text-xs"
+              >
+                &lt;/&gt;
+              </FmtBtn>
+              <FmtBtn onClick={() => zeilenPraefix("- ")} title="Liste">
+                •
+              </FmtBtn>
+              <FmtBtn onClick={() => zeilenPraefix("> ")} title="Zitat">
+                ❝
+              </FmtBtn>
+              <span className="mx-1 h-4 w-px bg-gray-200" />
+              <FmtBtn onClick={() => einfuegen("@")} title="Notiz/Projekt verlinken">
+                [[ ]]
+              </FmtBtn>
+              <FmtBtn onClick={() => einfuegen("#")} title="Schlagwort">
+                #
+              </FmtBtn>
+              <FmtBtn
+                onClick={() => dateiInput.current?.click()}
+                title="Datei anhängen"
+              >
+                📎
+              </FmtBtn>
+            </div>
             <textarea
+              ref={textRef}
               value={notiz.inhalt}
               onChange={(e) => inhaltOnChange(e.target.value)}
               onKeyDown={mentionKeyDown}
               onBlur={() => setMention(null)}
-              placeholder="Schreib hier deine Zusammenfassung – speichert automatisch. Tippe @ um zu verlinken, # für ein Schlagwort."
+              placeholder="Schreib los … **fett**, *kursiv*, ## Überschrift, - Liste. @ verlinkt, # verschlagwortet."
               autoFocus
-              className="h-full w-full resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
+              className="min-h-[40vh] w-full flex-1 resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
             />
             {mention && mentionOptionen.length > 0 && (
               <div className="absolute bottom-4 left-0 w-64 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
@@ -546,10 +738,10 @@ export function NotizBearbeiten({
         ) : (
           <div
             onClick={() => setBearbeiten(true)}
-            className="mt-4 min-h-[40vh] flex-1 cursor-text whitespace-pre-wrap text-[15px] leading-relaxed text-gray-800"
+            className="mt-4 min-h-[40vh] flex-1 cursor-text text-[15px] leading-relaxed text-gray-800"
           >
             {notiz.inhalt ? (
-              <TextMitLinks
+              <NotizInhalt
                 text={notiz.inhalt}
                 wissen={wissen}
                 projekte={projekte}
