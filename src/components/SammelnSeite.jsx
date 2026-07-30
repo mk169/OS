@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import Seitenkopf from "./Seitenkopf"
 import { NotizBearbeiten } from "./ProjektNotizen"
@@ -458,6 +458,7 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
         onOeffnen={setBearbeiteId}
         onPin={togglePin}
         onRemove={removeWissen}
+        onMove={setzeOrdner}
       />
 
       {bearbeiteteNotiz && (
@@ -546,6 +547,8 @@ function OrdnerLeiste({
         ) : (
           <span
             key={o.id}
+            data-drop-ordner={o.id}
+            title="Notiz hierher ziehen, um sie in diesen Ordner zu verschieben"
             className={`flex items-center ${chip(aktiv === o.id)}`}
           >
             <button
@@ -631,17 +634,27 @@ function DocIcon() {
   )
 }
 
-// Eine ruhige Notizzeile: Icon + Titel, dezente Meta-Symbole (nur Desktop),
-// Anheften/Löschen bei Hover bzw. auf dem Handy sichtbar.
-function WissenZeile({ w, eingehend, onOeffnen, onPin, onRemove }) {
+// Eine ruhige Notizzeile: Griff + Icon + Titel, dezente Meta-Symbole (nur
+// Desktop), Anheften/Löschen bei Hover bzw. auf dem Handy sichtbar. Über den
+// Griff lässt sich die Notiz in einen anderen Ordner ziehen.
+function WissenZeile({ w, eingehend, onOeffnen, onPin, onRemove, onZiehStart, wirdGezogen }) {
   const aus = extrahiereWikilinks(w.inhalt).length
   const ein = eingehend.get((w.titel ?? "").toLowerCase()) ?? 0
   const anh = (w.anhaenge ?? []).length
   return (
     <li
       onClick={() => onOeffnen(w.id)}
-      className="group flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-gray-50"
+      className={`group flex cursor-pointer items-center gap-2 px-3 py-2.5 transition-colors hover:bg-gray-50 ${wirdGezogen ? "opacity-40" : ""}`}
     >
+      <span
+        onPointerDown={(e) => onZiehStart?.(w.id, e)}
+        onClick={(e) => e.stopPropagation()}
+        title="Zum Verschieben ziehen"
+        style={{ touchAction: "none" }}
+        className="shrink-0 cursor-grab select-none px-0.5 text-gray-200 transition-colors hover:text-gray-500"
+      >
+        ⠿
+      </span>
       <DocIcon />
       <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
         {w.angepinnt && <span className="mr-1 text-amber-500">📌</span>}
@@ -691,8 +704,48 @@ function WissenListe({
   onOeffnen,
   onPin,
   onRemove,
+  onMove,
 }) {
   const [zu, setZu] = useState(() => new Set())
+  // Ziehen einer Notiz in einen anderen Ordner (Maus & Touch via Pointer-Events).
+  const [ziehId, setZiehId] = useState(null)
+  const [ueberId, setUeberId] = useState(null)
+  const [pos, setPos] = useState(null)
+  const ziehRef = useRef(null)
+  const ueberRef = useRef(null)
+
+  function starteZiehen(notizId, e) {
+    e.preventDefault()
+    e.stopPropagation()
+    ziehRef.current = notizId
+    ueberRef.current = null
+    setZiehId(notizId)
+    setPos({ x: e.clientX, y: e.clientY })
+    const move = (ev) => {
+      setPos({ x: ev.clientX, y: ev.clientY })
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)
+      const t = el?.closest("[data-drop-ordner]")
+      const id = t ? t.getAttribute("data-drop-ordner") : null
+      ueberRef.current = id
+      setUeberId(id)
+    }
+    const up = () => {
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerup", up)
+      const nid = ziehRef.current
+      const ziel = ueberRef.current
+      if (nid != null && ziel != null)
+        onMove?.(nid, ziel === "__none__" ? null : ziel)
+      ziehRef.current = null
+      ueberRef.current = null
+      setZiehId(null)
+      setUeberId(null)
+      setPos(null)
+    }
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", up)
+  }
+
   if (eintraege.length === 0) return null
 
   const zeile = (w) => (
@@ -703,15 +756,32 @@ function WissenListe({
       onOeffnen={onOeffnen}
       onPin={onPin}
       onRemove={onRemove}
+      onZiehStart={starteZiehen}
+      wirdGezogen={ziehId === w.id}
     />
   )
+
+  // Schwebendes Etikett der gezogenen Notiz.
+  const gezogen = ziehId != null ? eintraege.find((w) => w.id === ziehId) : null
+  const ghost =
+    gezogen && pos ? (
+      <div
+        className="pointer-events-none fixed z-[60] rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-lg"
+        style={{ left: pos.x + 12, top: pos.y + 12 }}
+      >
+        📄 {gezogen.titel || "Ohne Titel"}
+      </div>
+    ) : null
 
   const gruppiert = aktiverOrdner === "alle" && !suche.trim()
   if (!gruppiert) {
     return (
-      <ul className="mt-4 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-        {eintraege.map(zeile)}
-      </ul>
+      <>
+        {ghost}
+        <ul className="mt-4 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+          {eintraege.map(zeile)}
+        </ul>
+      </>
     )
   }
 
@@ -745,8 +815,13 @@ function WissenListe({
       <div key={o.id}>
         <button
           onClick={() => toggle(o.id)}
+          data-drop-ordner={o.id}
           style={{ paddingLeft: 12 + tiefe * 16 }}
-          className="flex w-full items-center gap-1.5 py-1.5 pr-3 text-left transition-colors hover:bg-gray-50"
+          className={`flex w-full items-center gap-1.5 py-1.5 pr-3 text-left transition-colors ${
+            ueberId === o.id
+              ? "bg-accent-50 ring-1 ring-inset ring-accent-400"
+              : "hover:bg-gray-50"
+          }`}
         >
           <span
             className={`text-[11px] text-gray-400 transition-transform ${offen ? "rotate-90" : ""}`}
@@ -777,19 +852,35 @@ function WissenListe({
   const ohne = notizenProOrdner.get("__ohne__") ?? []
 
   return (
-    <div className="mt-4 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-      {topOrdner.map((o) => renderOrdner(o, 0))}
-      {ohne.length > 0 && (
-        <div>
-          {topOrdner.length > 0 && (
-            <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-              Ohne Ordner
-            </p>
-          )}
-          <ul>{ohne.map(zeile)}</ul>
-        </div>
-      )}
-    </div>
+    <>
+      {ghost}
+      <div className="mt-4 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+        {topOrdner.map((o) => renderOrdner(o, 0))}
+        {(ohne.length > 0 || ziehId != null) && (
+          <div
+            data-drop-ordner="__none__"
+            className={
+              ueberId === "__none__"
+                ? "bg-accent-50 ring-1 ring-inset ring-accent-400"
+                : ""
+            }
+          >
+            {topOrdner.length > 0 && (
+              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                Ohne Ordner
+              </p>
+            )}
+            {ohne.length > 0 ? (
+              <ul>{ohne.map(zeile)}</ul>
+            ) : (
+              <p className="px-3 py-2 text-xs text-gray-300">
+                Hierher ziehen, um aus dem Ordner zu nehmen
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
