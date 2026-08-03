@@ -192,6 +192,41 @@ export function aktivePhase(zyklus) {
   return { phase: phasen[idx], nummer: idx + 1, gesamt: phasen.length }
 }
 
+// Fortschritt der Ziele, die einer bestimmten Zwischenphase zugeordnet sind.
+// Projekt- wie eigene Ziele tragen dazu ein optionales `phaseId`; Ziele ohne
+// Zuordnung gehören zur ganzen Periode und zählen hier nicht mit.
+export function phaseFortschritt(zyklus, phaseId) {
+  if (!phaseId) return { erledigt: 0, gesamt: 0 }
+  const p = zyklusProjekte(zyklus).filter((e) => e.phaseId === phaseId)
+  const z = zyklusZiele(zyklus).filter((e) => e.phaseId === phaseId)
+  const erledigt =
+    p.filter((x) => x.erledigt).length + z.filter(zielErreicht).length
+  return { erledigt, gesamt: p.length + z.length }
+}
+
+// Layout-Daten für einen waagerechten Phasen-Zeitstrahl: je Phase die Position
+// (links) und Breite in Prozent der Gesamtperiode plus Status. Grundlage für
+// die Timeline im Dashboard und in den Einstellungen. Nicht datierte Phasen
+// werden ausgelassen; Lücken bleiben als freier Grund sichtbar.
+export function phasenZeitstrahl(zyklus) {
+  const gesamt = Math.max(1, tageZwischen(zyklus.start, zyklus.ende) + 1)
+  const segmente = phasenSortiert(zyklus)
+    .filter((p) => p.start && p.ende)
+    .map((p) => {
+      const von = Math.min(gesamt, Math.max(0, tageZwischen(zyklus.start, p.start)))
+      const bis = Math.min(gesamt, Math.max(0, tageZwischen(zyklus.start, p.ende) + 1))
+      const s = phaseStatus(p)
+      return {
+        id: p.id,
+        titel: p.titel,
+        links: (von / gesamt) * 100,
+        breite: (Math.max(0, bis - von) / gesamt) * 100,
+        status: s.aktiv ? "aktiv" : s.vorbei ? "vorbei" : "bevorstehend",
+      }
+    })
+  return { segmente }
+}
+
 // Kurzer Text für die Restlaufzeit eines aktiven Zyklus.
 export function restText(tageUebrig) {
   if (tageUebrig <= 0) return "letzter Tag"

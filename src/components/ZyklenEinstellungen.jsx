@@ -17,6 +17,38 @@ import {
   phaseStatus,
   naechsterTag,
 } from "../lib/zyklen"
+import PhasenZeitstrahl from "./PhasenZeitstrahl"
+
+// Zwischenphasen chronologisch mit Anzeige-Label („Phase N" als Fallback für
+// titellose Phasen) – für die Zielphasen-Auswahl an den einzelnen Zielen.
+function phasenOptionen(phasen) {
+  return [...phasen]
+    .sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""))
+    .map((p, i) => ({ id: p.id, label: p.titel?.trim() || `Phase ${i + 1}` }))
+}
+
+// Kleine Auswahl „Zielphase" – ordnet ein Ziel einer Zwischenphase zu (oder
+// der ganzen Periode). Rendert nichts, wenn es keine Phasen gibt.
+function ZielphasenWahl({ phasen, wert, onChange }) {
+  if (phasen.length === 0) return null
+  const optionen = phasenOptionen(phasen)
+  const gueltig = optionen.some((o) => o.id === wert) ? wert : ""
+  return (
+    <select
+      value={gueltig}
+      onChange={(e) => onChange(e.target.value || null)}
+      title="Dieses Ziel einer Zwischenphase zuordnen"
+      className="w-full cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 outline-none transition-colors focus:border-accent-400"
+    >
+      <option value="">Ganze Periode (keine Phase)</option>
+      {optionen.map((o) => (
+        <option key={o.id} value={o.id}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  )
+}
 
 // Verwaltung der Fokus-Perioden (Zyklen) in den Einstellungen: anlegen,
 // Titel/Ziel bearbeiten, Projekte mit je eigenem Periodenziel verknüpfen und
@@ -78,13 +110,24 @@ export default function ZyklenEinstellungen() {
 // Wiederverwendbare Liste „Projekt + eigenes Periodenziel". Wird beim Anlegen
 // und beim Bearbeiten genutzt. eintraege = [{ projektId, ziel, erledigt }].
 // mitErledigt blendet die Erreicht-Checkbox ein (nur beim Bearbeiten sinnvoll).
-function ProjektZiele({ eintraege, alleProjekte, onChange, mitErledigt = false }) {
+function ProjektZiele({
+  eintraege,
+  alleProjekte,
+  onChange,
+  mitErledigt = false,
+  phasen = [],
+}) {
   const verknuepft = new Set(eintraege.map((e) => e.projektId))
   const verfuegbar = alleProjekte.filter((p) => !verknuepft.has(p.id))
   const name = (pid) => alleProjekte.find((p) => p.id === pid)?.name ?? "Projekt"
 
   function setZiel(pid, ziel) {
     onChange(eintraege.map((e) => (e.projektId === pid ? { ...e, ziel } : e)))
+  }
+  function setPhase(pid, phaseId) {
+    onChange(
+      eintraege.map((e) => (e.projektId === pid ? { ...e, phaseId } : e))
+    )
   }
   function toggleErledigt(pid) {
     onChange(
@@ -143,6 +186,15 @@ function ProjektZiele({ eintraege, alleProjekte, onChange, mitErledigt = false }
             placeholder="Konkretes Ziel für dieses Projekt in dieser Periode…"
             className="mt-1.5 w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-800 outline-none transition-colors focus:border-accent-400 placeholder:text-gray-300"
           />
+          {phasen.length > 0 && (
+            <div className="mt-1.5">
+              <ZielphasenWahl
+                phasen={phasen}
+                wert={e.phaseId ?? ""}
+                onChange={(phaseId) => setPhase(e.projektId, phaseId)}
+              />
+            </div>
+          )}
         </div>
       ))}
 
@@ -172,7 +224,7 @@ function ProjektZiele({ eintraege, alleProjekte, onChange, mitErledigt = false }
 // das man aufklappt und in dem man konkrete Teilschritte abhakt (wie ein
 // Mini-Projekt für Vorhaben ohne eigenes Projekt).
 // ziele = [{ id, text, schritte: [{ id, text, erledigt }] }].
-function EigeneZiele({ ziele, onChange }) {
+function EigeneZiele({ ziele, onChange, phasen = [] }) {
   const [entwurf, setEntwurf] = useState("")
   const [offenId, setOffenId] = useState(null)
 
@@ -248,7 +300,14 @@ function EigeneZiele({ ziele, onChange }) {
             </div>
 
             {offen && (
-              <div className="border-t border-gray-200 px-2.5 pb-2.5 pt-2">
+              <div className="space-y-2 border-t border-gray-200 px-2.5 pb-2.5 pt-2">
+                {phasen.length > 0 && (
+                  <ZielphasenWahl
+                    phasen={phasen}
+                    wert={z.phaseId ?? ""}
+                    onChange={(phaseId) => setZiel(z.id, { phaseId })}
+                  />
+                )}
                 <ZielSchritte
                   schritte={schritte}
                   onChange={(neu) => setSchritte(z.id, neu)}
@@ -531,6 +590,7 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
         alleProjekte={projekte}
         onChange={(neu) => patch({ projekte: neu })}
         mitErledigt
+        phasen={zyklusPhasen(zyklus)}
       />
 
       <p className="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
@@ -539,11 +599,17 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
       <EigeneZiele
         ziele={zyklusZiele(zyklus)}
         onChange={(neu) => patch({ ziele: neu })}
+        phasen={zyklusPhasen(zyklus)}
       />
 
       <p className="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
         Zwischenphasen
       </p>
+      {zyklusPhasen(zyklus).length > 0 && (
+        <div className="mb-2">
+          <PhasenZeitstrahl zyklus={zyklus} />
+        </div>
+      )}
       <Zwischenphasen
         phasen={zyklusPhasen(zyklus)}
         start={zyklus.start}
@@ -671,16 +737,28 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
           eintraege={projektZiele}
           alleProjekte={projekte}
           onChange={setProjektZiele}
+          phasen={phasen}
         />
       </div>
 
       <div>
         <p className="mb-1.5 text-xs text-gray-500">Eigene Ziele</p>
-        <EigeneZiele ziele={eigeneZiele} onChange={setEigeneZiele} />
+        <EigeneZiele
+          ziele={eigeneZiele}
+          onChange={setEigeneZiele}
+          phasen={phasen}
+        />
       </div>
 
       <div>
         <p className="mb-1.5 text-xs text-gray-500">Zwischenphasen</p>
+        {phasen.length > 0 && start && endVorschau && (
+          <div className="mb-2">
+            <PhasenZeitstrahl
+              zyklus={{ start, ende: endVorschau, phasen }}
+            />
+          </div>
+        )}
         <Zwischenphasen
           phasen={phasen}
           start={start}

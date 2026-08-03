@@ -16,6 +16,7 @@ export const EINTRAG_TYPEN = {
   projekt: { chip: "bg-emerald-50 text-emerald-700", punkt: "bg-emerald-500", name: "Projekt" },
   schritt: { chip: "bg-gray-100 text-gray-600", punkt: "bg-gray-400", name: "Schritt" },
   geburtstag: { chip: "bg-rose-50 text-rose-700", punkt: "bg-rose-500", name: "Geburtstag" },
+  phase: { chip: "bg-indigo-50 text-indigo-700", punkt: "bg-indigo-500", name: "Phase" },
 }
 
 export function schluessel(d) {

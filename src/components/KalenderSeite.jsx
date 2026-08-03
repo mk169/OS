@@ -3,6 +3,7 @@ import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import { faelltAuf, WIEDERHOLUNGEN } from "../lib/wiederholung"
 import { alsICS, parseICS } from "../lib/ics"
+import { zyklusPhasen } from "../lib/zyklen"
 import Kalender, { TagesAnsicht, datumLang } from "./Kalender"
 import Seitenkopf from "./Seitenkopf"
 import { useTagesblockVorlagen, TagesblockAuswahl } from "./Tagesbloecke"
@@ -15,6 +16,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
   const [termine, setTermine] = useStored("termine", [])
   const [todos] = useStored("todos", [])
   const [projekte] = useStored("projekte", [])
+  const [zyklen] = useStored("zyklen", [])
 
   const [formOffen, setFormOffen] = useState(false)
   const [formTitel, setFormTitel] = useState("")
@@ -83,6 +85,23 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
       ...todos
         .filter((t) => !t.erledigt && t.datum === key)
         .map((t) => ({ typ: "aufgabe", label: t.text, dauer: t.dauer })),
+      // Zwischenphasen der Fokus-Perioden: Marker an Anfang und Ende jeder
+      // Phase, damit die Aufteilung im Kalender sichtbar wird.
+      ...zyklen.flatMap((z) =>
+        zyklusPhasen(z).flatMap((p) => {
+          if (!p.start || !p.ende) return []
+          const titel = p.titel?.trim() || "Zwischenphase"
+          const marker = []
+          if (p.start === key)
+            marker.push({
+              typ: "phase",
+              label: `▸ ${titel}${p.start === p.ende ? "" : " beginnt"}`,
+            })
+          if (p.ende === key && p.ende !== p.start)
+            marker.push({ typ: "phase", label: `■ ${titel} endet` })
+          return marker
+        })
+      ),
     ].sort((a, b) => (a.zeit || "99:99").localeCompare(b.zeit || "99:99"))
   }
 
@@ -376,7 +395,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
       ) : (
         <Kalender
           eintraegeAm={eintraegeAm}
-          legende={["termin", "fokus", "geburtstag", "aufgabe", "projekt"]}
+          legende={["termin", "fokus", "geburtstag", "aufgabe", "projekt", "phase"]}
           tagesdetail={tagesdetail}
           onNeu={oeffneNeu}
           onNeuZeit={oeffneNeuZeit}

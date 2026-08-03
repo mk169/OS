@@ -9,10 +9,12 @@ import {
   aktualisiereZyklus,
   zieleErreicht,
   restText,
+  zyklusPhasen,
   aktivePhase,
   phaseStatus,
 } from "../lib/zyklen"
 import { projektFortschrittWerte, Fortschrittsbalken } from "./OrdnerSeite"
+import PhasenZeitstrahl from "./PhasenZeitstrahl"
 
 // Dashboard-Karte(n) für die aktuell laufenden Fokus-Perioden: zeigt Ziel,
 // Restlaufzeit, verstrichenen Zeitanteil und die verknüpften Projekte mit
@@ -120,8 +122,32 @@ function ZyklusKarte({
   const ziele = zieleErreicht(zyklus)
   // Aktuell laufende Zwischenphase („Aufteilung") dieser Periode, falls es
   // welche gibt und gerade eine aktiv ist.
+  const hatPhasen = zyklusPhasen(zyklus).length > 0
   const phase = aktivePhase(zyklus)
   const phaseS = phase ? phaseStatus(phase.phase) : null
+  // Ziele, die genau dieser aktiven Phase zugeordnet sind – das „was ist
+  // jetzt dran?" der Periode (Projekt- wie eigene Ziele).
+  const phaseZiele = phase
+    ? [
+        ...eintraege
+          .filter((e) => e.phaseId === phase.phase.id)
+          .map((e) => ({
+            id: `p-${e.projektId}`,
+            text: e.projekt.name,
+            fertig: !!e.erledigt,
+          })),
+        ...eigeneZiele
+          .filter((z) => z.phaseId === phase.phase.id)
+          .map((z) => {
+            const { erledigt, gesamt } = zielFortschritt(z)
+            return {
+              id: `z-${z.id}`,
+              text: z.text,
+              fertig: gesamt > 0 && erledigt === gesamt,
+            }
+          }),
+      ]
+    : []
 
   return (
     <div
@@ -178,40 +204,83 @@ function ZyklusKarte({
         </div>
       </div>
 
-      {/* Aktuelle Zwischenphase („Aufteilung") der Periode */}
-      {phase && (
-        <div
-          className={`mt-3 rounded-xl px-3 py-2 ${
-            dunkel ? "bg-white/5" : "bg-gray-50"
-          }`}
-        >
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="min-w-0 truncate text-xs font-medium">
-              <span className="text-accent-500">
-                Phase {phase.nummer}/{phase.gesamt}
-              </span>
-              {phase.phase.titel && (
-                <span
-                  className={`ml-1.5 ${dunkel ? "text-white/80" : "text-gray-700"}`}
-                >
-                  {phase.phase.titel}
-                </span>
-              )}
-            </span>
-            <span
-              className={`shrink-0 text-[11px] ${dunkel ? "text-white/50" : "text-gray-400"}`}
-            >
-              {restText(phaseS.tageUebrig)}
-            </span>
-          </div>
-          <div
-            className={`h-1 overflow-hidden rounded-full ${dunkel ? "bg-white/10" : "bg-gray-200"}`}
-          >
+      {/* Zwischenphasen („Aufteilungen"): Zeitstrahl + aktuelle Phase */}
+      {hatPhasen && (
+        <div className="mt-3">
+          <PhasenZeitstrahl zyklus={zyklus} dunkel={dunkel} />
+
+          {phase && (
             <div
-              className="h-full rounded-full bg-accent-500/70 transition-all"
-              style={{ width: `${phaseS.prozentZeit}%` }}
-            />
-          </div>
+              className={`mt-2 rounded-xl px-3 py-2 ${
+                dunkel ? "bg-white/5" : "bg-gray-50"
+              }`}
+            >
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-xs font-medium">
+                  <span className="text-accent-500">
+                    Phase {phase.nummer}/{phase.gesamt}
+                  </span>
+                  {phase.phase.titel && (
+                    <span
+                      className={`ml-1.5 ${dunkel ? "text-white/80" : "text-gray-700"}`}
+                    >
+                      {phase.phase.titel}
+                    </span>
+                  )}
+                </span>
+                <span
+                  className={`shrink-0 text-[11px] ${dunkel ? "text-white/50" : "text-gray-400"}`}
+                >
+                  {restText(phaseS.tageUebrig)}
+                </span>
+              </div>
+              <div
+                className={`h-1 overflow-hidden rounded-full ${dunkel ? "bg-white/10" : "bg-gray-200"}`}
+              >
+                <div
+                  className="h-full rounded-full bg-accent-500/70 transition-all"
+                  style={{ width: `${phaseS.prozentZeit}%` }}
+                />
+              </div>
+
+              {/* Was ist in dieser Phase dran? */}
+              {phaseZiele.length > 0 && (
+                <ul className="mt-2 space-y-0.5">
+                  {phaseZiele.map((z) => (
+                    <li
+                      key={z.id}
+                      className="flex items-center gap-1.5 text-xs"
+                    >
+                      <span
+                        className={
+                          z.fertig
+                            ? "text-emerald-500"
+                            : dunkel
+                              ? "text-white/30"
+                              : "text-gray-300"
+                        }
+                      >
+                        {z.fertig ? "✓" : "○"}
+                      </span>
+                      <span
+                        className={`min-w-0 truncate ${
+                          z.fertig
+                            ? dunkel
+                              ? "text-white/40 line-through"
+                              : "text-gray-400 line-through"
+                            : dunkel
+                              ? "text-white/70"
+                              : "text-gray-600"
+                        }`}
+                      >
+                        {z.text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       )}
 
