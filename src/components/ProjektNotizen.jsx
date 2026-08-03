@@ -24,6 +24,9 @@ export default function ProjektNotizen({
   const [projekte] = useStored("projekte", [])
   const [titel, setTitel] = useState("")
   const [bearbeiteId, setBearbeiteId] = useState(startNotizId)
+  // Merkt sich die zuletzt neu angelegte Notiz, damit sie direkt im
+  // Schreib-Modus (statt Lese-Modus) geöffnet wird.
+  const [frischId, setFrischId] = useState(null)
 
   useEffect(() => {
     if (startNotizId != null) setBearbeiteId(startNotizId)
@@ -57,6 +60,7 @@ export default function ProjektNotizen({
     setAlleNotizen([...alleNotizen, neue])
     setTitel("")
     setBearbeiteId(neue.id)
+    setFrischId(neue.id)
   }
 
   function updateNotiz(neu) {
@@ -100,7 +104,11 @@ export default function ProjektNotizen({
           key={bearbeiteteNotiz.id}
           notiz={bearbeiteteNotiz}
           onChange={updateNotiz}
-          onClose={() => setBearbeiteId(null)}
+          onClose={() => {
+            setBearbeiteId(null)
+            setFrischId(null)
+          }}
+          startImBearbeiten={bearbeiteteNotiz.id === frischId}
           wissen={wissen}
           projekte={projekte}
           notizen={alleNotizen}
@@ -405,12 +413,18 @@ export function NotizBearbeiten({
   notizen = [],
   onZielKlick,
   onTagKlick,
+  // Frisch angelegte Notizen öffnen direkt im Schreib-Modus, damit man sofort
+  // lostippen kann, statt erst „Bearbeiten" zu drücken.
+  startImBearbeiten = false,
   // Nur im Wissens-Kontext (SammelnSeite) gesetzt: Ordner-Zuordnung & Anheften.
   ordner = null,
   onOrdnerWechsel,
   onPinToggle,
 }) {
-  const [bearbeiten, setBearbeiten] = useState(false)
+  const [bearbeiten, setBearbeiten] = useState(startImBearbeiten)
+  // Beim direkten Öffnen im Schreib-Modus: ohne Titel zuerst ins Titelfeld
+  // springen (man will benennen), mit Titel direkt in den Fließtext.
+  const titelZuerst = useRef(startImBearbeiten && !notiz.titel)
   const [mention, setMention] = useState(null) // { modus: "link"|"tag", query }
   const [mentionIndex, setMentionIndex] = useState(0)
   const dateiInput = useRef(null)
@@ -627,7 +641,7 @@ export function NotizBearbeiten({
           value={notiz.titel}
           onChange={(e) => onChange({ ...notiz, titel: e.target.value })}
           placeholder="Titel"
-          autoFocus={bearbeiten}
+          autoFocus={titelZuerst.current}
           className="mt-4 w-full border-none bg-transparent text-2xl font-medium text-gray-900 outline-none placeholder:text-gray-300"
         />
 
@@ -677,7 +691,7 @@ export function NotizBearbeiten({
               onKeyDown={mentionKeyDown}
               onBlur={() => setMention(null)}
               placeholder="Schreib los … **fett**, *kursiv*, ## Überschrift, - Liste. @ verlinkt, # verschlagwortet."
-              autoFocus
+              autoFocus={!titelZuerst.current}
               className="min-h-[40vh] w-full flex-1 resize-none border-none bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-300"
             />
             {mention && mentionOptionen.length > 0 && (

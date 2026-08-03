@@ -11,6 +11,9 @@ import { tageBis } from "../lib/datum"
 import { VORLAGEN } from "../lib/wissen"
 import { extrahiereWikilinks } from "../lib/wikilinks"
 
+// Leere Notiz für den direkten „+ Neue Notiz"-Klick (ohne Vorlage).
+const LEER_VORLAGE = VORLAGEN.find((v) => v.key === "leer") ?? { inhalt: "" }
+
 const WISSEN_SORT = [
   { value: "bearbeitet", label: "Zuletzt bearbeitet" },
   { value: "neueste", label: "Neueste" },
@@ -34,12 +37,12 @@ const ANSICHTEN = [
 
 function AnsichtToggle({ ansicht, setAnsicht }) {
   return (
-    <div className="flex rounded-md border border-gray-200 p-0.5 text-xs">
+    <div className="flex max-w-full overflow-x-auto rounded-md border border-gray-200 p-0.5 text-xs">
       {ANSICHTEN.map((a) => (
         <button
           key={a.key}
           onClick={() => setAnsicht(a.key)}
-          className={`rounded px-2.5 py-1 font-medium transition-colors ${
+          className={`shrink-0 whitespace-nowrap rounded px-2.5 py-1 font-medium transition-colors ${
             ansicht === a.key
               ? "bg-gray-900 text-white"
               : "text-gray-500 hover:text-gray-900"
@@ -158,7 +161,14 @@ function InboxAnsicht() {
         </button>
       </form>
 
-      {inbox.length === 0 ? null : (
+      {inbox.length === 0 ? (
+        <p className="mt-4 text-sm leading-relaxed text-gray-400">
+          Alles reingekippt, was dir durch den Kopf geht – Gedanken, Aufgaben,
+          Links. Später sortierst du jeden Eintrag mit einem Klick zu{" "}
+          <span className="font-medium text-gray-500">→ Todo</span> oder{" "}
+          <span className="font-medium text-gray-500">→ Wissen</span>.
+        </p>
+      ) : (
         <>
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-gray-400">
@@ -205,7 +215,7 @@ function InboxAnsicht() {
                     )}
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
                   <button
                     onClick={() =>
                       verarbeiteAlsTodo(
@@ -268,6 +278,8 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
   // Aktiver Ordner-Filter: "alle" | "angepinnt" | <ordnerId>.
   const [aktiverOrdner, setAktiverOrdner] = useState("alle")
   const [neuOffen, setNeuOffen] = useState(false)
+  // Zuletzt neu angelegte Notiz: öffnet direkt im Schreib-Modus.
+  const [frischId, setFrischId] = useState(null)
 
   const bearbeiteteNotiz = wissen.find((w) => w.id === bearbeiteId)
 
@@ -334,6 +346,7 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
     setWissen([...wissen, neu])
     setNeuOffen(false)
     setBearbeiteId(neu.id)
+    setFrischId(neu.id)
   }
 
   function updateWissen(neu) {
@@ -397,14 +410,25 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
 
   return (
     <div>
-      {/* Erstellen mit Vorlagen */}
+      {/* Erstellen: ein Klick legt eine leere Notiz an; das Vorlagen-Menü
+          daneben gibt einem Eintrag bei Bedarf sofort Struktur. */}
       <div className="relative flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setNeuOffen((o) => !o)}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-        >
-          + Neuer Eintrag
-        </button>
+        <div className="flex overflow-hidden rounded-md">
+          <button
+            onClick={() => erstelle(LEER_VORLAGE)}
+            className="bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            + Neue Notiz
+          </button>
+          <button
+            onClick={() => setNeuOffen((o) => !o)}
+            title="Aus Vorlage anlegen"
+            aria-label="Aus Vorlage anlegen"
+            className="border-l border-white/20 bg-gray-900 px-2.5 py-2 text-sm text-white hover:bg-gray-700"
+          >
+            ▾
+          </button>
+        </div>
         {neuOffen && (
           <>
             <div
@@ -461,12 +485,44 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
         onMove={setzeOrdner}
       />
 
+      {wissen.length === 0 ? (
+        <div className="mt-6 rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center">
+          <p className="text-2xl">📚</p>
+          <p className="mt-3 text-sm font-medium text-gray-700">
+            Deine Wissensbasis ist noch leer
+          </p>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-gray-400">
+            Dauerhafte, projektfreie Notizen – Bücher, Ideen, Recherche. Verlinke
+            sie mit <span className="font-mono text-gray-500">[[Titel]]</span> und
+            ordne sie mit <span className="font-mono text-gray-500">#Schlagworten</span>.
+          </p>
+          <button
+            onClick={() => erstelle(LEER_VORLAGE)}
+            className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            + Erste Notiz schreiben
+          </button>
+        </div>
+      ) : (
+        sichtbareWissen.length === 0 && (
+          <p className="mt-6 text-center text-sm text-gray-400">
+            {suche.trim()
+              ? "Keine Notiz passt zur Suche."
+              : "Dieser Ordner ist noch leer."}
+          </p>
+        )
+      )}
+
       {bearbeiteteNotiz && (
         <NotizBearbeiten
           key={bearbeiteteNotiz.id}
           notiz={bearbeiteteNotiz}
           onChange={updateWissen}
-          onClose={() => setBearbeiteId(null)}
+          onClose={() => {
+            setBearbeiteId(null)
+            setFrischId(null)
+          }}
+          startImBearbeiten={bearbeiteteNotiz.id === frischId}
           wissen={wissen}
           projekte={projekte}
           notizen={notizen}
