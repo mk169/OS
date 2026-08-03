@@ -13,6 +13,9 @@ import {
   aktualisiereZyklus,
   zieleErreicht,
   restText,
+  zyklusPhasen,
+  phaseStatus,
+  naechsterTag,
 } from "../lib/zyklen"
 
 // Verwaltung der Fokus-Perioden (Zyklen) in den Einstellungen: anlegen,
@@ -348,6 +351,118 @@ function ZielSchritte({ schritte, onChange, neueId }) {
   )
 }
 
+// Zwischenphasen („Aufteilungen") einer Periode: die Gesamtperiode in
+// aufeinanderfolgende Abschnitte gliedern (z.B. Vorbereitung / Umsetzung /
+// Abschluss oder Sprint 1–3). Jede Phase hat Titel und eigenen Zeitraum.
+// Neue Phasen schließen automatisch an die vorige an und bleiben innerhalb
+// des Periodenzeitraums (start/ende) begrenzt.
+// phasen = [{ id, titel, start, ende }].
+function Zwischenphasen({ phasen, start, ende, onChange }) {
+  const neueId = () =>
+    `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+
+  // Reihenfolge in der Anzeige nach Start – so wandern Phasen beim Datieren
+  // an ihren richtigen Platz.
+  const sortiert = [...phasen].sort((a, b) =>
+    (a.start ?? "").localeCompare(b.start ?? "")
+  )
+
+  function hinzufuegen() {
+    // Beginn = Tag nach dem Ende der spätesten Phase, sonst Periodenstart.
+    const letzte = sortiert[sortiert.length - 1]
+    const beginn = letzte?.ende ? naechsterTag(letzte.ende) : start || ""
+    onChange([
+      ...phasen,
+      {
+        id: neueId(),
+        titel: "",
+        start: beginn && ende && beginn > ende ? ende : beginn,
+        ende: ende || "",
+      },
+    ])
+  }
+  function setPhase(id, patch) {
+    onChange(phasen.map((p) => (p.id === id ? { ...p, ...patch } : p)))
+  }
+  function entferne(id) {
+    onChange(phasen.filter((p) => p.id !== id))
+  }
+
+  return (
+    <div className="space-y-2">
+      {sortiert.map((p) => {
+        const s = p.start && p.ende ? phaseStatus(p) : null
+        return (
+          <div
+            key={p.id}
+            className="rounded-lg border border-gray-200 bg-gray-50 p-2.5"
+          >
+            <div className="flex items-center gap-2">
+              <span
+                title={
+                  s?.aktiv
+                    ? "Läuft gerade"
+                    : s?.vorbei
+                      ? "Abgeschlossen"
+                      : "Bevorstehend"
+                }
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  s?.aktiv
+                    ? "bg-emerald-500"
+                    : s?.vorbei
+                      ? "bg-gray-300"
+                      : "bg-blue-400"
+                }`}
+              />
+              <input
+                value={p.titel}
+                onChange={(e) => setPhase(p.id, { titel: e.target.value })}
+                placeholder="Phasentitel, z.B. Umsetzung"
+                className="min-w-0 flex-1 border-none bg-transparent text-sm font-medium text-gray-800 outline-none placeholder:text-gray-300"
+              />
+              <button
+                type="button"
+                onClick={() => entferne(p.id)}
+                title="Zwischenphase entfernen"
+                className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={p.start ?? ""}
+                min={start || undefined}
+                max={p.ende || ende || undefined}
+                onChange={(e) => setPhase(p.id, { start: e.target.value })}
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 outline-none transition-colors focus:border-accent-400"
+              />
+              <span className="text-xs text-gray-300">–</span>
+              <input
+                type="date"
+                value={p.ende ?? ""}
+                min={p.start || start || undefined}
+                max={ende || undefined}
+                onChange={(e) => setPhase(p.id, { ende: e.target.value })}
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 outline-none transition-colors focus:border-accent-400"
+              />
+            </div>
+          </div>
+        )
+      })}
+
+      <button
+        type="button"
+        onClick={hinzufuegen}
+        className="w-full rounded-lg border border-dashed border-gray-300 bg-white px-3 py-2 text-sm text-gray-500 outline-none transition-colors hover:border-accent-400 hover:text-gray-800"
+      >
+        + Zwischenphase
+      </button>
+    </div>
+  )
+}
+
 // Bestehende Periode: Titel & Ziel inline editierbar, Projekte mit eigenen
 // Periodenzielen verwaltbar. Länge/Start/Ende sind Anlege-Werte und werden
 // hier nicht verändert (bei Bedarf löschen und neu anlegen).
@@ -425,6 +540,16 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
         ziele={zyklusZiele(zyklus)}
         onChange={(neu) => patch({ ziele: neu })}
       />
+
+      <p className="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+        Zwischenphasen
+      </p>
+      <Zwischenphasen
+        phasen={zyklusPhasen(zyklus)}
+        start={zyklus.start}
+        ende={zyklus.ende}
+        onChange={(neu) => patch({ phasen: neu })}
+      />
     </div>
   )
 }
@@ -438,9 +563,12 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
   const [ende, setEnde] = useState("")
   const [projektZiele, setProjektZiele] = useState([])
   const [eigeneZiele, setEigeneZiele] = useState([])
+  const [phasen, setPhasen] = useState([])
   const [fehler, setFehler] = useState("")
 
   const istCustom = laenge === "custom"
+  // Voraussichtliches Ende – begrenzt die Datumsfelder der Zwischenphasen.
+  const endVorschau = istCustom ? ende : berechneEnde(start, laenge)
 
   function speichern(e) {
     e.preventDefault()
@@ -458,6 +586,7 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
       ende: endDatum,
       projekte: projektZiele,
       ziele: eigeneZiele,
+      phasen,
     })
   }
 
@@ -548,6 +677,16 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
       <div>
         <p className="mb-1.5 text-xs text-gray-500">Eigene Ziele</p>
         <EigeneZiele ziele={eigeneZiele} onChange={setEigeneZiele} />
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-xs text-gray-500">Zwischenphasen</p>
+        <Zwischenphasen
+          phasen={phasen}
+          start={start}
+          ende={endVorschau}
+          onChange={setPhasen}
+        />
       </div>
 
       {fehler && <p className="text-xs text-red-500">{fehler}</p>}

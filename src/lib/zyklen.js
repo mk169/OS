@@ -37,6 +37,12 @@ function verschiebe(datum, tage) {
   return iso(d)
 }
 
+// Der Kalendertag nach `datum` ("JJJJ-MM-TT"). Praktisch, um Zwischenphasen
+// lückenlos aneinander anschließen zu lassen.
+export function naechsterTag(datum) {
+  return datum ? verschiebe(datum, 1) : ""
+}
+
 // Ganze Tage von a bis b (b − a). Beide im Format "JJJJ-MM-TT".
 function tageZwischen(a, b) {
   return Math.round((new Date(b) - new Date(a)) / 86_400_000)
@@ -132,6 +138,58 @@ export function zieleErreicht(zyklus) {
   const erreicht =
     p.filter((x) => x.erledigt).length + z.filter(zielErreicht).length
   return { erreicht, gesamt: p.length + z.length }
+}
+
+// Zwischenphasen („Aufteilungen") einer Periode: Eine Fokus-Periode lässt sich
+// in mehrere aufeinanderfolgende Abschnitte gliedern – z.B. Vorbereitung,
+// Umsetzung und Abschluss oder Sprint 1–3. So bekommt ein längerer Zyklus eine
+// feinere Struktur, ohne ihn in mehrere Perioden zu zerlegen. Jede
+// Zwischenphase hat Titel und eigenen Zeitraum innerhalb der Periode:
+//   { id, titel, start, ende }
+export function zyklusPhasen(zyklus) {
+  return Array.isArray(zyklus.phasen) ? zyklus.phasen : []
+}
+
+// Status einer Zwischenphase relativ zu heute (analog zu zyklusStatus, aber
+// ohne Zielanteil): aktiv / bevorstehend / vorbei plus verstrichener Zeitanteil.
+export function phaseStatus(phase) {
+  const { start, ende } = phase
+  const heuteK = heute()
+  const tageGesamt = Math.max(1, tageZwischen(start, ende) + 1)
+  const bevorstehend = heuteK < start
+  const vorbei = heuteK > ende
+  const aktiv = !bevorstehend && !vorbei
+  const tageUebrig = Math.max(0, tageZwischen(heuteK, ende))
+  const verstrichen = Math.min(
+    tageGesamt,
+    Math.max(0, tageZwischen(start, heuteK) + 1)
+  )
+  const prozentZeit = Math.round((verstrichen / tageGesamt) * 100)
+  return {
+    tageGesamt,
+    tageUebrig,
+    verstrichen,
+    prozentZeit,
+    aktiv,
+    bevorstehend,
+    vorbei,
+  }
+}
+
+// Zwischenphasen einer Periode, chronologisch nach Start sortiert.
+export function phasenSortiert(zyklus) {
+  return [...zyklusPhasen(zyklus)].sort((a, b) =>
+    (a.start ?? "").localeCompare(b.start ?? "")
+  )
+}
+
+// Die aktuell laufende Zwischenphase samt Position („Phase 2 von 3"). Gibt
+// null zurück, wenn gerade keine Zwischenphase läuft (oder keine angelegt ist).
+export function aktivePhase(zyklus) {
+  const phasen = phasenSortiert(zyklus)
+  const idx = phasen.findIndex((p) => phaseStatus(p).aktiv)
+  if (idx === -1) return null
+  return { phase: phasen[idx], nummer: idx + 1, gesamt: phasen.length }
 }
 
 // Kurzer Text für die Restlaufzeit eines aktiven Zyklus.

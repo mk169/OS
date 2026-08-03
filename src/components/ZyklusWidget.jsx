@@ -9,6 +9,8 @@ import {
   aktualisiereZyklus,
   zieleErreicht,
   restText,
+  aktivePhase,
+  phaseStatus,
 } from "../lib/zyklen"
 import { projektFortschrittWerte, Fortschrittsbalken } from "./OrdnerSeite"
 
@@ -116,6 +118,10 @@ function ZyklusKarte({
     .filter((e) => e.projekt && !e.projekt.archiviert)
   const eigeneZiele = zyklusZiele(zyklus)
   const ziele = zieleErreicht(zyklus)
+  // Aktuell laufende Zwischenphase („Aufteilung") dieser Periode, falls es
+  // welche gibt und gerade eine aktiv ist.
+  const phase = aktivePhase(zyklus)
+  const phaseS = phase ? phaseStatus(phase.phase) : null
 
   return (
     <div
@@ -171,6 +177,43 @@ function ZyklusKarte({
           />
         </div>
       </div>
+
+      {/* Aktuelle Zwischenphase („Aufteilung") der Periode */}
+      {phase && (
+        <div
+          className={`mt-3 rounded-xl px-3 py-2 ${
+            dunkel ? "bg-white/5" : "bg-gray-50"
+          }`}
+        >
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-xs font-medium">
+              <span className="text-accent-500">
+                Phase {phase.nummer}/{phase.gesamt}
+              </span>
+              {phase.phase.titel && (
+                <span
+                  className={`ml-1.5 ${dunkel ? "text-white/80" : "text-gray-700"}`}
+                >
+                  {phase.phase.titel}
+                </span>
+              )}
+            </span>
+            <span
+              className={`shrink-0 text-[11px] ${dunkel ? "text-white/50" : "text-gray-400"}`}
+            >
+              {restText(phaseS.tageUebrig)}
+            </span>
+          </div>
+          <div
+            className={`h-1 overflow-hidden rounded-full ${dunkel ? "bg-white/10" : "bg-gray-200"}`}
+          >
+            <div
+              className="h-full rounded-full bg-accent-500/70 transition-all"
+              style={{ width: `${phaseS.prozentZeit}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Verknüpfte Projekte mit Periodenziel, Abhaken & Fortschritt */}
       {eintraege.length > 0 && (
