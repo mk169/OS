@@ -1084,10 +1084,11 @@ function HabitsGamified({
 // ──────────────────────────────────────────────────────────────
 // Stil: Locked In – Kompromisslose Disziplin, monochrom
 //
-// Tagesbasierte Sicht im Geist reiner Discipline-Tracker: ein großer
-// Disziplin-Ring (Anteil heute erledigter Habits), Tages-Streak mit
-// Freeze-Schutz, Edge Score (7-Tage-Schnitt) und eine strenge Checkliste.
-// „Key"-Habits (Keystone) lassen sich pro Habit markieren.
+// Eigener Modus mit zwei Tabs: „Heute" (Disziplin-Ring aus dem Anteil heute
+// erledigter Habits, Tages-Streak mit Freeze-Schutz, Edge Score als
+// 7-Tage-Schnitt, strenge Checkliste mit Keystone-Markierung) und „Verlauf"
+// (Disziplin je Tag als monochrome Balken). Ohne Habits erscheint „Wähle
+// deine Spur" mit Start-Stacks; später jederzeit über „Vorlage" erreichbar.
 // ──────────────────────────────────────────────────────────────
 
 function DisziplinRing({ prozent }) {
@@ -1134,6 +1135,198 @@ function DisziplinRing({ prozent }) {
   )
 }
 
+// Start-Stacks („Wähle deine Spur") – setzen beim Antippen eine passende
+// Habit-Auswahl. bereichId verweist auf die Standard-Bereiche; unbekannte
+// IDs fallen in anderen Stilen auf „Allgemein" zurück (im Locked-In-Look
+// ohne Bedeutung, da monochrom).
+const LOCKED_PRESETS = [
+  {
+    id: "base",
+    name: "The Base Stack",
+    untertitel: "Die Grundlagen. Nichts Extra.",
+    habits: [
+      { name: "7+ Stunden Schlaf", bereichId: "koerper", key: true },
+      { name: "20 Minuten bewegen", bereichId: "koerper", key: true },
+      { name: "Erste Stunde kein Handy", bereichId: "achtsamkeit" },
+    ],
+  },
+  {
+    id: "athlete",
+    name: "Athlete",
+    untertitel: "Trainieren. Ernähren. Schlafen.",
+    habits: [
+      { name: "Training absolviert", bereichId: "koerper", key: true },
+      { name: "Protein-Ziel getroffen", bereichId: "koerper" },
+      { name: "8 Stunden Schlaf", bereichId: "koerper", key: true },
+      { name: "10 Min Mobility", bereichId: "koerper" },
+    ],
+  },
+  {
+    id: "student",
+    name: "Student",
+    untertitel: "Deep Work zuerst.",
+    habits: [
+      { name: "2 Std Deep Work", bereichId: "bildung", key: true },
+      { name: "Vorlesung nachbereitet", bereichId: "bildung" },
+      { name: "Vormittags kein Social Media", bereichId: "achtsamkeit" },
+      { name: "20 Minuten lesen", bereichId: "bildung" },
+    ],
+  },
+  {
+    id: "founder",
+    name: "Founder",
+    untertitel: "Jeden Tag etwas shippen.",
+    habits: [
+      { name: "Etwas geshippt", bereichId: "arbeit", key: true },
+      { name: "5 Outreach-Nachrichten", bereichId: "arbeit" },
+      { name: "2 Std Deep Work", bereichId: "arbeit", key: true },
+      { name: "Bewegung", bereichId: "koerper" },
+    ],
+  },
+  {
+    id: "reset",
+    name: "The Reset",
+    untertitel: "Konstanz statt Intensität.",
+    habits: [
+      { name: "Spaziergang", bereichId: "koerper", key: true },
+      { name: "7+ Stunden Schlaf", bereichId: "koerper" },
+      { name: "2 Liter Wasser", bereichId: "koerper" },
+      { name: "Journaling", bereichId: "achtsamkeit" },
+    ],
+  },
+  {
+    id: "cut",
+    name: "The Cut",
+    untertitel: "Jeden Tag ein Defizit.",
+    habits: [
+      { name: "Kaloriendefizit gehalten", bereichId: "koerper", key: true },
+      { name: "10.000 Schritte", bereichId: "koerper", key: true },
+      { name: "Protein-Ziel getroffen", bereichId: "koerper" },
+      { name: "Krafttraining", bereichId: "koerper" },
+    ],
+  },
+]
+
+// Verlaufszeilen der letzten `tage` Tage (nur Tage mit Habits), neuste zuerst.
+function verlaufDaten(habits, gefroren, tage = 30) {
+  const zeilen = []
+  const cursor = new Date()
+  cursor.setHours(12, 0, 0, 0)
+  for (let i = 0; i < tage; i++) {
+    const s = disziplinAmTag(habits, cursor)
+    if (s.gesamt > 0) {
+      zeilen.push({
+        key: schluessel(cursor),
+        datum: new Date(cursor),
+        ...s,
+        gefroren: gefroren.has(schluessel(cursor)),
+      })
+    }
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return zeilen
+}
+
+function LockedTab({ aktiv, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`border-b-2 px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.25em] transition-colors ${
+        aktiv
+          ? "border-white text-white"
+          : "border-transparent text-white/35 hover:text-white/70"
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// „Wähle deine Spur" – Start-Stacks im Locked-In-Look.
+function PickYourLane({ onWaehle }) {
+  return (
+    <div className="mt-8">
+      <p className="text-[11px] uppercase tracking-[0.35em] text-white/30">
+        Start-Stack
+      </p>
+      <h2 className="mt-3 text-3xl font-bold uppercase tracking-tight text-white">
+        Wähle deine Spur.
+      </h2>
+      <p className="mt-3 text-sm text-white/50">
+        Das wählt nur deinen Start-Stack. Anpassen kannst du danach jederzeit.
+      </p>
+      <div className="mt-6 space-y-3">
+        {LOCKED_PRESETS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onWaehle(p)}
+            className="block w-full border border-white/15 p-5 text-left transition-colors hover:border-white/60"
+          >
+            <p className="text-lg font-bold uppercase tracking-widest text-white">
+              {p.name}
+            </p>
+            <p className="mt-1 text-sm text-white/40">{p.untertitel}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Verlauf – Disziplin je Tag als monochrome Balken.
+function VerlaufAnsicht({ habits, gefroren }) {
+  const zeilen = verlaufDaten(habits, gefroren, 30)
+  if (zeilen.length === 0) {
+    return (
+      <p className="mt-10 border-t border-white/10 py-10 text-center text-sm uppercase tracking-widest text-white/30">
+        Noch kein Verlauf
+      </p>
+    )
+  }
+  const vollstaendige = zeilen.filter((z) => z.vollstaendig || z.gefroren).length
+  const schnitt = Math.round(
+    zeilen.reduce((s, z) => s + z.prozent, 0) / zeilen.length
+  )
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between border-b border-white/10 pb-4 text-[11px] uppercase tracking-[0.25em] text-white/40">
+        <span>{vollstaendige} vollständige Tage</span>
+        <span>Ø {schnitt}%</span>
+      </div>
+      <ul>
+        {zeilen.map((z) => (
+          <li
+            key={z.key}
+            className="flex items-center gap-3 border-b border-white/10 py-3"
+          >
+            <span className="w-24 shrink-0 text-xs text-white/50">
+              {z.datum.toLocaleDateString("de-DE", {
+                weekday: "short",
+                day: "2-digit",
+                month: "2-digit",
+              })}
+            </span>
+            <div className="h-2 flex-1 overflow-hidden bg-white/10">
+              <div
+                className="h-full bg-white transition-all duration-500"
+                style={{ width: `${z.prozent}%` }}
+              />
+            </div>
+            <span className="w-12 shrink-0 text-right text-xs tabular-nums text-white/60">
+              {z.erledigt}/{z.gesamt}
+            </span>
+            <span className="w-4 shrink-0 text-center text-xs text-white/70">
+              {z.gefroren ? "❄" : z.vollstaendig ? "✓" : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function HabitsLockedIn({
   habits,
   setHabits,
@@ -1145,6 +1338,8 @@ function HabitsLockedIn({
     verfuegbar: 1,
     tage: [],
   })
+  const [tab, setTab] = useState("heute") // heute | verlauf
+  const [presetsOffen, setPresetsOffen] = useState(false)
   const gefroren = new Set(freeze.tage ?? [])
 
   const heuteStatus = disziplinAmTag(habits, new Date())
@@ -1190,6 +1385,27 @@ function HabitsLockedIn({
 
   const freezeVerfuegbar = freeze.verfuegbar ?? 0
 
+  // Start-Stack anwenden: passende Habits anhängen (heute erstellt, damit sie
+  // vergangene Tage im Verlauf nicht rückwirkend brechen).
+  function stackWaehlen(preset) {
+    const basis = Date.now()
+    const neue = preset.habits.map((h, i) => ({
+      id: basis + i,
+      name: h.name,
+      bereichId: h.bereichId,
+      stackNachId: null,
+      erledigtAn: [],
+      wochenZiel: 7,
+      istSchluessel: Boolean(h.key),
+    }))
+    setHabits([...habits, ...neue])
+    setPresetsOffen(false)
+    setTab("heute")
+  }
+
+  const leer = habits.length === 0
+  const zeigePresets = presetsOffen || (leer && tab === "heute")
+
   return (
     <div className="min-h-screen bg-black px-5 py-6 text-white sm:px-6">
       <div className="mx-auto max-w-md">
@@ -1211,110 +1427,145 @@ function HabitsLockedIn({
           />
         </div>
 
-        {/* Disziplin-Ring */}
-        <div className="mt-8">
-          <DisziplinRing prozent={heuteStatus.prozent} />
-        </div>
-
-        {/* Streak + Freeze */}
-        <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
-          <span className="text-sm uppercase tracking-[0.3em] text-white/50">
-            Streak{" "}
-            <span className="ml-1 font-bold tabular-nums text-white">
-              {streak}
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={freezeNutzen}
-            disabled={freezeVerfuegbar <= 0}
-            title="Schützt die Serie an einem verpassten Tag"
-            className={`rounded-md border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest transition-colors ${
-              freezeVerfuegbar > 0
-                ? "border-white/25 text-white/70 hover:border-white/60 hover:text-white"
-                : "cursor-not-allowed border-white/10 text-white/20"
-            }`}
+        {/* Modus-Tabs */}
+        <div className="mt-6 flex items-center gap-6 border-b border-white/10">
+          <LockedTab
+            aktiv={tab === "heute" && !presetsOffen}
+            onClick={() => {
+              setTab("heute")
+              setPresetsOffen(false)
+            }}
           >
-            Freeze ×{freezeVerfuegbar}
-          </button>
-        </div>
-
-        {/* Edge Score */}
-        <div className="mt-4 flex items-center justify-between rounded-md border border-white/15 px-4 py-3">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/40">
-            Edge Score
-          </span>
-          <span className="text-lg font-light tabular-nums text-white">
-            {score}
-          </span>
-        </div>
-
-        {/* Checkliste */}
-        <div className="mt-6">
-          {habits.length === 0 ? (
-            <p className="border-t border-white/10 py-10 text-center text-sm uppercase tracking-widest text-white/30">
-              Noch keine Habits
-            </p>
-          ) : (
-            <ul>
-              {sortiert.map((h) => {
-                const dran = h.erledigtAn.includes(heuteKey)
-                return (
-                  <li
-                    key={h.id}
-                    className="group flex items-center gap-3 border-t border-white/10 py-4"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggle(h)}
-                      title="Heute abhaken"
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center border transition-colors ${
-                        dran
-                          ? "border-white bg-white text-black"
-                          : "border-white/30 text-transparent hover:border-white/60"
-                      }`}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="h-3.5 w-3.5"
-                      >
-                        <path d="m5 12 5 5L20 7" />
-                      </svg>
-                    </button>
-                    <span
-                      className={`min-w-0 flex-1 truncate text-lg font-medium ${
-                        dran ? "text-white/40 line-through" : "text-white"
-                      }`}
-                    >
-                      {h.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => toggleSchluessel(h)}
-                      title={
-                        h.istSchluessel
-                          ? "Schlüssel-Habit (Keystone)"
-                          : "Als Schlüssel-Habit markieren"
-                      }
-                      className={`shrink-0 border px-2 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                        h.istSchluessel
-                          ? "border-white bg-white text-black"
-                          : "border-white/15 text-white/25 hover:border-white/40 hover:text-white/50"
-                      }`}
-                    >
-                      Key
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+            Heute
+          </LockedTab>
+          <LockedTab
+            aktiv={tab === "verlauf" && !presetsOffen}
+            onClick={() => {
+              setTab("verlauf")
+              setPresetsOffen(false)
+            }}
+          >
+            Verlauf
+          </LockedTab>
+          {!leer && (
+            <button
+              type="button"
+              onClick={() => setPresetsOffen((o) => !o)}
+              className={`ml-auto pb-2 text-[11px] font-semibold uppercase tracking-[0.25em] transition-colors ${
+                presetsOffen ? "text-white" : "text-white/35 hover:text-white/70"
+              }`}
+            >
+              Vorlage
+            </button>
           )}
         </div>
+
+        {zeigePresets ? (
+          <PickYourLane onWaehle={stackWaehlen} />
+        ) : tab === "verlauf" ? (
+          <VerlaufAnsicht habits={habits} gefroren={gefroren} />
+        ) : (
+          <>
+            {/* Disziplin-Ring */}
+            <div className="mt-8">
+              <DisziplinRing prozent={heuteStatus.prozent} />
+            </div>
+
+            {/* Streak + Freeze */}
+            <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
+              <span className="text-sm uppercase tracking-[0.3em] text-white/50">
+                Streak{" "}
+                <span className="ml-1 font-bold tabular-nums text-white">
+                  {streak}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={freezeNutzen}
+                disabled={freezeVerfuegbar <= 0}
+                title="Schützt die Serie an einem verpassten Tag"
+                className={`rounded-md border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest transition-colors ${
+                  freezeVerfuegbar > 0
+                    ? "border-white/25 text-white/70 hover:border-white/60 hover:text-white"
+                    : "cursor-not-allowed border-white/10 text-white/20"
+                }`}
+              >
+                Freeze ×{freezeVerfuegbar}
+              </button>
+            </div>
+
+            {/* Edge Score */}
+            <div className="mt-4 flex items-center justify-between rounded-md border border-white/15 px-4 py-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/40">
+                Edge Score
+              </span>
+              <span className="text-lg font-light tabular-nums text-white">
+                {score}
+              </span>
+            </div>
+
+            {/* Checkliste */}
+            <div className="mt-6">
+              <ul>
+                {sortiert.map((h) => {
+                  const dran = h.erledigtAn.includes(heuteKey)
+                  return (
+                    <li
+                      key={h.id}
+                      className="group flex items-center gap-3 border-t border-white/10 py-4"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggle(h)}
+                        title="Heute abhaken"
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center border transition-colors ${
+                          dran
+                            ? "border-white bg-white text-black"
+                            : "border-white/30 text-transparent hover:border-white/60"
+                        }`}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-3.5 w-3.5"
+                        >
+                          <path d="m5 12 5 5L20 7" />
+                        </svg>
+                      </button>
+                      <span
+                        className={`min-w-0 flex-1 truncate text-lg font-medium ${
+                          dran ? "text-white/40 line-through" : "text-white"
+                        }`}
+                      >
+                        {h.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleSchluessel(h)}
+                        title={
+                          h.istSchluessel
+                            ? "Schlüssel-Habit (Keystone)"
+                            : "Als Schlüssel-Habit markieren"
+                        }
+                        className={`shrink-0 border px-2 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                          h.istSchluessel
+                            ? "border-white bg-white text-black"
+                            : "border-white/15 text-white/25 hover:border-white/40 hover:text-white/50"
+                        }`}
+                      >
+                        Key
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
