@@ -105,7 +105,7 @@ function TodosTodo({ _todos, offene, erledigte, toggle, remove, zuordnungsName }
   const erledigt = erledigte.length
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6">
+    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf titel="Todos" aktion={<TodoErstellen />} />
 
       <div className="mb-8 mt-8 flex gap-3">
@@ -368,7 +368,7 @@ function CleanGirlZeile({ todo, onToggle, onRemove, zuordnungsName }) {
 
 function TodosCleanGirl({ offene, erledigte, toggle, remove, zuordnungsName }) {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
       <div className="mb-10">
         <p style={{ fontFamily: FONT_SERIF_ELEGANT }} className="text-4xl text-rose-400">
           to-do ♡
@@ -450,7 +450,7 @@ function NotionZeile({ todo, onToggle, onRemove, zuordnungsName }) {
 
 function TodosNotion({ offene, erledigte, toggle, remove, zuordnungsName }) {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
       <div className="mb-10">
         <div className="text-5xl">✅</div>
         <h1 className="mt-3 text-4xl font-bold tracking-tight text-gray-900">

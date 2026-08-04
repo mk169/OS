@@ -242,7 +242,7 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
   const erledigt = todos.filter((t) => t.erledigt).length
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6">
+    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
       <header className="mb-7">
         <p className="text-sm font-semibold text-accent-600">{datumLang(heute())}</p>
         <h1
@@ -423,7 +423,7 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6">
+    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
       {/* Hero */}
       <div className="mb-6 overflow-hidden rounded-3xl bg-gray-900 p-5 text-white shadow-lg shadow-gray-900/10 sm:p-6">
         <div className="flex items-center gap-4">
@@ -911,7 +911,7 @@ function NotionZeile({ todo, onToggle }) {
 
 function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard }) {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
       {/* Seitenkopf mit Emoji-„Cover" */}
       <div className="mb-10">
         <div className="text-5xl">🏠</div>

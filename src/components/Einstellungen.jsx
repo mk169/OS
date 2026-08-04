@@ -462,7 +462,7 @@ export default function Einstellungen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-10">
+    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf titel="Einstellungen" unterzeile="Passe dein OS an deinen Workflow an." />
 
       {/* Gespeichert-Toast */}

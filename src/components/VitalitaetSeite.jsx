@@ -155,7 +155,7 @@ export default function VitalitaetSeite() {
   )
 
   return (
-    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6">
+    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf
         eyebrow="Körper"
         titel="Vitalität"

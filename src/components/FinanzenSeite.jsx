@@ -59,7 +59,7 @@ export default function FinanzenSeite() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-10 sm:px-6">
+    <div className="mx-auto max-w-4xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf
         titel="Finanzen"
         unterzeile="Konten, Ausgaben, Budgets und Sparziele an einem Ort."

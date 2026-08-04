@@ -70,7 +70,7 @@ export default function LeisureSeite() {
   const anzahlProTyp = (key) => medien.filter((m) => m.typ === key).length
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
+    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf
         titel="Leisure & Kultur"
         unterzeile="Deine Medienbibliothek – Filme, Serien, Bücher & mehr."

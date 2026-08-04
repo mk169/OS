@@ -600,7 +600,7 @@ export default function HabitsSeite() {
 
 function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWochenZiel, remove, amZielCount }) {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
+    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf
         titel="Habits"
         aktion={
@@ -711,7 +711,7 @@ function HabitsCleanGirl({ habits, _bereiche, toggle, remove }) {
   ).length
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
       <div className="mb-10">
         <p style={{ fontFamily: FONT_SERIF_ELEGANT }} className="text-4xl text-rose-400">
           daily rituals ♡
@@ -780,7 +780,7 @@ function HabitsCleanGirl({ habits, _bereiche, toggle, remove }) {
 
 function HabitsNotion({ habits, bereiche, setHabits, setBereiche, toggle, remove }) {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
       <div className="mb-10">
         <div className="text-5xl">💪</div>
         <h1 className="mt-3 text-4xl font-bold tracking-tight text-gray-900">Habits</h1>

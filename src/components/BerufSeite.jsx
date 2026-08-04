@@ -4,7 +4,7 @@ import Seitenkopf from "./Seitenkopf"
 // Wird später mit Zielen, Bewerbungen und Weiterbildung gefüllt.
 export default function BerufSeite() {
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf
         titel="Beruf & Karriere"
         unterzeile="Ziele, Bewerbungen und Weiterbildung an einem Ort."
