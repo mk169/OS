@@ -9,6 +9,7 @@ import Dashboard from "./components/Dashboard"
 import KalenderSeite from "./components/KalenderSeite"
 import TodosSeite from "./components/TodosSeite"
 import HabitsSeite from "./components/HabitsSeite"
+import LockedInSeite from "./components/LockedInSeite"
 import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
 import FinanzenSeite from "./components/FinanzenSeite"
@@ -56,7 +57,7 @@ function migriereAlteKurse() {
 // Neu eingeführte Bereiche, die bestehenden Nutzern einmalig zur Navigation
 // hinzugefügt werden. Pro Schlüssel nur einmal (Merker `bereicheErgaenzt`),
 // damit ein späteres bewusstes Ausblenden erhalten bleibt.
-const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops"]
+const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops", "lockedin"]
 
 function migriereBereiche() {
   const roh = localStorage.getItem("einstellungen")
@@ -111,6 +112,16 @@ const NAV = [
     key: "dashboard",
     label: "Start",
     icon: <path d="M3 10.75 12 3l9 7.75M5 9.5V21h14V9.5" />,
+  },
+  {
+    key: "lockedin",
+    label: "Locked In",
+    icon: (
+      <>
+        <rect x="5" y="11" width="14" height="9" rx="2" />
+        <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+      </>
+    ),
   },
   {
     key: "kalender",
@@ -212,7 +223,7 @@ const NAV = [
 const EINSTELLUNGEN_STANDARD = {
   onboardingAbgeschlossen: false,
   profil: "komplett",
-  sichtbareSeiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
+  sichtbareSeiten: ["dashboard", "lockedin", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
   appName: "OS",
   startseite: "dashboard",
   akzent: "indigo",
@@ -317,11 +328,13 @@ export default function App() {
   const primaereNav = sichtbareNav.slice(0, PRIMAER_MAX)
   const weitereNav = sichtbareNav.slice(PRIMAER_MAX)
   const mobileKolonnen = primaereNav.length + 1
-  // Locked-In-Seite: die App-Hülle (Kopfzeile, Tab-Leiste, Hintergrund) zieht
-  // in den monochromen Look mit, damit der schwarze Disziplin-Screen nicht von
-  // hellem Chrome mit farbigem Akzent umrahmt wird.
+  // Locked-In-Look: die App-Hülle (Kopfzeile, Tab-Leiste, Hintergrund) zieht in
+  // den monochromen Look mit – auf der Locked-In-Kommandozentrale immer, auf der
+  // Habits-Seite nur, wenn dort der Locked-In-Stil aktiv ist. So wird der
+  // schwarze Screen nie von hellem Chrome mit farbigem Akzent umrahmt.
   const lockedInSeite =
-    normalisiereStil(einstellungen?.stil) === "lockedin" && seite === "habits"
+    seite === "lockedin" ||
+    (normalisiereStil(einstellungen?.stil) === "lockedin" && seite === "habits")
 
   return (
     <div
@@ -462,6 +475,7 @@ export default function App() {
       {/* ── Inhalt ──────────────────────────────────────────────── */}
       <main className="pb-24 md:pb-10 md:pl-60">
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
+        {seite === "lockedin" && <LockedInSeite onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite />}
         {seite === "todos" && <TodosSeite />}
         {seite === "sammeln" && (

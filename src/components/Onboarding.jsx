@@ -16,7 +16,7 @@ export const PROFILE = [
       </>
     ),
     farbe: "indigo",
-    seiten: ["dashboard", "kalender", "todos", "deepwork", "projekte"],
+    seiten: ["dashboard", "lockedin", "kalender", "todos", "deepwork", "projekte"],
   },
   {
     id: "habits",
@@ -52,12 +52,12 @@ export const PROFILE = [
       </>
     ),
     farbe: "gray",
-    seiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
+    seiten: ["dashboard", "lockedin", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
   },
   {
     id: "lockedin",
     name: "Locked In",
-    beschreibung: "Kompromisslose Disziplin. Ein Ziel: heute alles abhaken. Monochrom, ohne Ablenkung.",
+    beschreibung: "Maximale Effizienz. Ein Kommandozentrum für Disziplin, Aufgaben, Fokus & Ziele – monochrom, ohne Ablenkung.",
     icon: (
       <>
         <rect x="5" y="11" width="14" height="9" rx="2" />
@@ -65,9 +65,9 @@ export const PROFILE = [
       </>
     ),
     farbe: "gray",
-    seiten: ["habits", "todos", "deepwork", "review"],
+    seiten: ["lockedin", "habits", "todos", "deepwork", "projekte", "review"],
     stil: "lockedin",
-    startseite: "habits",
+    startseite: "lockedin",
   },
 ]
 
