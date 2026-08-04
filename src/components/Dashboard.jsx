@@ -8,6 +8,7 @@ import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { datumLang } from "./Kalender"
 import { KalenderPanel } from "./KalenderSeite"
 import TodoErstellen, { EINTEILUNGEN, einteilungVon } from "./TodoErstellen"
+import MentorBanner from "./MentorBanner"
 import {
   useHabitDaten,
   nutzeHabitToggle,
@@ -253,6 +254,7 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
       </header>
 
       {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
+      {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
       {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
 
       {dashboard.kennzahlen && (
@@ -466,6 +468,7 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
       </div>
 
       {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
+      {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
       {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
 
       {/* Fortschrittsbalken */}
@@ -625,6 +628,9 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
         {dashboard.fokusPeriode && (
           <ZyklusWidget onNavigate={onNavigate} variant="dunkel" />
         )}
+        {dashboard.mentor && (
+          <MentorBanner onNavigate={onNavigate} variant="dunkel" />
+        )}
         {dashboard.lernen && <LernBanner onNavigate={onNavigate} variant="dunkel" />}
 
         {/* Readouts */}
@@ -752,6 +758,7 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
         )}
 
         {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
+      {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
       {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
 
         {dashboard.kalender && (
@@ -918,6 +925,7 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard })
       </div>
 
       {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
+      {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
       {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
 
       {/* Aufgaben */}

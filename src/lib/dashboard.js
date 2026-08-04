@@ -5,6 +5,11 @@
 
 export const DASHBOARD_BLOECKE = [
   {
+    key: "mentor",
+    label: "Mentor",
+    beschreibung: "Momentum deiner Gleichung & stärkster Befund",
+  },
+  {
     key: "fokusPeriode",
     label: "Fokus-Periode",
     beschreibung: "Laufende Zyklen mit Ziel & verknüpften Projekten",
@@ -32,6 +37,7 @@ export const DASHBOARD_BLOECKE = [
 ]
 
 const STANDARD = {
+  mentor: true,
   fokusPeriode: true,
   lernen: true,
   habits: true,
