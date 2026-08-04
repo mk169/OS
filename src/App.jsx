@@ -290,9 +290,10 @@ export default function App() {
   if (!einstellungen?.onboardingAbgeschlossen) {
     return (
       <Onboarding
-        onFertig={() =>
+        onFertig={(startseite) => {
           setEinstellungen((e) => ({ ...e, onboardingAbgeschlossen: true }))
-        }
+          if (startseite) navigiere(startseite)
+        }}
       />
     )
   }
