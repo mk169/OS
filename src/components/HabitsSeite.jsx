@@ -1091,50 +1091,6 @@ function HabitsGamified({
 // deine Spur" mit Start-Stacks; später jederzeit über „Vorlage" erreichbar.
 // ──────────────────────────────────────────────────────────────
 
-function DisziplinRing({ prozent }) {
-  const r = 88
-  const umfang = 2 * Math.PI * r
-  const offset = umfang * (1 - prozent / 100)
-  return (
-    <div className="relative mx-auto aspect-square w-full max-w-[300px]">
-      <svg viewBox="0 0 200 200" className="h-full w-full">
-        <circle
-          cx="100"
-          cy="100"
-          r={r}
-          fill="none"
-          stroke="rgba(255,255,255,0.07)"
-          strokeWidth="2"
-        />
-        <circle
-          cx="100"
-          cy="100"
-          r={r}
-          fill="none"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeDasharray={umfang}
-          strokeDashoffset={offset}
-          transform="rotate(-90 100 100)"
-          style={{ transition: "stroke-dashoffset 0.6s ease" }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[11px] font-medium uppercase tracking-[0.35em] text-white/40">
-          Disziplin
-        </span>
-        <span className="mt-2 text-6xl font-light tabular-nums text-white">
-          {prozent}
-        </span>
-        <span className="mt-2 text-[11px] uppercase tracking-[0.3em] text-white/30">
-          Reset um Mitternacht
-        </span>
-      </div>
-    </div>
-  )
-}
-
 // Start-Stacks („Wähle deine Spur") – setzen beim Antippen eine passende
 // Habit-Auswahl. bereichId verweist auf die Standard-Bereiche; unbekannte
 // IDs fallen in anderen Stilen auf „Allgemein" zurück (im Locked-In-Look
@@ -1466,18 +1422,47 @@ function HabitsLockedIn({
           <VerlaufAnsicht habits={habits} gefroren={gefroren} />
         ) : (
           <>
-            {/* Disziplin-Ring */}
-            <div className="mt-8">
-              <DisziplinRing prozent={heuteStatus.prozent} />
+            {/* Kennzahlen-Streifen */}
+            <div className="mt-8 grid grid-cols-3 divide-x divide-white/10 border-y border-white/10">
+              {[
+                { label: "Disziplin", wert: heuteStatus.prozent, suffix: "%" },
+                { label: "Streak", wert: streak, suffix: "" },
+                { label: "Edge", wert: score, suffix: "" },
+              ].map((k) => (
+                <div key={k.label} className="px-2 py-5 text-center">
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-white/35">
+                    {k.label}
+                  </p>
+                  <p className="mt-2 text-4xl font-light tabular-nums text-white">
+                    {k.wert}
+                    {k.suffix && (
+                      <span className="text-lg text-white/40">{k.suffix}</span>
+                    )}
+                  </p>
+                </div>
+              ))}
             </div>
 
-            {/* Streak + Freeze */}
-            <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
-              <span className="text-sm uppercase tracking-[0.3em] text-white/50">
-                Streak{" "}
-                <span className="ml-1 font-bold tabular-nums text-white">
-                  {streak}
+            {/* Fortschrittsbalken heute */}
+            <div className="mt-6">
+              <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.25em] text-white/40">
+                <span>
+                  {heuteStatus.erledigt}/{heuteStatus.gesamt} heute
                 </span>
+                <span className="text-white/25">Reset um Mitternacht</span>
+              </div>
+              <div className="mt-2 h-1.5 w-full overflow-hidden bg-white/10">
+                <div
+                  className="h-full bg-white transition-all duration-500"
+                  style={{ width: `${heuteStatus.prozent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Serien-Schutz (Freeze) */}
+            <div className="mt-5 flex items-center justify-between">
+              <span className="text-[11px] uppercase tracking-[0.25em] text-white/40">
+                Serien-Schutz
               </span>
               <button
                 type="button"
@@ -1494,18 +1479,11 @@ function HabitsLockedIn({
               </button>
             </div>
 
-            {/* Edge Score */}
-            <div className="mt-4 flex items-center justify-between rounded-md border border-white/15 px-4 py-3">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/40">
-                Edge Score
-              </span>
-              <span className="text-lg font-light tabular-nums text-white">
-                {score}
-              </span>
-            </div>
-
-            {/* Checkliste */}
-            <div className="mt-6">
+            {/* Checkliste (Hauptfokus) */}
+            <div className="mt-8">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-white/35">
+                Heute abhaken
+              </p>
               <ul>
                 {sortiert.map((h) => {
                   const dran = h.erledigtAn.includes(heuteKey)
