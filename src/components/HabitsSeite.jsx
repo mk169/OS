@@ -58,6 +58,93 @@ export function alsKettenListe(habits) {
   return ketten
 }
 
+// ──────────────────────────────────────────────────────────────
+// Locked In – Disziplin-Modell (tagesbasiert)
+//
+// Anders als der wochenbasierte Standard bewertet dieser Stil jeden Tag
+// kompromisslos: Disziplin = Anteil der an dem Tag existierenden Habits, die
+// erledigt wurden. Die Habit-`id` ist der Erstell-Zeitstempel (Date.now) und
+// dient als Existenz-Nachweis, damit frisch angelegte Habits vergangene Tage
+// nicht rückwirkend „brechen".
+// ──────────────────────────────────────────────────────────────
+
+function existierteAm(habit, grenze) {
+  return typeof habit.id !== "number" || habit.id <= grenze
+}
+
+// Habits, die an diesem Tag bereits existierten.
+function habitsAmTag(habits, datum) {
+  const d = new Date(datum)
+  d.setHours(23, 59, 59, 999)
+  const grenze = d.getTime()
+  return habits.filter((h) => existierteAm(h, grenze))
+}
+
+// Disziplin eines Tages: erledigt / gesamt + Prozent + Vollständigkeit.
+export function disziplinAmTag(habits, datum) {
+  const relevant = habitsAmTag(habits, datum)
+  const key = schluessel(datum)
+  const erledigt = relevant.filter((h) => h.erledigtAn.includes(key)).length
+  const gesamt = relevant.length
+  return {
+    erledigt,
+    gesamt,
+    prozent: gesamt === 0 ? 0 : Math.round((erledigt / gesamt) * 100),
+    vollstaendig: gesamt > 0 && erledigt === gesamt,
+  }
+}
+
+// Tages-Streak: Anzahl aufeinanderfolgender vollständiger (oder eingefrorener)
+// Tage bis heute. Der laufende Tag bricht die Serie nicht – er zählt erst,
+// wenn er vollständig ist (Reset erst um Mitternacht).
+export function disziplinStreak(habits, gefroren = new Set()) {
+  let zaehler = 0
+  const cursor = new Date()
+  cursor.setHours(12, 0, 0, 0)
+  if (!disziplinAmTag(habits, cursor).vollstaendig) {
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  for (let i = 0; i < 3650; i++) {
+    const status = disziplinAmTag(habits, cursor)
+    if (status.gesamt === 0) break
+    if (status.vollstaendig || gefroren.has(schluessel(cursor))) {
+      zaehler++
+      cursor.setDate(cursor.getDate() - 1)
+    } else break
+  }
+  return zaehler
+}
+
+// Edge Score: Durchschnittliche Disziplin der letzten 7 Tage mit Habits.
+export function edgeScore(habits) {
+  let summe = 0
+  let tage = 0
+  const cursor = new Date()
+  cursor.setHours(12, 0, 0, 0)
+  for (let i = 0; i < 7; i++) {
+    const s = disziplinAmTag(habits, cursor)
+    if (s.gesamt > 0) {
+      summe += s.prozent
+      tage++
+    }
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return tage === 0 ? 0 : Math.round(summe / tage)
+}
+
+// Tag-Nummer seit dem ältesten angelegten Habit (Onboarding-Gefühl „DAY N").
+export function tagNummer(habits) {
+  const zeiten = habits
+    .map((h) => (typeof h.id === "number" ? h.id : null))
+    .filter((z) => z != null)
+  if (zeiten.length === 0) return 1
+  const start = new Date(Math.min(...zeiten))
+  start.setHours(0, 0, 0, 0)
+  const heuteD = new Date()
+  heuteD.setHours(0, 0, 0, 0)
+  return Math.max(1, Math.round((heuteD - start) / 86_400_000) + 1)
+}
+
 function wochenSpalten(n) {
   const spalten = []
   const cursor = montagVon(new Date())
@@ -503,6 +590,7 @@ export default function HabitsSeite() {
   if (stil === "arcade") return <HabitsArcade {...gemeinsam} />
   if (stil === "cleangirl") return <HabitsCleanGirl {...gemeinsam} />
   if (stil === "notion") return <HabitsNotion {...gemeinsam} />
+  if (stil === "lockedin") return <HabitsLockedIn {...gemeinsam} />
   return <HabitsTodo {...gemeinsam} />
 }
 
@@ -988,6 +1076,245 @@ function HabitsGamified({
             ))}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Stil: Locked In – Kompromisslose Disziplin, monochrom
+//
+// Tagesbasierte Sicht im Geist reiner Discipline-Tracker: ein großer
+// Disziplin-Ring (Anteil heute erledigter Habits), Tages-Streak mit
+// Freeze-Schutz, Edge Score (7-Tage-Schnitt) und eine strenge Checkliste.
+// „Key"-Habits (Keystone) lassen sich pro Habit markieren.
+// ──────────────────────────────────────────────────────────────
+
+function DisziplinRing({ prozent }) {
+  const r = 88
+  const umfang = 2 * Math.PI * r
+  const offset = umfang * (1 - prozent / 100)
+  return (
+    <div className="relative mx-auto aspect-square w-full max-w-[300px]">
+      <svg viewBox="0 0 200 200" className="h-full w-full">
+        <circle
+          cx="100"
+          cy="100"
+          r={r}
+          fill="none"
+          stroke="rgba(255,255,255,0.07)"
+          strokeWidth="2"
+        />
+        <circle
+          cx="100"
+          cy="100"
+          r={r}
+          fill="none"
+          stroke="white"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeDasharray={umfang}
+          strokeDashoffset={offset}
+          transform="rotate(-90 100 100)"
+          style={{ transition: "stroke-dashoffset 0.6s ease" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[11px] font-medium uppercase tracking-[0.35em] text-white/40">
+          Disziplin
+        </span>
+        <span className="mt-2 text-6xl font-light tabular-nums text-white">
+          {prozent}
+        </span>
+        <span className="mt-2 text-[11px] uppercase tracking-[0.3em] text-white/30">
+          Reset um Mitternacht
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function HabitsLockedIn({
+  habits,
+  setHabits,
+  bereiche,
+  setBereiche,
+  toggle,
+}) {
+  const [freeze, setFreeze] = useStored("habitFreeze", {
+    verfuegbar: 1,
+    tage: [],
+  })
+  const gefroren = new Set(freeze.tage ?? [])
+
+  const heuteStatus = disziplinAmTag(habits, new Date())
+  const streak = disziplinStreak(habits, gefroren)
+  const score = edgeScore(habits)
+  const tag = tagNummer(habits)
+  const heuteKey = heute()
+
+  // Schlüssel-Habits (Keystone) zuerst, sonst ursprüngliche Reihenfolge.
+  const sortiert = [...habits].sort(
+    (a, b) => (b.istSchluessel ? 1 : 0) - (a.istSchluessel ? 1 : 0)
+  )
+
+  function toggleSchluessel(habit) {
+    setHabits(
+      habits.map((h) =>
+        h.id === habit.id ? { ...h, istSchluessel: !h.istSchluessel } : h
+      )
+    )
+  }
+
+  // Freeze auf den jüngsten vergangenen, unvollständigen Tag anwenden – so
+  // überlebt die Serie einen einzelnen Ausrutscher.
+  function freezeNutzen() {
+    if ((freeze.verfuegbar ?? 0) <= 0) return
+    const cursor = new Date()
+    cursor.setHours(12, 0, 0, 0)
+    cursor.setDate(cursor.getDate() - 1)
+    for (let i = 0; i < 60; i++) {
+      const status = disziplinAmTag(habits, cursor)
+      const key = schluessel(cursor)
+      if (status.gesamt === 0) break
+      if (!status.vollstaendig && !gefroren.has(key)) {
+        setFreeze({
+          verfuegbar: (freeze.verfuegbar ?? 0) - 1,
+          tage: [...(freeze.tage ?? []), key],
+        })
+        return
+      }
+      cursor.setDate(cursor.getDate() - 1)
+    }
+  }
+
+  const freezeVerfuegbar = freeze.verfuegbar ?? 0
+
+  return (
+    <div className="min-h-screen bg-black px-5 py-6 text-white sm:px-6">
+      <div className="mx-auto max-w-md">
+        {/* Kopf */}
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold uppercase tracking-[0.4em] text-white">
+            Locked&nbsp;In
+          </span>
+          <span className="text-xs uppercase tracking-[0.3em] text-white/40">
+            Tag {tag}
+          </span>
+          <HabitErstellen
+            habits={habits}
+            setHabits={setHabits}
+            bereiche={bereiche}
+            setBereiche={setBereiche}
+            knopfKlasse="rounded-md border border-white/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/70 transition-colors hover:border-white/50 hover:text-white"
+            knopfInhalt="+ Neu"
+          />
+        </div>
+
+        {/* Disziplin-Ring */}
+        <div className="mt-8">
+          <DisziplinRing prozent={heuteStatus.prozent} />
+        </div>
+
+        {/* Streak + Freeze */}
+        <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
+          <span className="text-sm uppercase tracking-[0.3em] text-white/50">
+            Streak{" "}
+            <span className="ml-1 font-bold tabular-nums text-white">
+              {streak}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={freezeNutzen}
+            disabled={freezeVerfuegbar <= 0}
+            title="Schützt die Serie an einem verpassten Tag"
+            className={`rounded-md border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest transition-colors ${
+              freezeVerfuegbar > 0
+                ? "border-white/25 text-white/70 hover:border-white/60 hover:text-white"
+                : "cursor-not-allowed border-white/10 text-white/20"
+            }`}
+          >
+            Freeze ×{freezeVerfuegbar}
+          </button>
+        </div>
+
+        {/* Edge Score */}
+        <div className="mt-4 flex items-center justify-between rounded-md border border-white/15 px-4 py-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/40">
+            Edge Score
+          </span>
+          <span className="text-lg font-light tabular-nums text-white">
+            {score}
+          </span>
+        </div>
+
+        {/* Checkliste */}
+        <div className="mt-6">
+          {habits.length === 0 ? (
+            <p className="border-t border-white/10 py-10 text-center text-sm uppercase tracking-widest text-white/30">
+              Noch keine Habits
+            </p>
+          ) : (
+            <ul>
+              {sortiert.map((h) => {
+                const dran = h.erledigtAn.includes(heuteKey)
+                return (
+                  <li
+                    key={h.id}
+                    className="group flex items-center gap-3 border-t border-white/10 py-4"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggle(h)}
+                      title="Heute abhaken"
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center border transition-colors ${
+                        dran
+                          ? "border-white bg-white text-black"
+                          : "border-white/30 text-transparent hover:border-white/60"
+                      }`}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-3.5 w-3.5"
+                      >
+                        <path d="m5 12 5 5L20 7" />
+                      </svg>
+                    </button>
+                    <span
+                      className={`min-w-0 flex-1 truncate text-lg font-medium ${
+                        dran ? "text-white/40 line-through" : "text-white"
+                      }`}
+                    >
+                      {h.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSchluessel(h)}
+                      title={
+                        h.istSchluessel
+                          ? "Schlüssel-Habit (Keystone)"
+                          : "Als Schlüssel-Habit markieren"
+                      }
+                      className={`shrink-0 border px-2 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                        h.istSchluessel
+                          ? "border-white bg-white text-black"
+                          : "border-white/15 text-white/25 hover:border-white/40 hover:text-white/50"
+                      }`}
+                    >
+                      Key
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   )
