@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import Seitenkopf from "./Seitenkopf"
 import { FARBEN } from "../lib/farben"
@@ -18,9 +18,15 @@ import {
   monatLabel,
   monatVerschieben,
   summeMonat,
+  summeZeitraum,
   ausgabenNachKategorie,
+  jahresMonate,
+  jahreMitDaten,
+  aktuellesJahr,
+  MONATSKURZ,
   WAEHRUNGEN,
 } from "../lib/finanzen"
+import { alsCsv, parseCsv } from "../lib/finanzenCsv"
 
 // Lebensbereich „Finanzen": Konten, Buchungen, Budgets und Sparziele an
 // einem Ort. Alle Daten liegen in useStored (localStorage + Cloud-Sync).
@@ -28,6 +34,7 @@ import {
 const TABS = [
   { key: "uebersicht", label: "Übersicht", emoji: "📊" },
   { key: "transaktionen", label: "Buchungen", emoji: "💸" },
+  { key: "jahr", label: "Jahr", emoji: "📈" },
   { key: "konten", label: "Konten", emoji: "🏦" },
   { key: "budgets", label: "Budgets", emoji: "🎯" },
   { key: "sparziele", label: "Sparziele", emoji: "🐖" },
@@ -92,6 +99,7 @@ export default function FinanzenSeite() {
 
       {tab === "uebersicht" && <Uebersicht {...props} />}
       {tab === "transaktionen" && <Transaktionen {...props} />}
+      {tab === "jahr" && <Jahr {...props} />}
       {tab === "konten" && <Konten {...props} />}
       {tab === "budgets" && <Budgets {...props} />}
       {tab === "sparziele" && <Sparziele {...props} />}
@@ -390,7 +398,8 @@ function BuchungsZeile({ t, konten, w, onLoeschen }) {
   )
 }
 
-function Transaktionen({ konten, transaktionen, setTransaktionen, w }) {
+function Transaktionen({ konten, setKonten, transaktionen, setTransaktionen, w }) {
+  const dateiInput = useRef(null)
   const [offen, setOffen] = useState(false)
   const [art, setArt] = useState("ausgabe")
   const [betrag, setBetrag] = useState("")
@@ -434,6 +443,50 @@ function Transaktionen({ konten, transaktionen, setTransaktionen, w }) {
 
   function loeschen(id) {
     setTransaktionen(transaktionen.filter((t) => t.id !== id))
+  }
+
+  // CSV-Export: alle Buchungen als .csv (Excel/Numbers/Google Tabellen).
+  function exportiereCsv() {
+    if (transaktionen.length === 0) return
+    const blob = new Blob([alsCsv(transaktionen, konten)], {
+      type: "text/csv;charset=utf-8",
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `finanzen-${heute()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // CSV-Import: Buchungen anhängen, fehlende Konten automatisch anlegen.
+  function importiereCsv(e) {
+    const datei = e.target.files?.[0]
+    if (!datei) return
+    const leser = new FileReader()
+    leser.onload = () => {
+      const { buchungen, neueKonten, uebersprungen } = parseCsv(
+        String(leser.result),
+        konten
+      )
+      if (buchungen.length === 0) {
+        window.alert(
+          "Keine gültigen Buchungen gefunden. Erwartet werden Spalten wie " +
+            "Datum, Art, Betrag, Kategorie, Konto, Notiz."
+        )
+        return
+      }
+      if (neueKonten.length > 0) setKonten([...konten, ...neueKonten])
+      setTransaktionen([...transaktionen, ...buchungen])
+      window.alert(
+        `${buchungen.length} Buchung(en) importiert` +
+          (neueKonten.length ? `, ${neueKonten.length} Konto/Konten neu angelegt` : "") +
+          (uebersprungen ? `, ${uebersprungen} Zeile(n) übersprungen` : "") +
+          "."
+      )
+    }
+    leser.readAsText(datei)
+    e.target.value = ""
   }
 
   const gefiltert = useMemo(
@@ -607,6 +660,202 @@ function Transaktionen({ konten, transaktionen, setTransaktionen, w }) {
           ))}
         </ul>
       )}
+
+      {/* CSV-Export / -Import */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4 text-sm">
+        <span className="text-xs text-gray-400">
+          Daten für Excel &amp; Co. – oder Kontoauszüge einlesen
+        </span>
+        <div className="flex gap-2">
+          <button
+            onClick={exportiereCsv}
+            disabled={transaktionen.length === 0}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-900 disabled:opacity-40"
+          >
+            ↓ CSV-Export
+          </button>
+          <button
+            onClick={() => dateiInput.current?.click()}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-900"
+          >
+            ↑ CSV-Import
+          </button>
+          <input
+            ref={dateiInput}
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            onChange={importiereCsv}
+            className="hidden"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Jahr – Trend Einnahmen/Ausgaben über die Monate + Jahres-Kennzahlen
+ * ════════════════════════════════════════════════════════════════════════ */
+
+function Jahr({ transaktionen, w, onTab }) {
+  const jahre = useMemo(() => jahreMitDaten(transaktionen), [transaktionen])
+  const [jahr, setJahr] = useState(aktuellesJahr())
+
+  const monate = useMemo(() => jahresMonate(transaktionen, jahr), [transaktionen, jahr])
+  const einnahmen = summeZeitraum(transaktionen, jahr, "einnahme")
+  const ausgaben = summeZeitraum(transaktionen, jahr, "ausgabe")
+  const bilanz = einnahmen - ausgaben
+  const sparquote = einnahmen > 0 ? Math.round((bilanz / einnahmen) * 100) : 0
+
+  // Monate mit tatsächlicher Aktivität – für saubere Durchschnitte.
+  const aktiveMonate = monate.filter((m) => m.einnahme > 0 || m.ausgabe > 0).length
+  const oeAusgabe = aktiveMonate > 0 ? ausgaben / aktiveMonate : 0
+
+  const maxWert = Math.max(1, ...monate.map((m) => Math.max(m.einnahme, m.ausgabe)))
+  const kategorien = ausgabenNachKategorie(transaktionen, jahr).slice(0, 6)
+  const maxKat = kategorien[0]?.betrag ?? 0
+
+  const idx = jahre.indexOf(jahr)
+  const kannZurueck = idx < jahre.length - 1
+  const kannVor = idx > 0
+
+  const leer = einnahmen === 0 && ausgaben === 0
+
+  return (
+    <div className="space-y-8">
+      {/* Jahreswahl + Kennzahlen */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">Jahresüberblick</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => kannZurueck && setJahr(jahre[idx + 1])}
+              disabled={!kannZurueck}
+              title="Voriges Jahr"
+              className="rounded-lg border border-gray-200 px-2 py-1 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-900 disabled:opacity-40"
+            >
+              ‹
+            </button>
+            <span className="min-w-[3.5rem] text-center text-sm font-semibold text-gray-800">
+              {jahr}
+            </span>
+            <button
+              onClick={() => kannVor && setJahr(jahre[idx - 1])}
+              disabled={!kannVor}
+              title="Nächstes Jahr"
+              className="rounded-lg border border-gray-200 px-2 py-1 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-900 disabled:opacity-40"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <StatKarte label="Einnahmen (Jahr)" wert={geld(einnahmen, w)} ton="gut" />
+          <StatKarte label="Ausgaben (Jahr)" wert={geld(ausgaben, w)} ton="schlecht" />
+          <StatKarte
+            label={`Saldo${einnahmen > 0 ? ` · Sparquote ${sparquote}%` : ""}`}
+            wert={geldMitZeichen(bilanz, w)}
+            ton={bilanz >= 0 ? "gut" : "schlecht"}
+          />
+        </div>
+      </section>
+
+      {leer ? (
+        <LeerHinweis
+          emoji="📈"
+          titel={`Keine Buchungen ${jahr}`}
+          text="Sobald Buchungen erfasst sind, zeigt der Trend Einnahmen und Ausgaben je Monat."
+        />
+      ) : (
+        <>
+          {/* Monatstrend */}
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-900">Monatstrend</h2>
+              <div className="flex items-center gap-3 text-xs text-gray-500">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500" /> Einnahmen
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-2.5 w-2.5 rounded-sm bg-gray-400" /> Ausgaben
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2.5 rounded-2xl border border-gray-200 bg-white p-4">
+              {monate.map((m) => {
+                const saldo = m.einnahme - m.ausgabe
+                return (
+                  <div key={m.monat} className="flex items-center gap-3">
+                    <span className="w-8 shrink-0 text-xs font-medium text-gray-400">
+                      {MONATSKURZ[m.monat - 1]}
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-50">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                          style={{ width: `${(m.einnahme / maxWert) * 100}%` }}
+                        />
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-50">
+                        <div
+                          className="h-full rounded-full bg-gray-400 transition-all duration-500"
+                          style={{ width: `${(m.ausgabe / maxWert) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                    <span
+                      className={`w-24 shrink-0 text-right text-xs font-medium tabular-nums ${
+                        saldo > 0 ? "text-emerald-600" : saldo < 0 ? "text-rose-600" : "text-gray-300"
+                      }`}
+                    >
+                      {saldo !== 0 ? geldMitZeichen(saldo, w) : "–"}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              Ø Ausgaben pro aktivem Monat: {geld(oeAusgabe, w)}
+            </p>
+          </section>
+
+          {/* Ausgaben nach Kategorie (Jahr) */}
+          {kategorien.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-sm font-semibold text-gray-900">
+                Größte Ausgaben {jahr}
+              </h2>
+              <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+                {kategorien.map(({ kategorie, betrag }) => {
+                  const kat = kategorieVon("ausgabe", kategorie)
+                  const anteil = ausgaben > 0 ? Math.round((betrag / ausgaben) * 100) : 0
+                  return (
+                    <div key={kategorie}>
+                      <div className="mb-1 flex items-baseline justify-between text-sm">
+                        <span className="text-gray-700">
+                          {kat.emoji} {kat.label}
+                        </span>
+                        <span className="font-medium text-gray-900">
+                          {geld(betrag, w)}
+                          <span className="ml-1.5 text-xs text-gray-400">{anteil}%</span>
+                        </span>
+                      </div>
+                      <Balken anteil={maxKat > 0 ? (betrag / maxKat) * 100 : 0} farbe={kat.farbe} />
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      <button
+        onClick={() => onTab("transaktionen")}
+        className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
+      >
+        → Zu den Buchungen
+      </button>
     </div>
   )
 }

@@ -123,6 +123,20 @@ const MONATSNAMEN = [
   "Juli", "August", "September", "Oktober", "November", "Dezember",
 ]
 
+export const MONATSKURZ = [
+  "Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez",
+]
+
+// Jahr aus einem Datum „JJJJ-MM-TT".
+export function jahresSchluessel(datum) {
+  return (datum ?? "").slice(0, 4)
+}
+
+export function aktuellesJahr() {
+  return String(new Date().getFullYear())
+}
+
 // „2026-08" → „August 2026".
 export function monatLabel(schluessel) {
   const [jahr, monat] = (schluessel ?? "").split("-")
@@ -140,21 +154,52 @@ export function monatVerschieben(schluessel, schritt) {
 
 // ── Auswertungen ─────────────────────────────────────────────────────────────
 
-// Summe der Beträge einer Buchungsart in einem Monat.
-export function summeMonat(transaktionen, monat, art) {
+// Summe der Beträge einer Buchungsart in einem Zeitraum. Der Präfix wählt
+// den Zeitraum: „2026-08" = Monat, „2026" = ganzes Jahr.
+export function summeZeitraum(transaktionen, praefix, art) {
   return transaktionen
-    .filter((t) => t.art === art && monatsSchluessel(t.datum) === monat)
+    .filter((t) => t.art === art && (t.datum ?? "").startsWith(praefix))
     .reduce((s, t) => s + Number(t.betrag), 0)
 }
 
-// Ausgaben je Kategorie in einem Monat, absteigend sortiert.
-export function ausgabenNachKategorie(transaktionen, monat) {
+// Summe der Beträge einer Buchungsart in einem Monat („2026-08").
+export function summeMonat(transaktionen, monat, art) {
+  return summeZeitraum(transaktionen, monat, art)
+}
+
+// Ausgaben je Kategorie in einem Zeitraum (Monat oder Jahr), absteigend
+// sortiert. Präfix wie bei summeZeitraum.
+export function ausgabenNachKategorie(transaktionen, praefix) {
   const summen = new Map()
   for (const t of transaktionen) {
-    if (t.art !== "ausgabe" || monatsSchluessel(t.datum) !== monat) continue
+    if (t.art !== "ausgabe" || !(t.datum ?? "").startsWith(praefix)) continue
     summen.set(t.kategorie, (summen.get(t.kategorie) ?? 0) + Number(t.betrag))
   }
   return [...summen.entries()]
     .map(([kategorie, betrag]) => ({ kategorie, betrag }))
     .sort((a, b) => b.betrag - a.betrag)
+}
+
+// Ein-/Ausgaben je Monat eines Jahres (12 Einträge, Januar → Dezember).
+export function jahresMonate(transaktionen, jahr) {
+  const reihe = []
+  for (let m = 1; m <= 12; m++) {
+    const praefix = `${jahr}-${String(m).padStart(2, "0")}`
+    reihe.push({
+      monat: m,
+      einnahme: summeZeitraum(transaktionen, praefix, "einnahme"),
+      ausgabe: summeZeitraum(transaktionen, praefix, "ausgabe"),
+    })
+  }
+  return reihe
+}
+
+// Jahre, für die Buchungen existieren – plus das aktuelle Jahr –, absteigend.
+export function jahreMitDaten(transaktionen) {
+  const jahre = new Set([aktuellesJahr()])
+  for (const t of transaktionen) {
+    const j = jahresSchluessel(t.datum)
+    if (j) jahre.add(j)
+  }
+  return [...jahre].sort((a, b) => b.localeCompare(a))
 }
