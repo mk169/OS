@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { schreibeStore } from "../lib/useStored"
 import { FARBEN } from "../lib/farben"
+import { STIL_STANDARD } from "../lib/stil"
 
 // App-Profile: vordefinierte Konfigurationen für verschiedene Nutzungsszenarien
 export const PROFILE = [
@@ -52,6 +53,21 @@ export const PROFILE = [
     ),
     farbe: "gray",
     seiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
+  },
+  {
+    id: "lockedin",
+    name: "Locked In",
+    beschreibung: "Kompromisslose Disziplin. Ein Ziel: heute alles abhaken. Monochrom, ohne Ablenkung.",
+    icon: (
+      <>
+        <rect x="5" y="11" width="14" height="9" rx="2" />
+        <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+      </>
+    ),
+    farbe: "gray",
+    seiten: ["habits", "todos", "deepwork", "review"],
+    stil: "lockedin",
+    startseite: "habits",
   },
 ]
 
@@ -133,18 +149,21 @@ export default function Onboarding({ onFertig }) {
 
   function abschliessen() {
     const profil = gewaehltesProfil ?? PROFILE[3]
-    // Einstellungen speichern
+    // Einstellungen speichern. Ein Profil kann Startseite und Darstellungs-Stil
+    // vorgeben (z. B. „Locked In" → Habits im monochromen Disziplin-Modus).
     schreibeStore("einstellungen", {}, {
       onboardingAbgeschlossen: true,
       profil: profil.id,
       sichtbareSeiten: profil.seiten,
       appName: appName.trim() || "OS",
-      startseite: "dashboard",
+      startseite: profil.startseite ?? "dashboard",
       akzent: "indigo",
+      stil: profil.stil ?? STIL_STANDARD,
     })
     // Habit-Bereiche speichern
     schreibeStore("habitBereiche", STANDARD_BEREICHE, bereiche)
-    onFertig()
+    // Direkt auf der Startseite des Profils landen (z. B. Locked In → Habits).
+    onFertig(profil.startseite ?? "dashboard")
   }
 
   // ── Schritt 0: Willkommen ──────────────────────────────────────────────

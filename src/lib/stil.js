@@ -37,6 +37,12 @@ export const STILE = [
     beschreibung: "Ruhig, minimal, viel Weißraum",
     emoji: "📄",
   },
+  {
+    id: "lockedin",
+    name: "Locked In",
+    beschreibung: "Kompromisslos & monochrom – Disziplin im Fokus",
+    emoji: "🔒",
+  },
 ]
 
 export const STIL_STANDARD = "todo"

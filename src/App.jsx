@@ -3,6 +3,7 @@ import { schreibeStore, setzeCloudSession } from "./lib/useStored"
 import useStored from "./lib/useStored"
 import { supabase, cloudAktiv } from "./lib/supabase"
 import { wendeAkzentAn } from "./lib/akzent"
+import { normalisiereStil } from "./lib/stil"
 import Login from "./components/Login"
 import Dashboard from "./components/Dashboard"
 import KalenderSeite from "./components/KalenderSeite"
@@ -290,9 +291,10 @@ export default function App() {
   if (!einstellungen?.onboardingAbgeschlossen) {
     return (
       <Onboarding
-        onFertig={() =>
+        onFertig={(startseite) => {
           setEinstellungen((e) => ({ ...e, onboardingAbgeschlossen: true }))
-        }
+          if (startseite) navigiere(startseite)
+        }}
       />
     )
   }
@@ -315,9 +317,18 @@ export default function App() {
   const primaereNav = sichtbareNav.slice(0, PRIMAER_MAX)
   const weitereNav = sichtbareNav.slice(PRIMAER_MAX)
   const mobileKolonnen = primaereNav.length + 1
+  // Locked-In-Seite: die App-Hülle (Kopfzeile, Tab-Leiste, Hintergrund) zieht
+  // in den monochromen Look mit, damit der schwarze Disziplin-Screen nicht von
+  // hellem Chrome mit farbigem Akzent umrahmt wird.
+  const lockedInSeite =
+    normalisiereStil(einstellungen?.stil) === "lockedin" && seite === "habits"
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div
+      className={`min-h-screen ${
+        lockedInSeite ? "bg-black text-white" : "bg-gray-50 text-gray-900"
+      }`}
+    >
       {/* ── Desktop-Sidebar ─────────────────────────────────────── */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-800 bg-gray-900 px-3 py-5 md:flex">
         {/* Logo / App-Name */}
@@ -412,14 +423,22 @@ export default function App() {
 
       {/* ── Mobile-Kopfzeile ────────────────────────────────────── */}
       <header
-        className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur-md md:hidden"
+        className={`sticky top-0 z-20 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md md:hidden ${
+          lockedInSeite
+            ? "border-white/10 bg-black/90"
+            : "border-gray-200 bg-white/90"
+        }`}
         style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
       >
         <button
           onClick={() => navigiere("dashboard")}
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent-500 text-[11px] font-bold text-white">
+          <span
+            className={`flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-bold ${
+              lockedInSeite ? "bg-white text-black" : "bg-accent-500 text-white"
+            }`}
+          >
             {appName[0]?.toUpperCase() ?? "O"}
           </span>
           <span className="max-w-[120px] truncate">{appName}</span>
@@ -427,7 +446,11 @@ export default function App() {
         <button
           onClick={() => setSucheOffen(true)}
           title="Suchen"
-          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          className={`rounded-lg p-1.5 transition-colors ${
+            lockedInSeite
+              ? "text-white/50 hover:bg-white/10 hover:text-white"
+              : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          }`}
         >
           <NavIcon className="h-[18px] w-[18px]">
             <circle cx="11" cy="11" r="7" />
@@ -523,7 +546,9 @@ export default function App() {
 
       {/* ── Mobile Tab-Leiste ───────────────────────────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid border-t border-gray-200 bg-white/95 backdrop-blur md:hidden"
+        className={`fixed inset-x-0 bottom-0 z-30 grid border-t backdrop-blur md:hidden ${
+          lockedInSeite ? "border-white/10 bg-black/95" : "border-gray-200 bg-white/95"
+        }`}
         style={{
           paddingBottom: "env(safe-area-inset-bottom)",
           gridTemplateColumns: `repeat(${mobileKolonnen}, minmax(0, 1fr))`,
@@ -535,8 +560,12 @@ export default function App() {
             onClick={() => navigiere(item.key)}
             className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
               seite === item.key
-                ? "font-medium text-accent-600"
-                : "text-gray-400 hover:text-gray-700"
+                ? lockedInSeite
+                  ? "font-medium text-white"
+                  : "font-medium text-accent-600"
+                : lockedInSeite
+                  ? "text-white/40 hover:text-white/80"
+                  : "text-gray-400 hover:text-gray-700"
             }`}
           >
             <NavIcon className="h-5 w-5">{item.icon}</NavIcon>
@@ -550,8 +579,12 @@ export default function App() {
             weitereNav.some((n) => n.key === seite) ||
             seite === "review" ||
             seite === "einstellungen"
-              ? "font-medium text-accent-600"
-              : "text-gray-400 hover:text-gray-700"
+              ? lockedInSeite
+                ? "font-medium text-white"
+                : "font-medium text-accent-600"
+              : lockedInSeite
+                ? "text-white/40 hover:text-white/80"
+                : "text-gray-400 hover:text-gray-700"
           }`}
         >
           <NavIcon className="h-5 w-5">
