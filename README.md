@@ -1,4 +1,29 @@
-# React + Vite
+# OS
+
+## Geräte koppeln (iPhone ↔ Mac ↔ …)
+
+Die App synchronisiert deinen kompletten Zustand live zwischen allen Geräten,
+sobald du eingeloggt bist. Dafür wird Supabase einmalig eingerichtet:
+
+1. **Supabase-Projekt anlegen** auf [supabase.com](https://supabase.com) (kostenlos).
+2. **Datenbank einrichten:** Im Dashboard → *SQL Editor* den Inhalt von
+   [`supabase/schema.sql`](supabase/schema.sql) einfügen und *Run* klicken.
+   (Legt die Tabelle `app_state`, die Sicherheitsregeln und Realtime an.)
+3. **Zugangsdaten eintragen:** `.env.example` nach `.env.local` kopieren und
+   `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` aus *Project Settings → API*
+   einsetzen. Beim Deployment auf Vercel dieselben zwei Werte unter
+   *Settings → Environment Variables* hinterlegen.
+4. **Auf beiden Geräten mit demselben Account anmelden** (E-Mail + Passwort).
+   Beim ersten Mal einmal *Registrieren* und den Bestätigungs-Link in der
+   E-Mail anklicken – danach auf jedem weiteren Gerät nur noch *Anmelden*.
+
+Fertig: Was du auf dem Mac änderst, erscheint sofort auf dem iPhone – und
+umgekehrt. Ohne Supabase-Werte läuft die App weiter im lokalen Modus (kein
+Login, keine Cloud, nur auf diesem einen Gerät).
+
+---
+
+## React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
