@@ -991,6 +991,12 @@ export default function Einstellungen() {
           </button>
         </div>
       </Abschnitt>
+
+      {/* Sichtbarer Versions-Stempel: hilft zu erkennen, ob die neueste
+          Bereitstellung wirklich geladen ist. */}
+      <p className="mt-10 mb-2 text-center text-[11px] font-medium tracking-wide text-gray-300">
+        OS · Build 8 · Import-Fix (05.08.2026)
+      </p>
     </div>
   )
 }
