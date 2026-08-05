@@ -117,6 +117,43 @@ export async function setzeCloudSession(neuerUserId) {
     .subscribe()
 }
 
+// Liest alle lokal gespeicherten Einträge aus (key -> wert). Die internen
+// Supabase-Sitzungsschlüssel (Präfix "sb-") werden bewusst übersprungen –
+// sie enthalten Login-Token und gehören nicht in ein Daten-Backup.
+export function lokaleDaten() {
+  const daten = {}
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (!k || k.startsWith("sb-")) continue
+    const roh = localStorage.getItem(k)
+    try {
+      daten[k] = JSON.parse(roh)
+    } catch {
+      daten[k] = roh
+    }
+  }
+  return daten
+}
+
+// Sammelt WIRKLICH alle gespeicherten Daten zusammen: erst jede Zeile des
+// angemeldeten Nutzers aus der Cloud (auch Schlüssel, die auf diesem Gerät
+// noch nie geladen wurden), dann der lokale Stand obendrauf (er ist auf
+// diesem Gerät der frischeste). Ohne Login/Cloud kommen nur die lokalen
+// Daten zurück. Schlägt der Cloud-Abruf fehl, wird der Fehler geworfen –
+// der Aufrufer kann dann auf lokaleDaten() ausweichen.
+export async function holeAlleDaten() {
+  const ausCloud = {}
+  if (cloudAktiv && userId) {
+    const { data, error } = await supabase
+      .from("app_state")
+      .select("key, value")
+      .eq("user_id", userId)
+    if (error) throw new Error(error.message)
+    for (const zeile of data ?? []) ausCloud[zeile.key] = zeile.value
+  }
+  return { ...ausCloud, ...lokaleDaten() }
+}
+
 // Schreibt einen Store auch außerhalb von Komponenten (z.B. Migrationen).
 export function schreibeStore(key, fallback, neu) {
   const e = eintragFuer(key, fallback)
