@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react"
 import useStored from "../lib/useStored"
-import Seitenkopf from "./Seitenkopf"
 import { NotizBearbeiten } from "./ProjektNotizen"
 import WissensGraph from "./WissensGraph"
 import TagsAnsicht from "./TagsAnsicht"
@@ -35,22 +34,62 @@ const ANSICHTEN = [
   { key: "graph", label: "Graph" },
 ]
 
-function AnsichtToggle({ ansicht, setAnsicht }) {
+// Ansicht-Wechsler im Obsidian-Stil: die aktive Ansicht ist die Überschrift.
+// Ein Klick darauf öffnet ein ruhiges Textmenü zum Wechseln – kein Segmented-
+// Control, keine Icons, nur ein dezenter Pfeil als Hinweis auf das Menü.
+function AnsichtWechsler({ ansicht, onWechsel }) {
+  const [offen, setOffen] = useState(false)
+  const aktiv = ANSICHTEN.find((a) => a.key === ansicht) ?? ANSICHTEN[0]
   return (
-    <div className="flex max-w-full overflow-x-auto rounded-md border border-gray-200 p-0.5 text-xs">
-      {ANSICHTEN.map((a) => (
+    <div className="mb-8 border-b border-gray-200 pb-6">
+      <div className="relative inline-block">
         <button
-          key={a.key}
-          onClick={() => setAnsicht(a.key)}
-          className={`shrink-0 whitespace-nowrap rounded px-2.5 py-1 font-medium transition-colors ${
-            ansicht === a.key
-              ? "bg-gray-900 text-white"
-              : "text-gray-500 hover:text-gray-900"
-          }`}
+          onClick={() => setOffen((o) => !o)}
+          className="group flex items-center gap-2 text-[2rem] font-medium leading-tight text-gray-900"
         >
-          {a.label}
+          {aktiv.label}
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+            className={`h-5 w-5 transition-all ${
+              offen
+                ? "rotate-180 text-gray-500"
+                : "text-gray-300 group-hover:text-gray-500"
+            }`}
+          >
+            <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
-      ))}
+        {offen && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setOffen(false)}
+            />
+            <div className="absolute left-0 top-full z-20 mt-2 w-48 rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+              {ANSICHTEN.map((a) => (
+                <button
+                  key={a.key}
+                  onClick={() => {
+                    onWechsel(a.key)
+                    setOffen(false)
+                  }}
+                  className={`block w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                    a.key === ansicht
+                      ? "bg-gray-100 font-medium text-gray-900"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -75,10 +114,7 @@ export default function SammelnSeite({ onNavigate, startAnsicht = null }) {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
-      <Seitenkopf
-        titel="Sammeln"
-        aktion={<AnsichtToggle ansicht={ansicht} setAnsicht={waehleAnsicht} />}
-      />
+      <AnsichtWechsler ansicht={ansicht} onWechsel={waehleAnsicht} />
       {ansicht === "inbox" && <InboxAnsicht />}
       {ansicht === "wissen" && (
         <WissenAnsicht onNavigate={onNavigate} onTagKlick={oeffneTag} />
