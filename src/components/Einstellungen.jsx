@@ -388,10 +388,17 @@ export default function Einstellungen() {
 
   // ── Datensicherung ───────────────────────────────────────────────────────────
   const [exportLaeuft, setExportLaeuft] = useState(false)
+  // Vorbereitete Backup-Datei. Wir laden NICHT automatisch herunter, sondern
+  // zeigen einen echten Link/Knopf: Ein direkter Klick des Nutzers wird von
+  // keinem Browser blockiert (der automatische Download nach dem Cloud-Abruf
+  // wurde dagegen von Safari als "kein echter Klick" verworfen).
+  const [backup, setBackup] = useState(null) // { url, name, datei, eintraege, nurLokal }
 
-  async function datenExportieren() {
+  async function backupVorbereiten() {
     if (exportLaeuft) return
     setExportLaeuft(true)
+    if (backup?.url) URL.revokeObjectURL(backup.url)
+    setBackup(null)
     // Holt alle Daten – bevorzugt vollständig aus der Cloud (alle Geräte).
     // Klappt der Cloud-Abruf nicht, wird wenigstens der lokale Stand gesichert.
     let daten
@@ -414,48 +421,34 @@ export default function Einstellungen() {
       null,
       2
     )
-    const dateiname = `OS-Backup-${heute()}.json`
+    const name = `OS-Backup-${heute()}.json`
     const blob = new Blob([inhalt], { type: "application/json" })
-
-    // Am Handy (v. a. iPhone/Safari) funktioniert ein direkter Download oft
-    // nicht – die Datei verschwindet sofort wieder. Dort öffnen wir stattdessen
-    // den nativen Teilen-Dialog ("In Dateien sichern", AirDrop, Mail …).
-    const datei = new File([blob], dateiname, { type: "application/json" })
-    if (navigator.canShare && navigator.canShare({ files: [datei] })) {
-      try {
-        await navigator.share({ files: [datei], title: dateiname })
-        setExportLaeuft(false)
-        if (!nurLokal) zeigeSpeichert()
-        return
-      } catch (err) {
-        // Nutzer hat den Dialog abgebrochen -> nichts weiter tun.
-        if (err?.name === "AbortError") {
-          setExportLaeuft(false)
-          return
-        }
-        // Sonst unten auf den klassischen Download zurückfallen.
-      }
-    }
-
-    // Desktop / Fallback: klassischer Datei-Download. Die Freigabe der
-    // Blob-URL bewusst verzögern, damit der Download nicht abgebrochen wird.
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = dateiname
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1500)
+    setBackup({
+      url: URL.createObjectURL(blob),
+      name,
+      datei: new File([blob], name, { type: "application/json" }),
+      eintraege: Object.keys(daten).length,
+      nurLokal,
+    })
     setExportLaeuft(false)
-    if (nurLokal) {
-      window.alert(
-        "Hinweis: Die Cloud-Daten konnten nicht geladen werden. Gesichert wurde nur der Stand dieses Geräts."
-      )
-    } else {
-      zeigeSpeichert()
+  }
+
+  // Teilen-Dialog des Geräts (iPhone: "In Dateien sichern", AirDrop, Mail …).
+  // Läuft direkt im Klick des Nutzers, daher ohne Blockade.
+  async function backupTeilen() {
+    if (!backup) return
+    try {
+      await navigator.share({ files: [backup.datei], title: backup.name })
+    } catch {
+      /* Abbruch oder nicht unterstützt – der "Datei speichern"-Link bleibt. */
     }
   }
+
+  const kannTeilen =
+    backup != null &&
+    typeof navigator !== "undefined" &&
+    typeof navigator.canShare === "function" &&
+    navigator.canShare({ files: [backup.datei] })
 
   function importDateiGewaehlt(e) {
     const datei = e.target.files?.[0]
@@ -890,7 +883,7 @@ export default function Einstellungen() {
       >
         <div className="grid gap-2 sm:grid-cols-2">
           <button
-            onClick={datenExportieren}
+            onClick={backupVorbereiten}
             disabled={exportLaeuft}
             className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:border-gray-300 hover:bg-gray-50 disabled:opacity-60"
           >
@@ -899,7 +892,7 @@ export default function Einstellungen() {
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-gray-800">
-                {exportLaeuft ? "Wird exportiert…" : "Alles exportieren"}
+                {exportLaeuft ? "Wird vorbereitet…" : "Alles exportieren"}
               </span>
               <span className="block text-xs text-gray-400">
                 Sämtliche Daten als JSON – aus der Cloud &amp; von diesem Gerät
@@ -920,6 +913,48 @@ export default function Einstellungen() {
             </span>
           </button>
         </div>
+
+        {/* Vorbereitetes Backup: echter Speichern-Link (direkter Klick, wird
+            von keinem Browser blockiert). */}
+        {backup && (
+          <div className="mt-3 rounded-2xl border border-accent-200 bg-accent-50 p-4">
+            <p className="text-sm font-semibold text-gray-900">
+              Backup bereit — {backup.eintraege} Einträge
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {backup.nurLokal
+                ? "Nur dieses Gerät – die Cloud war nicht erreichbar."
+                : "Vollständig: aus der Cloud & von diesem Gerät."}{" "}
+              Zum Sichern antippen:
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={backup.url}
+                download={backup.name}
+                className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700"
+              >
+                <NavIcon className="h-4 w-4">
+                  <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                </NavIcon>
+                Datei speichern
+              </a>
+              {kannTeilen && (
+                <button
+                  onClick={backupTeilen}
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50"
+                >
+                  <NavIcon className="h-4 w-4">
+                    <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13" />
+                  </NavIcon>
+                  Teilen / In Dateien sichern
+                </button>
+              )}
+            </div>
+            <p className="mt-2 text-[11px] text-gray-400">
+              Tipp fürs iPhone: „Teilen" → „In Dateien sichern".
+            </p>
+          </div>
+        )}
         <input
           ref={dateiRef}
           type="file"
