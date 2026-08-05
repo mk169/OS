@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import useStored, { schreibeStore } from "../lib/useStored"
+import useStored, { schreibeStore, holeAlleDaten, lokaleDaten } from "../lib/useStored"
 import { FARBEN } from "../lib/farben"
 import { AKZENTE } from "../lib/akzent"
 import { STILE, STIL_STANDARD } from "../lib/stil"
@@ -387,19 +387,30 @@ export default function Einstellungen() {
   }
 
   // ── Datensicherung ───────────────────────────────────────────────────────────
-  function datenExportieren() {
-    const daten = {}
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)
-      const roh = localStorage.getItem(k)
-      try {
-        daten[k] = JSON.parse(roh)
-      } catch {
-        daten[k] = roh
-      }
+  const [exportLaeuft, setExportLaeuft] = useState(false)
+
+  async function datenExportieren() {
+    if (exportLaeuft) return
+    setExportLaeuft(true)
+    // Holt alle Daten – bevorzugt vollständig aus der Cloud (alle Geräte).
+    // Klappt der Cloud-Abruf nicht, wird wenigstens der lokale Stand gesichert.
+    let daten
+    let nurLokal = false
+    try {
+      daten = await holeAlleDaten()
+    } catch {
+      daten = lokaleDaten()
+      nurLokal = true
     }
     const inhalt = JSON.stringify(
-      { __app: "OS", __version: 1, exportiert: new Date().toISOString(), daten },
+      {
+        __app: "OS",
+        __version: 1,
+        exportiert: new Date().toISOString(),
+        quelle: nurLokal ? "lokal" : "vollstaendig",
+        eintraege: Object.keys(daten).length,
+        daten,
+      },
       null,
       2
     )
@@ -410,7 +421,14 @@ export default function Einstellungen() {
     a.download = `OS-Backup-${heute()}.json`
     a.click()
     URL.revokeObjectURL(url)
-    zeigeSpeichert()
+    setExportLaeuft(false)
+    if (nurLokal) {
+      window.alert(
+        "Hinweis: Die Cloud-Daten konnten nicht geladen werden. Gesichert wurde nur der Stand dieses Geräts."
+      )
+    } else {
+      zeigeSpeichert()
+    }
   }
 
   function importDateiGewaehlt(e) {
@@ -847,14 +865,19 @@ export default function Einstellungen() {
         <div className="grid gap-2 sm:grid-cols-2">
           <button
             onClick={datenExportieren}
-            className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:border-gray-300 hover:bg-gray-50"
+            disabled={exportLaeuft}
+            className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:border-gray-300 hover:bg-gray-50 disabled:opacity-60"
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-accent-500">
               <NavIcon><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></NavIcon>
             </span>
             <span className="min-w-0">
-              <span className="block text-sm font-semibold text-gray-800">Backup exportieren</span>
-              <span className="block text-xs text-gray-400">Als JSON-Datei speichern</span>
+              <span className="block text-sm font-semibold text-gray-800">
+                {exportLaeuft ? "Wird exportiert…" : "Alles exportieren"}
+              </span>
+              <span className="block text-xs text-gray-400">
+                Sämtliche Daten als JSON – aus der Cloud &amp; von diesem Gerät
+              </span>
             </span>
           </button>
 
