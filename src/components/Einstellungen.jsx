@@ -414,13 +414,39 @@ export default function Einstellungen() {
       null,
       2
     )
+    const dateiname = `OS-Backup-${heute()}.json`
     const blob = new Blob([inhalt], { type: "application/json" })
+
+    // Am Handy (v. a. iPhone/Safari) funktioniert ein direkter Download oft
+    // nicht – die Datei verschwindet sofort wieder. Dort öffnen wir stattdessen
+    // den nativen Teilen-Dialog ("In Dateien sichern", AirDrop, Mail …).
+    const datei = new File([blob], dateiname, { type: "application/json" })
+    if (navigator.canShare && navigator.canShare({ files: [datei] })) {
+      try {
+        await navigator.share({ files: [datei], title: dateiname })
+        setExportLaeuft(false)
+        if (!nurLokal) zeigeSpeichert()
+        return
+      } catch (err) {
+        // Nutzer hat den Dialog abgebrochen -> nichts weiter tun.
+        if (err?.name === "AbortError") {
+          setExportLaeuft(false)
+          return
+        }
+        // Sonst unten auf den klassischen Download zurückfallen.
+      }
+    }
+
+    // Desktop / Fallback: klassischer Datei-Download. Die Freigabe der
+    // Blob-URL bewusst verzögern, damit der Download nicht abgebrochen wird.
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `OS-Backup-${heute()}.json`
+    a.download = dateiname
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1500)
     setExportLaeuft(false)
     if (nurLokal) {
       window.alert(
