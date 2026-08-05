@@ -1,12 +1,10 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { NotizBearbeiten } from "./ProjektNotizen"
 import WissensGraph from "./WissensGraph"
 import TagsAnsicht from "./TagsAnsicht"
 import LernenGlobal from "./LernenGlobal"
 import { Suchfeld, SortMenu } from "./ListenControls"
-import { erkenneDatum, erkenneProjekt } from "../lib/erkennung"
-import { tageBis } from "../lib/datum"
 import { VORLAGEN } from "../lib/wissen"
 import { extrahiereWikilinks } from "../lib/wikilinks"
 
@@ -21,14 +19,14 @@ const WISSEN_SORT = [
 ]
 
 // Sammeln: der reibungslose Einfangpunkt für alles ("zweites Gehirn").
-// Inbox = schnell erfassen, später verarbeiten (GTD-Prinzip). Wissen =
-// projektfreie Referenz-Notizen mit "[[Titel]]"-Verlinkung zu anderem
-// Wissen/Projekten (siehe NotizBearbeiten). Graph = visuelle Übersicht
-// aller Verlinkungen.
+// Ordner = projektfreie Notizen in einer Ordnerstruktur, schnell erfassbar
+// und per "[[Titel]]" mit anderen Notizen und Projekten verknüpfbar (siehe
+// NotizBearbeiten). Die frühere getrennte „Inbox" ist hier aufgegangen –
+// beide erfüllten denselben Zweck. Graph = visuelle Übersicht aller
+// Verlinkungen.
 
 const ANSICHTEN = [
-  { key: "inbox", label: "Inbox" },
-  { key: "wissen", label: "Wissen" },
+  { key: "wissen", label: "Ordner" },
   { key: "tags", label: "Tags" },
   { key: "lernen", label: "Lernen" },
   { key: "graph", label: "Graph" },
@@ -96,7 +94,7 @@ function AnsichtWechsler({ ansicht, onWechsel }) {
 
 export default function SammelnSeite({ onNavigate, startAnsicht = null }) {
   const [ansicht, setAnsicht] = useState(() =>
-    ANSICHTEN.some((a) => a.key === startAnsicht) ? startAnsicht : "inbox"
+    ANSICHTEN.some((a) => a.key === startAnsicht) ? startAnsicht : "wissen"
   )
   // Vorgemerktes Schlagwort (z.B. per Klick auf einen Tag-Chip): beim Wechsel
   // in die Tags-Ansicht direkt geöffnet, bei manuellem Tab-Wechsel verworfen.
@@ -115,7 +113,6 @@ export default function SammelnSeite({ onNavigate, startAnsicht = null }) {
   return (
     <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
       <AnsichtWechsler ansicht={ansicht} onWechsel={waehleAnsicht} />
-      {ansicht === "inbox" && <InboxAnsicht />}
       {ansicht === "wissen" && (
         <WissenAnsicht onNavigate={onNavigate} onTagKlick={oeffneTag} />
       )}
@@ -130,192 +127,38 @@ export default function SammelnSeite({ onNavigate, startAnsicht = null }) {
   )
 }
 
-function InboxAnsicht() {
-  const [inbox, setInbox] = useStored("inbox", [])
-  const [todos, setTodos] = useStored("todos", [])
-  const [wissen, setWissen] = useStored("wissen", [])
-  const [projekte] = useStored("projekte", [])
-  const [text, setText] = useState("")
-  const [sort, setSort] = useStored("inboxSort", "neueste")
-
-  const sortiert = [...inbox].sort((a, b) =>
-    sort === "aelteste" ? a.id - b.id : b.id - a.id
-  )
-
-  function addInboxItem(e) {
-    e.preventDefault()
-    if (!text.trim()) return
-    setInbox([
-      ...inbox,
-      { id: Date.now(), text: text.trim(), erstelltAm: new Date().toISOString() },
-    ])
-    setText("")
-  }
-
-  function verarbeiteAlsTodo(item, projektId = null, datum = "") {
-    setTodos([
-      ...todos,
-      {
-        id: Date.now(),
-        text: item.text,
-        projektId: projektId ? Number(projektId) : null,
-        kursId: null,
-        dauer: null,
-        datum,
-        wichtig: false,
-        dringend: false,
-        erledigt: false,
-      },
-    ])
-    setInbox(inbox.filter((i) => i.id !== item.id))
-  }
-
-  function verarbeiteAlsNotiz(item) {
-    setWissen([...wissen, { id: Date.now(), titel: item.text, inhalt: "" }])
-    setInbox(inbox.filter((i) => i.id !== item.id))
-  }
-
-  function verwerfe(item) {
-    setInbox(inbox.filter((i) => i.id !== item.id))
-  }
-
-  return (
-    <div>
-      <form onSubmit={addInboxItem} className="flex gap-2">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Was auch immer dir gerade durch den Kopf geht…"
-          autoFocus
-          className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-        />
-        <button
-          type="submit"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-        >
-          Erfassen
-        </button>
-      </form>
-
-      {inbox.length === 0 ? (
-        <p className="mt-4 text-sm leading-relaxed text-gray-400">
-          Alles reingekippt, was dir durch den Kopf geht – Gedanken, Aufgaben,
-          Links. Später sortierst du jeden Eintrag mit einem Klick zu{" "}
-          <span className="font-medium text-gray-500">→ Todo</span> oder{" "}
-          <span className="font-medium text-gray-500">→ Wissen</span>.
-        </p>
-      ) : (
-        <>
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-gray-400">
-            {inbox.length} {inbox.length === 1 ? "Eintrag" : "Einträge"}
-          </span>
-          <SortMenu
-            wert={sort}
-            onChange={setSort}
-            optionen={[
-              { value: "neueste", label: "Neueste" },
-              { value: "aelteste", label: "Älteste" },
-            ]}
-          />
-        </div>
-        <ul className="mt-3 space-y-1.5">
-          {sortiert.map((item) => {
-            const erkanntesDatum = erkenneDatum(item.text)
-            const erkanntesProjekt = erkenneProjekt(item.text, projekte)
-            return (
-              <li
-                key={item.id}
-                className="group flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2"
-              >
-                <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
-                  {item.text}
-                </span>
-                {(erkanntesDatum || erkanntesProjekt) && (
-                  <div className="flex items-center gap-1.5">
-                    {erkanntesDatum && (
-                      <span
-                        title="Erkanntes Datum"
-                        className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500"
-                      >
-                        📅 {tageBis(erkanntesDatum)}
-                      </span>
-                    )}
-                    {erkanntesProjekt && (
-                      <span
-                        title="Erkanntes Projekt"
-                        className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500"
-                      >
-                        📁 {erkanntesProjekt.name}
-                      </span>
-                    )}
-                  </div>
-                )}
-                <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
-                  <button
-                    onClick={() =>
-                      verarbeiteAlsTodo(
-                        item,
-                        erkanntesProjekt?.id ?? null,
-                        erkanntesDatum ?? ""
-                      )
-                    }
-                    className="rounded-sm bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
-                  >
-                    → Todo
-                  </button>
-                  <select
-                    defaultValue={erkanntesProjekt ? String(erkanntesProjekt.id) : ""}
-                    onChange={(e) => {
-                      if (e.target.value)
-                        verarbeiteAlsTodo(item, e.target.value, erkanntesDatum ?? "")
-                    }}
-                    className="rounded-sm border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-600 outline-none"
-                  >
-                    <option value="">→ Projekt…</option>
-                    {projekte.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => verarbeiteAlsNotiz(item)}
-                    className="rounded-sm bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
-                  >
-                    → Wissen
-                  </button>
-                  <button
-                    onClick={() => verwerfe(item)}
-                    title="Verwerfen"
-                    className="px-1 text-gray-300 hover:text-red-500"
-                  >
-                    ×
-                  </button>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-        </>
-      )}
-    </div>
-  )
-}
-
 function WissenAnsicht({ onNavigate, onTagKlick }) {
   const [wissen, setWissen] = useStored("wissen", [])
   const [ordner, setOrdner] = useStored("wissenOrdner", [])
   const [projekte] = useStored("projekte", [])
   const [notizen] = useStored("notizen", [])
+  const [inbox, setInbox] = useStored("inbox", [])
   const [bearbeiteId, setBearbeiteId] = useState(null)
   const [suche, setSuche] = useState("")
+  const [schnell, setSchnell] = useState("")
   const [sort, setSort] = useStored("wissenSort", "bearbeitet")
   // Aktiver Ordner-Filter: "alle" | "angepinnt" | <ordnerId>.
   const [aktiverOrdner, setAktiverOrdner] = useState("alle")
   const [neuOffen, setNeuOffen] = useState(false)
   // Zuletzt neu angelegte Notiz: öffnet direkt im Schreib-Modus.
   const [frischId, setFrischId] = useState(null)
+
+  // Einmalige Migration: Einträge der früheren „Inbox" wandern als
+  // ordnerlose Notizen in die Wissensbasis (Inbox & Wissen sind vereint).
+  const migriert = useRef(false)
+  useEffect(() => {
+    if (migriert.current || inbox.length === 0) return
+    migriert.current = true
+    const uebernommen = inbox.map((i) => ({
+      id: i.id ?? Date.now(),
+      titel: i.text ?? "",
+      inhalt: "",
+      aktualisiertAm: i.id ?? Date.now(),
+      ordnerId: null,
+    }))
+    setWissen((w) => [...w, ...uebernommen])
+    setInbox([])
+  }, [inbox, setWissen, setInbox])
 
   const bearbeiteteNotiz = wissen.find((w) => w.id === bearbeiteId)
 
@@ -368,19 +211,41 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
     )
   }, [wissen, suche, sort, aktiverOrdner, ordner])
 
+  // Der Ordner, in dem neue Notizen landen (aktiver Filter, sonst „ohne").
+  const zielOrdner =
+    aktiverOrdner !== "alle" && aktiverOrdner !== "angepinnt"
+      ? aktiverOrdner
+      : null
+
   function erstelle(vorlage) {
     const neu = {
       id: Date.now(),
       titel: "",
       inhalt: vorlage.inhalt,
       aktualisiertAm: Date.now(),
-      ordnerId:
-        aktiverOrdner !== "alle" && aktiverOrdner !== "angepinnt"
-          ? aktiverOrdner
-          : null,
+      ordnerId: zielOrdner,
     }
     setWissen([...wissen, neu])
     setNeuOffen(false)
+    setBearbeiteId(neu.id)
+    setFrischId(neu.id)
+  }
+
+  // Schnell erfassen: Titel eintippen + Enter legt sofort eine Notiz im
+  // aktiven Ordner an und öffnet sie zum Weiterschreiben.
+  function erfasse(e) {
+    e.preventDefault()
+    const t = schnell.trim()
+    if (!t) return
+    const neu = {
+      id: Date.now(),
+      titel: t,
+      inhalt: "",
+      aktualisiertAm: Date.now(),
+      ordnerId: zielOrdner,
+    }
+    setWissen([...wissen, neu])
+    setSchnell("")
     setBearbeiteId(neu.id)
     setFrischId(neu.id)
   }
@@ -446,32 +311,38 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
 
   return (
     <div>
-      {/* Erstellen: ein Klick legt eine leere Notiz an; das Vorlagen-Menü
-          daneben gibt einem Eintrag bei Bedarf sofort Struktur. */}
-      <div className="relative flex flex-wrap items-center gap-2">
-        <div className="flex overflow-hidden rounded-md">
+      {/* Schnell erfassen: Titel eintippen + Enter legt sofort eine Notiz im
+          aktiven Ordner an. Das Vorlagen-Menü daneben gibt bei Bedarf Struktur. */}
+      <div className="relative flex items-center gap-2">
+        <form onSubmit={erfasse} className="flex min-w-0 flex-1 items-center gap-2">
+          <input
+            value={schnell}
+            onChange={(e) => setSchnell(e.target.value)}
+            placeholder="Neue Notiz – Titel eintippen und Enter…"
+            className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+          />
           <button
-            onClick={() => erstelle(LEER_VORLAGE)}
-            className="bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            type="submit"
+            className="shrink-0 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
           >
-            + Neue Notiz
+            Anlegen
           </button>
-          <button
-            onClick={() => setNeuOffen((o) => !o)}
-            title="Aus Vorlage anlegen"
-            aria-label="Aus Vorlage anlegen"
-            className="border-l border-white/20 bg-gray-900 px-2.5 py-2 text-sm text-white hover:bg-gray-700"
-          >
-            ▾
-          </button>
-        </div>
+        </form>
+        <button
+          onClick={() => setNeuOffen((o) => !o)}
+          title="Aus Vorlage anlegen"
+          aria-label="Aus Vorlage anlegen"
+          className="shrink-0 rounded-md border border-gray-200 px-2.5 py-2 text-sm text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900"
+        >
+          ▾
+        </button>
         {neuOffen && (
           <>
             <div
               className="fixed inset-0 z-10"
               onClick={() => setNeuOffen(false)}
             />
-            <div className="absolute left-0 top-full z-20 mt-1 w-60 rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+            <div className="absolute right-0 top-full z-20 mt-1 w-60 rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
               <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                 Vorlage wählen
               </p>
@@ -504,7 +375,7 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
 
       {wissen.length > 0 && (
         <div className="mt-3 flex items-center gap-2">
-          <Suchfeld wert={suche} onChange={setSuche} placeholder="Wissen durchsuchen…" />
+          <Suchfeld wert={suche} onChange={setSuche} placeholder="Notizen durchsuchen…" />
           <SortMenu wert={sort} onChange={setSort} optionen={WISSEN_SORT} />
         </div>
       )}
@@ -523,14 +394,15 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
 
       {wissen.length === 0 ? (
         <div className="mt-6 rounded-xl border border-dashed border-gray-200 px-6 py-12 text-center">
-          <p className="text-2xl">📚</p>
           <p className="mt-3 text-sm font-medium text-gray-700">
-            Deine Wissensbasis ist noch leer
+            Noch keine Notizen
           </p>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-gray-400">
-            Dauerhafte, projektfreie Notizen – Bücher, Ideen, Recherche. Verlinke
-            sie mit <span className="font-mono text-gray-500">[[Titel]]</span> und
-            ordne sie mit <span className="font-mono text-gray-500">#Schlagworten</span>.
+          <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-gray-400">
+            Projektfreie Notizen in einer Ordnerstruktur – Gedanken, Ideen,
+            Recherche. Verknüpfe sie per{" "}
+            <span className="font-mono text-gray-500">[[Titel]]</span> mit anderen
+            Notizen und Projekten und ordne sie mit{" "}
+            <span className="font-mono text-gray-500">#Schlagworten</span>.
           </p>
           <button
             onClick={() => erstelle(LEER_VORLAGE)}
