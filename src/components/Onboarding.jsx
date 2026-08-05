@@ -26,7 +26,7 @@ export const PROFILE = [
       <path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1 .4-1.8.8-2.4.3 1 .9 1.6 1.7 1.6-.8-2 .5-5 1-7.2Z" />
     ),
     farbe: "emerald",
-    seiten: ["dashboard", "habits", "todos", "kalender", "review"],
+    seiten: ["dashboard", "habits", "vitalitaet", "mentor", "todos", "kalender", "review"],
   },
   {
     id: "second-brain",
@@ -52,7 +52,7 @@ export const PROFILE = [
       </>
     ),
     farbe: "gray",
-    seiten: ["dashboard", "lockedin", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
+    seiten: ["dashboard", "lockedin", "mentor", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
   },
   {
     id: "lockedin",
