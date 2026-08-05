@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import useStored, { schreibeStore, holeAlleDaten, lokaleDaten } from "../lib/useStored"
+import useStored, { holeAlleDaten, lokaleDaten, importiereDaten } from "../lib/useStored"
 import { FARBEN } from "../lib/farben"
 import { AKZENTE } from "../lib/akzent"
 import { STILE, STIL_STANDARD } from "../lib/stil"
@@ -454,7 +454,7 @@ export default function Einstellungen() {
     const datei = e.target.files?.[0]
     if (!datei) return
     const leser = new FileReader()
-    leser.onload = () => {
+    leser.onload = async () => {
       let daten
       try {
         const geparst = JSON.parse(leser.result)
@@ -470,7 +470,18 @@ export default function Einstellungen() {
       const anzahl = Object.keys(daten).length
       if (!window.confirm(`Backup einspielen? ${anzahl} Einträge ersetzen deine aktuellen Daten. Das kann nicht rückgängig gemacht werden.`))
         return
-      for (const [k, v] of Object.entries(daten)) schreibeStore(k, null, v)
+      // Erst (abgewartet) lokal + in die Cloud schreiben, DANN neu laden –
+      // sonst überschreibt der alte Cloud-Stand den Import beim Neuladen.
+      try {
+        await importiereDaten(daten)
+      } catch (err) {
+        window.alert(
+          "Der Import konnte nicht in die Cloud gespeichert werden:\n" +
+            err.message +
+            "\n\nBitte prüfe deine Internetverbindung und versuche es erneut."
+        )
+        return
+      }
       window.location.reload()
     }
     leser.readAsText(datei)
