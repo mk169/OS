@@ -154,6 +154,38 @@ export async function holeAlleDaten() {
   return { ...ausCloud, ...lokaleDaten() }
 }
 
+// Spielt ein komplettes Backup ein: setzt jeden Schlüssel lokal + im Speicher
+// und lädt ihn – falls angemeldet – SOFORT in die Cloud (abgewartet, nicht
+// verzögert). Wichtig: sonst würde ein anschließendes Neuladen die frisch
+// importierten Daten wieder mit dem alten Cloud-Stand überschreiben.
+// Interne Login-Token (Präfix "sb-") werden übersprungen.
+export async function importiereDaten(daten) {
+  const eintraege = Object.entries(daten).filter(([k]) => k && !k.startsWith("sb-"))
+
+  for (const [key, wert] of eintraege) {
+    const e = eintragFuer(key)
+    e.wert = wert
+    e.geladen = true
+    localStorage.setItem(key, JSON.stringify(wert))
+    benachrichtige(e)
+  }
+
+  if (cloudAktiv && userId && eintraege.length > 0) {
+    const jetzt = new Date().toISOString()
+    const zeilen = eintraege.map(([key, wert]) => ({
+      user_id: userId,
+      key,
+      value: wert,
+      updated_at: jetzt,
+    }))
+    const { error } = await supabase
+      .from("app_state")
+      .upsert(zeilen, { onConflict: "user_id,key" })
+    if (error) throw new Error(error.message)
+  }
+  return eintraege.length
+}
+
 // Schreibt einen Store auch außerhalb von Komponenten (z.B. Migrationen).
 export function schreibeStore(key, fallback, neu) {
   const e = eintragFuer(key, fallback)
