@@ -1,4 +1,4 @@
-import { heute } from "./datum"
+import { heute, inTagen, tageBisZahl } from "./datum"
 
 // Ein Lernplan ist die Menge der Todos, die aus den Inhalten eines Projekts
 // erzeugt wurden (ProjektInhalte → „Lernplan erstellen"). Neu erzeugte
@@ -98,6 +98,75 @@ export function alleLernplaene(projekte, todos, ablage) {
     }
     return (a.name ?? "").localeCompare(b.name ?? "")
   })
+}
+
+// ── Plan erzeugen und umdatieren ────────────────────────────────────────────
+//
+// Dieselbe Verteil-Logik nutzen alle Stellen, an denen ein Plan entsteht oder
+// neu geordnet wird: der Inhalte-Bereich, der Lernbereich des Projekts und die
+// projektübergreifende Lern-Übersicht.
+
+const PRIO_GEWICHT = { Hoch: 0, Mittel: 1, Niedrig: 2 }
+
+export function prioGewicht(prioritaet) {
+  return PRIO_GEWICHT[prioritaet] ?? 1
+}
+
+// `anzahl` Termine gleichmäßig auf die verfügbare Zeit verteilen: bis zwei
+// Tage vor der Deadline (Puffer) oder – ohne Deadline – im Wochenrhythmus.
+// Der erste Termin liegt frühestens morgen.
+export function verteilteDaten(anzahl, deadline) {
+  if (anzahl <= 0) return []
+  const tage =
+    deadline && deadline > heute()
+      ? Math.max(1, tageBisZahl(deadline) - 2)
+      : anzahl * 7
+  return Array.from({ length: anzahl }, (_, i) =>
+    inTagen(Math.max(1, Math.round(((i + 1) * tage) / anzahl)))
+  )
+}
+
+// Schritte für alle noch nicht eingeplanten Inhalte eines Projekts. Mit
+// `nurIds` lässt sich ein einzelner Inhalt nachträglich einplanen.
+// Reihenfolge: hohe Priorität zuerst – so liegt das Wichtige vorn.
+export function erzeugeSchritte(projekt, ablage, todos, nurIds = null) {
+  const inhalte = ablage
+    .filter((e) => gehoertZu(e, projekt.id))
+    .filter((e) => !nurIds || nurIds.includes(e.id))
+    .sort((a, b) => prioGewicht(a.prioritaet) - prioGewicht(b.prioritaet))
+
+  const projektTodos = todos.filter((t) => gehoertZu(t, projekt.id))
+  const neu = inhalte.filter(
+    (thema) =>
+      !projektTodos.some(
+        (t) => t.inhaltId === thema.id || t.text === schrittText(thema.titel)
+      )
+  )
+  if (neu.length === 0) return []
+
+  const daten = verteilteDaten(neu.length, projekt.deadline)
+  const basisId = Date.now()
+  return neu.map((thema, i) => ({
+    id: basisId + i,
+    projektId: projekt.id,
+    // Markierung für die Lern-Übersicht: so bleiben die Schritte auch dann
+    // erkennbar, wenn ihr Text später geändert wird.
+    lernplan: true,
+    inhaltId: thema.id,
+    text: schrittText(thema.titel),
+    datum: daten[i],
+    wichtig: thema.prioritaet === "Hoch",
+    dringend: false,
+    erledigt: false,
+  }))
+}
+
+// Offene Schritte neu über die verbleibende Zeit verteilen (z.B. nachdem die
+// Deadline verschoben wurde oder etwas liegen geblieben ist). Erledigte
+// Schritte bleiben unangetastet; die bisherige Reihenfolge bleibt erhalten.
+export function neuVerteilt(offene, deadline) {
+  const daten = verteilteDaten(offene.length, deadline)
+  return offene.map((s, i) => ({ ...s, datum: daten[i] }))
 }
 
 // Kennzahlen über alle Lernpläne zusammen – für die Kopfzeile der Übersicht.

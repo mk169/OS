@@ -1,13 +1,19 @@
 import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
-import { alleLernplaene, lernplanSumme } from "../lib/lernplan"
+import {
+  alleLernplaene,
+  lernplanSumme,
+  erzeugeSchritte,
+  neuVerteilt,
+} from "../lib/lernplan"
 import { kartenNachProjekt } from "../lib/lernstatistik"
 import { tageBis, tageBisZahl } from "../lib/datum"
 
 // Übersicht über die Lernplattform: Was steht in welchem Projekt an?
 // Zwei Blöcke – die Lernpläne (aus den Inhalten erzeugte Schritte) und die
-// Karteikartenstapel. Beides projektübergreifend an einer Stelle, mit dem
-// direkten Sprung ins jeweilige Projekt.
+// Karteikartenstapel. Beides projektübergreifend an einer Stelle: Schritte
+// lassen sich hier abhaken und umdatieren, der Plan neu verteilen oder
+// ergänzen; jede Zeile verlinkt in den passenden Bereich des Projekts.
 
 // Kleiner Fortschrittsbalken; voll = grün, sonst Akzentfarbe.
 function Fortschritt({ anteil }) {
@@ -40,6 +46,19 @@ function SchrittDatum({ datum }) {
   )
 }
 
+// Dezenter Aktions-Knopf für die aufgeklappte Plan-Zeile.
+function Aktion({ onClick, titel, children }) {
+  return (
+    <button
+      onClick={onClick}
+      title={titel}
+      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900"
+    >
+      {children}
+    </button>
+  )
+}
+
 export function LernplaeneSektion({ onNavigate }) {
   const [projekte] = useStored("projekte", [])
   const [todos, setTodos] = useStored("todos", [])
@@ -56,14 +75,44 @@ export function LernplaeneSektion({ onNavigate }) {
     setTodos(todos.map((t) => (t.id === id ? { ...t, erledigt: true } : t)))
   }
 
+  function setzeDatum(id, datum) {
+    setTodos(todos.map((t) => (t.id === id ? { ...t, datum } : t)))
+  }
+
+  // Offene Schritte eines Plans neu über die verbleibende Zeit verteilen.
+  function verteileNeu(plan) {
+    const projekt = projekte.find((p) => p.id === plan.projektId)
+    if (!projekt || plan.offene.length === 0) return
+    const datumVon = new Map(
+      neuVerteilt(plan.offene, projekt.deadline).map((s) => [s.id, s.datum])
+    )
+    setTodos(
+      todos.map((t) =>
+        datumVon.has(t.id) ? { ...t, datum: datumVon.get(t.id) } : t
+      )
+    )
+  }
+
+  // Noch nicht eingeplante Inhalte eines Projekts nachtragen.
+  function ergaenze(plan) {
+    const projekt = projekte.find((p) => p.id === plan.projektId)
+    if (!projekt) return
+    const aufgaben = erzeugeSchritte(projekt, ablage, todos)
+    if (aufgaben.length > 0) setTodos([...todos, ...aufgaben])
+  }
+
+  const zumProjekt = (projektId, modul) =>
+    onNavigate?.("projekte", { projektId, modul })
+
   if (plaene.length === 0) {
     return (
       <div className="mt-4 rounded-2xl border border-dashed border-gray-200 px-6 py-10 text-center">
         <p className="text-sm font-medium text-gray-700">Noch kein Lernplan</p>
         <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-gray-400">
           Lege im Projekt unter <span className="text-gray-500">Inhalte</span>{" "}
-          deine Themen an und erzeuge daraus einen Lernplan – die Schritte
-          werden bis zur Deadline verteilt und erscheinen dann hier.
+          deine Themen an und erzeuge daraus im Bereich{" "}
+          <span className="text-gray-500">Lernen</span> einen Plan – die
+          Schritte werden bis zur Deadline verteilt und erscheinen dann hier.
         </p>
       </div>
     )
@@ -163,9 +212,16 @@ export function LernplaeneSektion({ onNavigate }) {
                           <span className="min-w-0 flex-1 truncate text-gray-700">
                             {s.text}
                           </span>
-                          <span className="shrink-0 text-xs">
+                          <span className="hidden shrink-0 text-xs sm:block">
                             <SchrittDatum datum={s.datum} />
                           </span>
+                          <input
+                            type="date"
+                            value={s.datum ?? ""}
+                            onChange={(e) => setzeDatum(s.id, e.target.value)}
+                            title="Schritt umdatieren"
+                            className="shrink-0 rounded-md border border-gray-200 px-1.5 py-0.5 text-xs text-gray-600 outline-none focus:border-gray-900"
+                          />
                         </li>
                       ))}
                     </ul>
@@ -175,25 +231,35 @@ export function LernplaeneSektion({ onNavigate }) {
                     </p>
                   )}
 
-                  <div className="mt-2 flex flex-wrap items-center gap-3 px-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2 px-2">
                     {p.offene.length > 8 && (
-                      <span className="text-xs text-gray-400">
+                      <span className="mr-1 text-xs text-gray-400">
                         + {p.offene.length - 8} weitere
                       </span>
                     )}
-                    {p.ohneSchritt > 0 && (
-                      <span className="text-xs text-gray-400">
-                        {p.ohneSchritt}{" "}
-                        {p.ohneSchritt === 1 ? "Inhalt" : "Inhalte"} noch ohne
-                        Schritt
-                      </span>
+                    {p.offene.length > 0 && (
+                      <Aktion
+                        onClick={() => verteileNeu(p)}
+                        titel="Offene Schritte gleichmäßig über die verbleibende Zeit verteilen"
+                      >
+                        Neu verteilen
+                      </Aktion>
                     )}
-                    <button
-                      onClick={() => onNavigate?.("projekte", p.projektId)}
-                      className="text-xs font-medium text-gray-500 underline decoration-gray-300 underline-offset-2 hover:text-gray-900"
-                    >
-                      Zum Projekt →
-                    </button>
+                    {p.ohneSchritt > 0 && (
+                      <Aktion
+                        onClick={() => ergaenze(p)}
+                        titel="Noch nicht eingeplante Inhalte in den Plan aufnehmen"
+                      >
+                        + {p.ohneSchritt}{" "}
+                        {p.ohneSchritt === 1 ? "Inhalt" : "Inhalte"} einplanen
+                      </Aktion>
+                    )}
+                    <Aktion onClick={() => zumProjekt(p.projektId, "lernen")}>
+                      Lernbereich →
+                    </Aktion>
+                    <Aktion onClick={() => zumProjekt(p.projektId, "inhalte")}>
+                      Inhalte →
+                    </Aktion>
                   </div>
                 </div>
               )}
@@ -245,8 +311,13 @@ export function KartenSektion({ karten, onNavigate }) {
                 </span>
                 {s.projektId != null && (
                   <button
-                    onClick={() => onNavigate?.("projekte", s.projektId)}
-                    title="Zum Projekt"
+                    onClick={() =>
+                      onNavigate?.("projekte", {
+                        projektId: s.projektId,
+                        modul: "karten",
+                      })
+                    }
+                    title="Zum Kartenstapel des Projekts"
                     className="shrink-0 text-xs text-gray-300 transition-colors hover:text-gray-900"
                   >
                     →

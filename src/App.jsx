@@ -542,6 +542,7 @@ export default function App() {
             startNotizId={
               param && typeof param === "object" ? param.notizId : null
             }
+            startModul={param && typeof param === "object" ? param.modul : null}
             onNavigate={navigiere}
           />
         )}
