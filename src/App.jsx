@@ -12,6 +12,7 @@ import HabitsSeite from "./components/HabitsSeite"
 import LockedInSeite from "./components/LockedInSeite"
 import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
+import PeriodeSeite from "./components/PeriodeSeite"
 import FinanzenSeite from "./components/FinanzenSeite"
 import BerufSeite from "./components/BerufSeite"
 import LeisureSeite from "./components/LeisureSeite"
@@ -180,6 +181,16 @@ const NAV = [
     ),
   },
   {
+    key: "periode",
+    label: "Periode",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 6.5V12l3.5 2" />
+      </>
+    ),
+  },
+  {
     key: "finanzen",
     label: "Finanzen",
     icon: (
@@ -237,7 +248,7 @@ const NAV = [
 const EINSTELLUNGEN_STANDARD = {
   onboardingAbgeschlossen: false,
   profil: "komplett",
-  sichtbareSeiten: ["dashboard", "lockedin", "mentor", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
+  sichtbareSeiten: ["dashboard", "lockedin", "mentor", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "periode", "finanzen", "beruf", "leisure", "dailyops"],
   appName: "OS",
   startseite: "dashboard",
   akzent: "indigo",
@@ -511,6 +522,7 @@ export default function App() {
             onNavigate={navigiere}
           />
         )}
+        {seite === "periode" && <PeriodeSeite onNavigate={navigiere} />}
         {seite === "finanzen" && <FinanzenSeite />}
         {seite === "beruf" && <BerufSeite />}
         {seite === "leisure" && <LeisureSeite />}

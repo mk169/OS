@@ -227,6 +227,77 @@ export function phasenZeitstrahl(zyklus) {
   return { segmente }
 }
 
+// ── Wochenziele ────────────────────────────────────────────────────────────
+//
+// Eine Periode zerfällt in Kalenderwochen (Montag–Sonntag). Je Woche gibt es
+// höchstens ein Wochenziel – der eine Satz, an dem diese Woche hängt – mit
+// Unterzielen zum Abhaken und Verknüpfungen zu Projekten, Periodenzielen und
+// Todos. Gespeichert am Zyklus:
+//   wochen: [ { start, text, unterziele: [{id,text,erledigt}],
+//               verknuepfungen: [{id, typ, ziel}] } ]
+// `start` ist der Montag der Woche ("JJJJ-MM-TT") und zugleich der Schlüssel.
+
+export function wochenZiele(zyklus) {
+  return Array.isArray(zyklus.wochen) ? zyklus.wochen : []
+}
+
+export function unterziele(woche) {
+  return Array.isArray(woche?.unterziele) ? woche.unterziele : []
+}
+
+export function verknuepfungen(woche) {
+  return Array.isArray(woche?.verknuepfungen) ? woche.verknuepfungen : []
+}
+
+export function wochenFortschritt(woche) {
+  const u = unterziele(woche)
+  return { erledigt: u.filter((x) => x.erledigt).length, gesamt: u.length }
+}
+
+// Montag der Woche, die `datum` ("JJJJ-MM-TT") enthält.
+export function montagKey(datum) {
+  const d = new Date(datum)
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return iso(d)
+}
+
+// Alle Wochen einer Periode, chronologisch: [{ nummer, start, ende }].
+// Start/Ende sind auf den Zeitraum der Periode beschnitten, damit die erste
+// und letzte Woche nicht über sie hinausragen.
+export function periodenWochen(zyklus) {
+  if (!zyklus?.start || !zyklus?.ende) return []
+  const wochen = []
+  let montag = montagKey(zyklus.start)
+  let nummer = 1
+  // Schutz gegen kaputte Datumsangaben (z.B. Ende vor Start).
+  while (montag <= zyklus.ende && wochen.length < 106) {
+    const sonntag = verschiebe(montag, 6)
+    wochen.push({
+      nummer,
+      start: montag,
+      ende: sonntag,
+      vonTag: montag < zyklus.start ? zyklus.start : montag,
+      bisTag: sonntag > zyklus.ende ? zyklus.ende : sonntag,
+    })
+    montag = verschiebe(montag, 7)
+    nummer += 1
+  }
+  return wochen
+}
+
+// Die Woche der Periode, in der `datum` liegt (Standard: heute) – oder null,
+// wenn das Datum außerhalb der Periode liegt.
+export function wocheAm(zyklus, datum = heute()) {
+  return periodenWochen(zyklus).find((w) => datum >= w.vonTag && datum <= w.bisTag) ?? null
+}
+
+// Kurzes Datumslabel „05.–11.08." für eine Woche.
+export function wochenLabel(woche) {
+  const f = (d) =>
+    new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })
+  return `${f(woche.vonTag)}–${f(woche.bisTag)}`
+}
+
 // Kurzer Text für die Restlaufzeit eines aktiven Zyklus.
 export function restText(tageUebrig) {
   if (tageUebrig <= 0) return "letzter Tag"
