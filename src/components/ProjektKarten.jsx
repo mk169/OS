@@ -93,7 +93,7 @@ function BildFeld({ bild, setBild, label }) {
   )
 }
 
-export default function ProjektKarten({ projekt }) {
+export default function ProjektKarten({ projekt, onModulWechsel }) {
   const [alleKarten, setAlleKarten] = useStored("karten", [])
   const [lernTag] = useStored("lernTag", {})
   const [limits, setLimits] = useStored("kartenLimits", {})
@@ -267,6 +267,13 @@ export default function ProjektKarten({ projekt }) {
             )}
           </p>
           <p className="text-xs text-gray-400">
+            <button
+              onClick={() => onModulWechsel?.("lernen")}
+              title="Lernplan und Karten dieses Projekts"
+              className="mr-1.5 underline decoration-gray-300 underline-offset-2 hover:text-gray-900"
+            >
+              Lernbereich →
+            </button>
             {karten.length === 0
               ? "Noch keine Karten."
               : verfuegbar > 0

@@ -1,7 +1,14 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
 import { bewerteKarte, istFaellig } from "../lib/spacedRepetition"
-import { kartenReife, faelligForecast } from "../lib/lernstatistik"
+import {
+  kartenReife,
+  faelligForecast,
+  lernVerlauf,
+  lernStreak,
+} from "../lib/lernstatistik"
+import { alleLernplaene, lernplanSumme } from "../lib/lernplan"
+import { LernplaeneSektion, KartenSektion } from "./LernUebersicht"
 import {
   protokolliereWiederholung,
   protokolliereKarte,
@@ -13,18 +20,23 @@ import {
 import { heute } from "../lib/datum"
 import { LernModus } from "./ProjektKarten"
 
-// Projektübergreifendes „Heute lernen": bündelt alle fälligen Karteikarten
-// aus sämtlichen Projekten in einer einzigen Session. Der eigentliche
-// Lern-Ablauf (Aufdecken, Bewerten, SM-2) wird aus ProjektKarten
-// wiederverwendet – hier geht es nur ums Sammeln über alle Projekte hinweg
-// und um die Übersicht davor.
-export default function LernenGlobal() {
+// Die Lern-Zentrale: bündelt alles Lernen an einer Stelle.
+//   Übersicht – was heute ansteht (Karten & Lernplan-Schritte), welche
+//               Lernpläne laufen und welche Kartenstapel es gibt.
+//   Statistik – Kartenreife, Fälligkeits-Prognose und der Lernverlauf.
+// Der eigentliche Lern-Ablauf (Aufdecken, Bewerten, SM-2) wird aus
+// ProjektKarten wiederverwendet – hier geht es ums Sammeln über alle
+// Projekte hinweg und um den Überblick davor.
+export default function LernenGlobal({ onNavigate }) {
   const [alleKarten, setAlleKarten] = useStored("karten", [])
   const [projekte] = useStored("projekte", [])
+  const [todos] = useStored("todos", [])
+  const [ablage] = useStored("ablage", [])
   const [protokoll] = useStored("lernprotokoll", {})
   const [lernTag] = useStored("lernTag", {})
   const [limits] = useStored("kartenLimits", {})
   const [lernModus, setLernModus] = useState(false)
+  const [tab, setTab] = useState("uebersicht")
 
   const faellig = alleKarten.filter(istFaellig)
   const kartenSchluessel = (k) => k.projektId ?? k.kursId ?? "ohne"
@@ -65,6 +77,13 @@ export default function LernenGlobal() {
   )
   const verfuegbar = tagesKarten.length
 
+  // Lernpläne nur für die Kopfzahlen – die Liste selbst rendert
+  // LernplaeneSektion mit eigenen Daten.
+  const planSumme = useMemo(
+    () => lernplanSumme(alleLernplaene(projekte, todos, ablage)),
+    [projekte, todos, ablage]
+  )
+
   function bewerte(karte, stufe, sekunden = null) {
     const neu = bewerteKarte(karte, stufe, sekunden)
     setAlleKarten(
@@ -102,18 +121,108 @@ export default function LernenGlobal() {
     )
   }
 
+  const nichtsAngelegt = alleKarten.length === 0 && planSumme.schritte === 0
+
   return (
     <div className="mt-4">
-      {alleKarten.length === 0 ? null : verfuegbar === 0 ? (
+      <div className="flex items-center gap-1">
+        {[
+          { key: "uebersicht", label: "Übersicht" },
+          { key: "statistik", label: "Statistik" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              tab === t.key
+                ? "bg-gray-900 text-white"
+                : "border border-gray-200 text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "statistik" ? (
+        alleKarten.length > 0 ? (
+          <LernStatistik
+            karten={alleKarten}
+            heuteGelernt={heuteGelernt(protokoll)}
+            protokoll={protokoll}
+          />
+        ) : (
+          <p className="mt-6 text-center text-sm text-gray-400">
+            Noch keine Karteikarten – die Statistik füllt sich mit der ersten
+            Wiederholung.
+          </p>
+        )
+      ) : (
+        <>
+          <TagesKennzahlen
+            faellig={faellig.length}
+            heuteGelernt={heuteGesamt}
+            schritteHeute={planSumme.heuteFaellig + planSumme.ueberfaellig}
+            streak={lernStreak(protokoll)}
+          />
+          <LernSession
+            alleKarten={alleKarten}
+            verfuegbar={verfuegbar}
+            faellig={faellig.length}
+            heuteGesamt={heuteGesamt}
+            gruppen={gruppen}
+            onStart={starteLernen}
+          />
+          <LernplaeneSektion onNavigate={onNavigate} />
+          <KartenSektion karten={alleKarten} onNavigate={onNavigate} />
+          {nichtsAngelegt && (
+            <p className="mt-4 text-center text-xs text-gray-400">
+              Karteikarten legst du im Projekt unter „Karten" an, Lernpläne
+              unter „Inhalte".
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// Vier Kennzahlen für den Tag: was ansteht und was schon geschafft ist.
+function TagesKennzahlen({ faellig, heuteGelernt, schritteHeute, streak }) {
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <Kennzahl wert={faellig} label="Karten fällig" />
+      <Kennzahl wert={schritteHeute} label="Schritte offen" />
+      <Kennzahl wert={heuteGelernt} label="heute gelernt" />
+      <Kennzahl wert={streak} label={streak === 1 ? "Tag Serie" : "Tage Serie"} />
+    </div>
+  )
+}
+
+// Die Session-Karte: „Jetzt lernen" bzw. der Hinweis, dass für heute
+// Schluss ist – samt Aufschlüsselung der freigeschalteten Karten je Projekt.
+function LernSession({
+  alleKarten,
+  verfuegbar,
+  faellig,
+  heuteGesamt,
+  gruppen,
+  onStart,
+}) {
+  if (alleKarten.length === 0) return null
+
+  return (
+    <div className="mt-4">
+      {verfuegbar === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <p className="text-2xl">{faellig.length > 0 ? "✅" : "🎉"}</p>
+          <p className="text-2xl">{faellig > 0 ? "✅" : "🎉"}</p>
           <h3 className="mt-2 text-sm font-medium text-gray-900">
-            {faellig.length > 0
+            {faellig > 0
               ? "Tageslimit erreicht – morgen geht's weiter."
               : "Nichts fällig – alles wiederholt."}
           </h3>
           <p className="mt-1 text-xs text-gray-400">
-            {heuteGesamt} heute gelernt · {faellig.length} noch fällig
+            {heuteGesamt} heute gelernt · {faellig} noch fällig
           </p>
         </div>
       ) : (
@@ -125,12 +234,12 @@ export default function LernenGlobal() {
                 freigeschaltet
               </p>
               <p className="mt-0.5 text-sm text-gray-400">
-                projektübergreifend · {heuteGesamt} heute gelernt ·{" "}
-                {faellig.length} fällig
+                projektübergreifend · {heuteGesamt} heute gelernt · {faellig}{" "}
+                fällig
               </p>
             </div>
             <button
-              onClick={starteLernen}
+              onClick={onStart}
               className="rounded-md bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700"
             >
               Jetzt lernen
@@ -162,23 +271,19 @@ export default function LernenGlobal() {
           </div>
         </div>
       )}
-
-      {alleKarten.length > 0 && (
-        <LernStatistik
-          karten={alleKarten}
-          heuteGelernt={heuteGelernt(protokoll)}
-        />
-      )}
     </div>
   )
 }
 
-// Statistik-Panel im Stil von Anki: heute gelernt, Kartenreife und eine
-// Fälligkeits-Prognose für die nächsten sieben Tage.
-function LernStatistik({ karten, heuteGelernt }) {
+// Statistik-Panel im Stil von Anki: heute gelernt, Kartenreife, eine
+// Fälligkeits-Prognose für die nächsten sieben Tage und der Rückblick auf
+// die letzten zwei Wochen.
+function LernStatistik({ karten, heuteGelernt, protokoll }) {
   const reife = kartenReife(karten)
   const forecast = faelligForecast(karten, 7)
   const maxForecast = Math.max(1, ...forecast.map((f) => f.anzahl))
+  const verlauf = lernVerlauf(protokoll, 14)
+  const maxVerlauf = Math.max(1, ...verlauf.map((v) => v.anzahl))
   const prozent = (n) => (reife.gesamt ? (n / reife.gesamt) * 100 : 0)
   const wochentag = (key) =>
     new Date(key).toLocaleDateString("de-DE", { weekday: "short" }).slice(0, 2)
@@ -229,6 +334,36 @@ function LernStatistik({ karten, heuteGelernt }) {
               />
               <span className="text-[10px] text-gray-400">
                 {i === 0 ? "heute" : wochentag(f.key)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Rückblick */}
+      <div className="mt-5">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+          Gelernt – letzte 14 Tage
+        </p>
+        <div className="flex items-end gap-1" style={{ height: 60 }}>
+          {verlauf.map((v, i) => (
+            <div key={v.key} className="flex flex-1 flex-col items-center gap-1">
+              <div
+                title={`${v.key}: ${v.anzahl}`}
+                className={`w-full rounded-t ${
+                  v.anzahl === 0
+                    ? "bg-gray-100"
+                    : i === verlauf.length - 1
+                      ? "bg-gray-900"
+                      : "bg-gray-300"
+                }`}
+                style={{
+                  height: `${(v.anzahl / maxVerlauf) * 40}px`,
+                  minHeight: 3,
+                }}
+              />
+              <span className="text-[10px] text-gray-400">
+                {i === verlauf.length - 1 ? "heute" : wochentag(v.key)}
               </span>
             </div>
           ))}
