@@ -413,10 +413,13 @@ export default function ProjektDetail({
     aktivTyp === "seite"
       ? seitenTabs.find((s) => `seite:${s.id}` === aktiv) ?? null
       : null
+  // `tabModule` statt `sichtbareModule`: ein von außen angesprungener
+  // Gast-Bereich (z.B. „Lernen") ist ein gültiger Reiter, auch wenn er im
+  // Projekt nicht dauerhaft aktiviert ist.
   const gueltig =
     (aktivTyp === "seite" && aktiveTabSeite) ||
     aktiv === "areaprojekte" ||
-    (aktiv && sichtbareModule.some((m) => m.key === aktiv))
+    (aktiv && tabModule.some((m) => m.key === aktiv))
   if (!gueltig) {
     const ersatz =
       seitenTabs.length > 0
