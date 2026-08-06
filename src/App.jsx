@@ -129,6 +129,15 @@ function NavIcon({ children, className }) {
   )
 }
 
+// Zahnrad – führt zu den Einstellungen. Sie sind bewusst nur von der
+// Startseite aus erreichbar (oben rechts) und belegen keinen Nav-Platz.
+const ZAHNRAD = (
+  <>
+    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+  </>
+)
+
 // Hauptnavigation der App – als Sidebar (Desktop) und Tab-Leiste (Mobil).
 const NAV = [
   {
@@ -368,22 +377,26 @@ export default function App() {
       .map((key) => NAV_NACH_KEY[key]),
   ]
   // Auf dem Handy passen nur wenige Tabs auf die Leiste: die ersten vier
-  // Module als feste Tabs, der Rest wandert ins „Mehr"-Sheet – zusammen mit
-  // Wochenrückblick, Einstellungen und (falls Cloud) Abmelden.
+  // Module als feste Tabs, alles Weitere über den Ansichts-Wechsler.
   const PRIMAER_MAX = 4
   // Locked In belegt einen der wenigen Handy-Tabs nur, solange der Modus
-  // wirklich läuft. Ist er aus, bleibt der Bereich über „Mehr" erreichbar –
-  // die Leiste zeigt dann die Seiten, mit denen man täglich arbeitet.
+  // wirklich läuft. Ist er aus, bleibt der Bereich über den Wechsler
+  // erreichbar – die Leiste zeigt dann die Seiten für den Alltag.
   const tabNav = sichtbareNav.filter(
     (n) => n.key !== "lockedin" || lockedInLaeuft || seite === "lockedin"
   )
   const primaereNav = tabNav.slice(0, PRIMAER_MAX)
-  const weitereNav = sichtbareNav.filter((n) => !primaereNav.includes(n))
   const mobileKolonnen = primaereNav.length + 1
   // Gruppierung/Einklappen der Navigation (Einstellungen → Navigation).
   const navCfg = navConfig(einstellungen)
   const sidebarSektionen = navSektionen(sichtbareNav, navCfg)
-  const sheetSektionen = navSektionen(weitereNav, navCfg)
+  // Der Wechsler zeigt *alle* Ansichten, nicht nur die ohne eigenen Tab:
+  // So kommt man von jeder Seite aus mit zwei Tipps überall hin.
+  const sheetSektionen = navSektionen(sichtbareNav, navCfg)
+  // Titel der aktuellen Ansicht für den Wechsler in der Kopfzeile.
+  const aktuelleAnsicht =
+    NAV_NACH_KEY[seite]?.label ??
+    (seite === "review" ? "Wochenrückblick" : seite === "einstellungen" ? "Einstellungen" : appName)
   const istOffen = (sektion) =>
     sektionOffen(sektion, { offeneSektionen, aktiveSeite: seite, config: navCfg })
   const sektionUmschalten = (sektion) =>
@@ -484,34 +497,21 @@ export default function App() {
           })}
         </nav>
 
-        {/* Einstellungen + Abmelden */}
-        <div className="mt-2 border-t border-gray-800 pt-2">
-          <button
-            onClick={() => navigiere("einstellungen")}
-            className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-              seite === "einstellungen"
-                ? "bg-accent-500/20 font-medium text-accent-300"
-                : "text-gray-500 hover:bg-gray-800 hover:text-gray-300"
-            }`}
-          >
-            <NavIcon className="h-[16px] w-[16px] shrink-0">
-              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-            </NavIcon>
-            Einstellungen
-          </button>
-          {cloudAktiv && session && (
+        {/* Abmelden – die Einstellungen sitzen bewusst nur auf der Startseite
+            (Zahnrad oben rechts) und belegen hier keinen Navigations-Platz. */}
+        {cloudAktiv && session && (
+          <div className="mt-2 border-t border-gray-800 pt-2">
             <button
               onClick={abmelden}
-              className="mt-0.5 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-800 hover:text-gray-300"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-800 hover:text-gray-300"
             >
               <NavIcon className="h-[16px] w-[16px] shrink-0">
                 <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
               </NavIcon>
               Abmelden
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </aside>
 
       {/* ── Mobile-Kopfzeile ────────────────────────────────────── */}
@@ -523,9 +523,11 @@ export default function App() {
         }`}
         style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
       >
+        {/* Logo → Start */}
         <button
           onClick={() => navigiere("dashboard")}
-          className="flex items-center gap-2 text-sm font-semibold tracking-tight"
+          title={appName}
+          className="shrink-0"
         >
           <span
             className={`flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-bold ${
@@ -534,26 +536,76 @@ export default function App() {
           >
             {appName[0]?.toUpperCase() ?? "O"}
           </span>
-          <span className="max-w-[120px] truncate">{appName}</span>
         </button>
+
+        {/* Ansichts-Wechsler: zeigt, wo man ist, und führt überallhin */}
         <button
-          onClick={() => setSucheOffen(true)}
-          title="Suchen"
-          className={`rounded-lg p-1.5 transition-colors ${
-            lockedInSeite
-              ? "text-white/50 hover:bg-white/10 hover:text-white"
-              : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          onClick={() => setMehrOffen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={mehrOffen}
+          className={`mx-2 flex min-w-0 flex-1 items-center gap-1 rounded-lg px-2 py-1 text-sm font-semibold tracking-tight transition-colors ${
+            lockedInSeite ? "hover:bg-white/10" : "hover:bg-gray-100"
           }`}
         >
-          <NavIcon className="h-[18px] w-[18px]">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
+          <span className="truncate">{aktuelleAnsicht}</span>
+          <NavIcon
+            className={`h-4 w-4 shrink-0 transition-transform ${
+              mehrOffen ? "rotate-180" : ""
+            } ${lockedInSeite ? "text-white/40" : "text-gray-400"}`}
+          >
+            <path d="m6 9 6 6 6-6" />
           </NavIcon>
         </button>
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            onClick={() => setSucheOffen(true)}
+            title="Suchen"
+            className={`rounded-lg p-1.5 transition-colors ${
+              lockedInSeite
+                ? "text-white/50 hover:bg-white/10 hover:text-white"
+                : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            }`}
+          >
+            <NavIcon className="h-[18px] w-[18px]">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </NavIcon>
+          </button>
+          {/* Einstellungen: bewusst nur auf der Startseite */}
+          {seite === "dashboard" && (
+            <button
+              onClick={() => navigiere("einstellungen")}
+              title="Einstellungen"
+              className={`rounded-lg p-1.5 transition-colors ${
+                lockedInSeite
+                  ? "text-white/50 hover:bg-white/10 hover:text-white"
+                  : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              }`}
+            >
+              <NavIcon className="h-[18px] w-[18px]">{ZAHNRAD}</NavIcon>
+            </button>
+          )}
+        </div>
       </header>
 
       {/* ── Inhalt ──────────────────────────────────────────────── */}
-      <main className="pb-24 md:pb-10 md:pl-60">
+      <main className="relative pb-24 md:pb-10 md:pl-60">
+        {/* Einstellungen am Desktop: nur auf der Startseite, oben rechts.
+            Schwebt über dem Inhalt, damit jeder Dashboard-Stil sie bekommt. */}
+        {seite === "dashboard" && (
+          <button
+            onClick={() => navigiere("einstellungen")}
+            title="Einstellungen"
+            className={`absolute right-5 top-6 z-10 hidden rounded-lg p-2 transition-colors md:block ${
+              lockedInSeite
+                ? "text-white/40 hover:bg-white/10 hover:text-white"
+                : "text-gray-400 hover:bg-gray-200/70 hover:text-gray-700"
+            }`}
+          >
+            <NavIcon className="h-[18px] w-[18px]">{ZAHNRAD}</NavIcon>
+          </button>
+        )}
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
         {seite === "lockedin" && <LockedInSeite onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite />}
@@ -591,16 +643,19 @@ export default function App() {
         <Suche onNavigate={navigiere} onClose={() => setSucheOffen(false)} />
       )}
 
-      {/* ── Mobile „Mehr"-Sheet ─────────────────────────────────── */}
+      {/* ── Mobiler Ansichts-Wechsler ───────────────────────────── */}
       {mehrOffen && (
         <div className="fixed inset-0 z-40 md:hidden" onClick={() => setMehrOffen(false)}>
           <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-gray-200 bg-white p-3 shadow-2xl"
+            className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-3xl border-t border-gray-200 bg-white p-3 shadow-2xl"
             style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
           >
             <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-200" />
+            <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+              Ansicht wechseln
+            </p>
             {sheetSektionen.map((sektion) => {
               const offen = istOffen(sektion)
               return (
@@ -629,28 +684,17 @@ export default function App() {
                 </div>
               )
             })}
-            {navCfg.gruppiert && (
-              <p className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
-                App
-              </p>
-            )}
+            {/* Kein Einstellungen-Eintrag: die sitzen auf der Startseite
+                oben rechts. */}
+            <p className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+              App
+            </p>
             <div className="grid grid-cols-4 gap-1">
               <SheetKnopf
                 aktiv={seite === "review"}
                 onClick={() => navigiere("review")}
                 label="Rückblick"
                 icon={<path d="M4 7h16M4 12h16M4 17h10" />}
-              />
-              <SheetKnopf
-                aktiv={seite === "einstellungen"}
-                onClick={() => navigiere("einstellungen")}
-                label="Einstellungen"
-                icon={
-                  <>
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-                  </>
-                }
               />
               {cloudAktiv && session && (
                 <SheetKnopf
@@ -695,10 +739,7 @@ export default function App() {
         <button
           onClick={() => setMehrOffen(true)}
           className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
-            mehrOffen ||
-            weitereNav.some((n) => n.key === seite) ||
-            seite === "review" ||
-            seite === "einstellungen"
+            mehrOffen || !primaereNav.some((n) => n.key === seite)
               ? lockedInSeite
                 ? "font-medium text-white"
                 : "font-medium text-accent-600"
