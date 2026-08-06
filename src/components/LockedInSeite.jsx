@@ -21,6 +21,7 @@ const BEREICH_LISTE = [
 ]
 
 const STANDARD_CONFIG = {
+  aktiv: false,
   ziel: "",
   phaseStart: "",
   phaseEnde: "",
@@ -30,6 +31,16 @@ const STANDARD_CONFIG = {
 }
 
 const FOKUS_OPTIONEN = [30, 60, 90, 120]
+
+// Läuft der Locked-In-Modus gerade? Scharf geschaltet ist er mit einem Ziel;
+// er endet, wenn man ihn beendet oder die Phase abgelaufen ist. Danach ist er
+// nur noch ein Bereich unter „Mehr" – die Tab-Leiste bleibt frei.
+export function lockedInAktiv(config) {
+  if (!config?.ziel?.trim()) return false
+  if (config.aktiv === false) return false
+  if (config.phaseEnde && config.phaseEnde < heute()) return false
+  return true
+}
 
 function istAuftrag(t) {
   return t.wichtig || t.dringend || (t.datum && t.datum <= heute())
@@ -70,10 +81,14 @@ function LockedInSetup({ initial, habits, onSave, onCancel }) {
   }
   function speichern() {
     if (!ziel.trim()) return
+    // Eine bereits abgelaufene Phase würde den Modus sofort wieder
+    // ausschalten – dann lieber ohne Enddatum starten.
+    const phaseGueltig = phaseEnde && phaseEnde >= heute() ? phaseEnde : ""
     onSave({
+      aktiv: true,
       ziel: ziel.trim(),
-      phaseEnde,
-      phaseStart: initial.phaseStart || heute(),
+      phaseEnde: phaseGueltig,
+      phaseStart: heute(),
       fokusZiel,
       habitIds,
       bereiche,
@@ -325,6 +340,45 @@ export default function LockedInSeite({ onNavigate }) {
     )
   }
 
+  // Modus beendet oder Phase abgelaufen: das Ziel bleibt gespeichert, die
+  // Kommandozentrale bleibt aber aus, bis wieder scharf geschaltet wird.
+  if (!lockedInAktiv(config)) {
+    const abgelaufen = config.phaseEnde && config.phaseEnde < heuteKey
+    return (
+      <div className="min-h-screen bg-black px-5 py-6 text-white sm:px-6">
+        <div className="mx-auto max-w-md">
+          <span className="text-sm font-bold uppercase tracking-[0.4em] text-white">
+            Locked&nbsp;In
+          </span>
+          <h2 className="mt-8 text-3xl font-bold uppercase tracking-tight">
+            Modus aus.
+          </h2>
+          <p className="mt-3 text-sm text-white/50">
+            {abgelaufen
+              ? `Die Phase für „${config.ziel}" ist abgelaufen. Neue Phase setzen und wieder scharf schalten.`
+              : `Zuletzt: „${config.ziel}". Solange der Modus aus ist, steht Locked In nicht in der Tab-Leiste.`}
+          </p>
+          <div className="mt-8 flex flex-wrap gap-2">
+            {!abgelaufen && (
+              <button
+                onClick={() => setConfig({ ...config, aktiv: true })}
+                className="bg-white px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest text-black transition-colors hover:bg-white/80"
+              >
+                Scharf schalten
+              </button>
+            )}
+            <button
+              onClick={() => setSetupOffen(true)}
+              className="border border-white/20 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-widest text-white/60 transition-colors hover:border-white/50 hover:text-white"
+            >
+              Neu einstellen
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ── Disziplin: nur die für das Ziel relevanten Habits ──────
   const zielHabits =
     config.habitIds?.length > 0
@@ -386,14 +440,24 @@ export default function LockedInSeite({ onNavigate }) {
           <span className="text-sm font-bold uppercase tracking-[0.4em] text-white">
             Locked&nbsp;In
           </span>
-          <button
-            type="button"
-            onClick={() => setSetupOffen(true)}
-            title="Ziel & Bereiche einstellen"
-            className="rounded-md border border-white/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/60 transition-colors hover:border-white/50 hover:text-white"
-          >
-            Einstellen
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSetupOffen(true)}
+              title="Ziel & Bereiche einstellen"
+              className="rounded-md border border-white/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/60 transition-colors hover:border-white/50 hover:text-white"
+            >
+              Einstellen
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfig({ ...config, aktiv: false })}
+              title="Locked-In-Modus beenden"
+              className="rounded-md border border-white/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/60 transition-colors hover:border-white/50 hover:text-white"
+            >
+              Beenden
+            </button>
+          </div>
         </div>
 
         {/* Ziel + Phase */}

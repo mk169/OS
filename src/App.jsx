@@ -9,7 +9,7 @@ import Dashboard from "./components/Dashboard"
 import KalenderSeite from "./components/KalenderSeite"
 import TodosSeite from "./components/TodosSeite"
 import HabitsSeite from "./components/HabitsSeite"
-import LockedInSeite from "./components/LockedInSeite"
+import LockedInSeite, { lockedInAktiv } from "./components/LockedInSeite"
 import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
 import PeriodeSeite from "./components/PeriodeSeite"
@@ -261,6 +261,7 @@ const NAV_NACH_KEY = Object.fromEntries(NAV.map((n) => [n.key, n]))
 
 export default function App() {
   const [einstellungen, setEinstellungen] = useStored("einstellungen", EINSTELLUNGEN_STANDARD)
+  const [lockedInConfig] = useStored("lockedInConfig", {})
   // Startseite aus den Einstellungen – aber nur, wenn das Modul sichtbar ist.
   const [seite, setSeite] = useState(() => {
     const ziel = einstellungen?.startseite ?? "dashboard"
@@ -340,6 +341,7 @@ export default function App() {
   const sichtbareSeiten = einstellungen?.sichtbareSeiten ?? EINSTELLUNGEN_STANDARD.sichtbareSeiten
   // Navigation in der vom Nutzer gewählten Reihenfolge aufbauen. Dashboard ist
   // immer zuerst dabei; Review und Einstellungen kommen separat.
+  const lockedInLaeuft = lockedInAktiv(lockedInConfig)
   const sichtbareNav = [
     NAV_NACH_KEY.dashboard,
     ...sichtbareSeiten
@@ -350,8 +352,14 @@ export default function App() {
   // Module als feste Tabs, der Rest wandert ins „Mehr"-Sheet – zusammen mit
   // Wochenrückblick, Einstellungen und (falls Cloud) Abmelden.
   const PRIMAER_MAX = 4
-  const primaereNav = sichtbareNav.slice(0, PRIMAER_MAX)
-  const weitereNav = sichtbareNav.slice(PRIMAER_MAX)
+  // Locked In belegt einen der wenigen Handy-Tabs nur, solange der Modus
+  // wirklich läuft. Ist er aus, bleibt der Bereich über „Mehr" erreichbar –
+  // die Leiste zeigt dann die Seiten, mit denen man täglich arbeitet.
+  const tabNav = sichtbareNav.filter(
+    (n) => n.key !== "lockedin" || lockedInLaeuft || seite === "lockedin"
+  )
+  const primaereNav = tabNav.slice(0, PRIMAER_MAX)
+  const weitereNav = sichtbareNav.filter((n) => !primaereNav.includes(n))
   const mobileKolonnen = primaereNav.length + 1
   // Locked-In-Look: die App-Hülle (Kopfzeile, Tab-Leiste, Hintergrund) zieht in
   // den monochromen Look mit – auf der Locked-In-Kommandozentrale immer, auf der
