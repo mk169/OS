@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
+import LoeschKnopf from "./LoeschKnopf"
 import { heute } from "../lib/datum"
 import {
   bewerteKarte,
@@ -432,13 +433,11 @@ export default function ProjektKarten({ projekt }) {
                     ? "fällig"
                     : new Date(karte.faellig).toLocaleDateString("de-DE")}
                 </span>
-                <button
-                  onClick={() => removeKarte(karte.id)}
-                  title="Karte löschen"
-                  className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                >
-                  ×
-                </button>
+                <LoeschKnopf
+                  onLoeschen={() => removeKarte(karte.id)}
+                  titel="Karte löschen"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                />
               </li>
             )
           })}
@@ -537,13 +536,12 @@ function KarteBearbeiten({ karte, onSpeichern, onLoeschen, onSchliessen }) {
         )}
 
         <div className="flex items-center justify-between pt-1">
-          <button
-            type="button"
-            onClick={onLoeschen}
-            className="text-sm text-gray-400 transition-colors hover:text-red-500"
-          >
-            Löschen
-          </button>
+          <LoeschKnopf
+            onLoeschen={onLoeschen}
+            label="Löschen"
+            frageText="Karte löschen?"
+            klasse="text-sm text-gray-400"
+          />
           <button
             type="submit"
             className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700"

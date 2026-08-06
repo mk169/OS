@@ -6,6 +6,7 @@ import {
   Fortschrittsbalken,
   DeadlineChip,
 } from "./OrdnerSeite"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Block-Editor für Projekt-Seiten (Notion-artig): eine Seite ist eine
 // Liste von Blöcken. Blöcke: Text, Überschrift, Tabelle, Dashboard und
@@ -28,6 +29,9 @@ const BEREICH_LABELS = {
 const BASIS_BLOECKE = [
   { label: "Text", typ: "text", neu: () => ({ text: "" }) },
   { label: "Überschrift", typ: "ueberschrift", neu: () => ({ text: "" }) },
+  // Unterseite: legt beim Einfügen eine eigene Seite im Projekt an und
+  // verweist hier nur darauf (wie eine Seite in einem Textdokument).
+  { label: "Seite", typ: "seite", neu: () => ({}) },
   {
     label: "Tabelle",
     typ: "tabelle",
@@ -310,13 +314,11 @@ function ChecklisteBlock({ block, onChange }) {
               it.erledigt ? "text-gray-400 line-through" : "text-gray-800"
             }`}
           />
-          <button
-            onClick={() => removeItem(it.id)}
-            title="Punkt löschen"
-            className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover/z:opacity-100"
-          >
-            ×
-          </button>
+          <LoeschKnopf
+            onLoeschen={() => removeItem(it.id)}
+            titel="Punkt löschen"
+            klasse="text-gray-300 opacity-0 group-hover/z:opacity-100"
+          />
         </li>
       ))}
       <li>
@@ -443,11 +445,37 @@ function BereichBlock({ block, bereichRenderer, projekt }) {
   )
 }
 
-function MenuBtn({ onClick, children }) {
+// Verweis auf eine Unterseite – schlanke Zeile, Klick öffnet die Seite.
+function SeiteBlock({ block, seiten, onOeffnen }) {
+  const seite = seiten.find((s) => s.id === block.seiteId)
+  if (!seite) {
+    return (
+      <p className="px-1 py-1.5 text-sm text-gray-400">Seite nicht gefunden.</p>
+    )
+  }
+  const anzahl = (seite.bloecke ?? []).length
+  return (
+    <button
+      onClick={() => onOeffnen?.(seite.id)}
+      className="flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-gray-100/70"
+    >
+      <span className="text-gray-400">📄</span>
+      <span className="min-w-0 flex-1 truncate text-[15px] text-gray-800 underline decoration-gray-200 underline-offset-4">
+        {seite.titel?.trim() || "Unbenannte Seite"}
+      </span>
+      <span className="shrink-0 text-xs text-gray-300">
+        {anzahl === 0 ? "leer" : `${anzahl} Blöcke`}
+      </span>
+    </button>
+  )
+}
+
+// Ein Eintrag im Einfügen-Menü.
+function MenuEintrag({ onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 transition-colors hover:text-gray-900"
+      className="block w-full rounded-sm px-2 py-1.5 text-left text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
     >
       {children}
     </button>
@@ -463,16 +491,25 @@ export default function BlockEditor({
   bereichRenderer,
   projekt,
   ausschluss = [],
+  // Unterseiten des Projekts: Liste plus Rückrufe zum Anlegen, Öffnen und
+  // Löschen. Fehlen sie, verhält sich der Editor wie zuvor.
+  seiten = [],
+  onSeiteNeu,
+  onSeiteOeffnen,
+  onSeiteLoeschen,
 }) {
   const [menuOffen, setMenuOffen] = useState(false)
-  const [bereichMenu, setBereichMenu] = useState(false)
   // Slash-Menü: { blockId, query } | null, plus markierter Eintrag.
   const [slash, setSlash] = useState(null)
   const [slashIndex, setSlashIndex] = useState(0)
   // Index des gerade gezogenen Blocks (Drag&Drop-Reihenfolge).
   const [ziehIndex, setZiehIndex] = useState(null)
 
-  const optionen = optionenFuer(projekt, ausschluss)
+  // Ohne Seiten-Rückrufe (z.B. eingebettete Editoren) bleibt „Seite" außen vor.
+  const optionen = optionenFuer(projekt, ausschluss).filter(
+    (o) => o.typ !== "seite" || onSeiteNeu
+  )
+  const basisOptionen = optionen.filter((o) => o.typ !== "bereich")
   const bereichOptionen = optionen.filter((o) => o.typ === "bereich")
   const slashOptionen = slash
     ? optionen.filter((o) =>
@@ -482,7 +519,22 @@ export default function BlockEditor({
 
   const updateBlock = (id, neu) =>
     onChange(bloecke.map((b) => (b.id === id ? neu : b)))
-  const removeBlock = (id) => onChange(bloecke.filter((b) => b.id !== id))
+
+  // Neuer Block; ein Seiten-Block legt zugleich die Seite selbst an.
+  function neuerBlock(option) {
+    const block = { id: neueId(), typ: option.typ, ...option.neu() }
+    if (option.typ === "seite") block.seiteId = onSeiteNeu?.() ?? null
+    return block
+  }
+
+  // Mit dem Verweis verschwindet auch die Seite dahinter (samt ihrer
+  // eigenen Unterseiten) – sonst bliebe sie unerreichbar liegen. Erst
+  // vormerken, dann speichern: onChange schreibt beides in einem Zug.
+  function removeBlock(id) {
+    const block = bloecke.find((b) => b.id === id)
+    if (block?.typ === "seite" && block.seiteId) onSeiteLoeschen?.(block.seiteId)
+    onChange(bloecke.filter((b) => b.id !== id))
+  }
   function moveBlock(i, dir) {
     const j = i + dir
     if (j < 0 || j >= bloecke.length) return
@@ -499,9 +551,8 @@ export default function BlockEditor({
     setZiehIndex(null)
   }
   function addBlock(option) {
-    onChange([...bloecke, { id: neueId(), typ: option.typ, ...option.neu() }])
+    onChange([...bloecke, neuerBlock(option)])
     setMenuOffen(false)
-    setBereichMenu(false)
   }
 
   // Änderung in einem Text-/Überschrift-Block: speichern und prüfen, ob
@@ -525,14 +576,14 @@ export default function BlockEditor({
     setSlash(null)
     if (!block) return
     const rest = (block.text ?? "").replace(SLASH_ENTFERNEN, "")
-    const neuerBlock = { id: neueId(), typ: option.typ, ...option.neu() }
+    const eingefuegt = neuerBlock(option)
     if (rest.trim() === "") {
-      onChange(bloecke.map((b) => (b.id === block.id ? neuerBlock : b)))
+      onChange(bloecke.map((b) => (b.id === block.id ? eingefuegt : b)))
     } else {
       const neu = []
       for (const b of bloecke) {
         neu.push(b.id === block.id ? { ...b, text: rest } : b)
-        if (b.id === block.id) neu.push(neuerBlock)
+        if (b.id === block.id) neu.push(eingefuegt)
       }
       onChange(neu)
     }
@@ -593,13 +644,14 @@ export default function BlockEditor({
               >
                 ↓
               </button>
-              <button
-                onClick={() => removeBlock(block.id)}
-                title="Block löschen"
-                className="rounded-sm px-1 text-gray-300 hover:text-red-500"
-              >
-                ×
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => removeBlock(block.id)}
+                titel={block.typ === "seite" ? "Seite löschen" : "Block löschen"}
+                frageText={
+                  block.typ === "seite" ? "Seite löschen?" : "Block löschen?"
+                }
+                klasse="rounded-sm px-1 text-gray-300"
+              />
             </div>
 
             {block.typ === "text" && (
@@ -648,6 +700,13 @@ export default function BlockEditor({
                 onChange={(n) => updateBlock(block.id, n)}
               />
             )}
+            {block.typ === "seite" && (
+              <SeiteBlock
+                block={block}
+                seiten={seiten}
+                onOeffnen={onSeiteOeffnen}
+              />
+            )}
             {block.typ === "bereich" && (
               <BereichBlock
                 block={block}
@@ -685,49 +744,44 @@ export default function BlockEditor({
         ))}
       </div>
 
-      <div className="mt-3">
-        {!menuOffen ? (
-          <button
-            onClick={() => setMenuOffen(true)}
-            className="rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
-          >
-            + Block einfügen
-          </button>
-        ) : (
-          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-gray-200 p-2">
-            {BASIS_BLOECKE.map((o) => (
-              <MenuBtn key={o.typ} onClick={() => addBlock(o)}>
-                {o.label}
-              </MenuBtn>
-            ))}
-            <div className="relative">
-              <MenuBtn onClick={() => setBereichMenu(!bereichMenu)}>
-                Bereich einbetten ▾
-              </MenuBtn>
-              {bereichMenu && (
-                <div className="absolute left-0 z-20 mt-1 flex w-44 flex-col rounded-lg border border-gray-200 bg-white p-1 shadow-md">
+      {/* Einfügen: ein schmales Menü statt einer Knopfleiste – dieselbe
+          Liste, die auch das Slash-Menü zeigt. */}
+      <div className="relative mt-2">
+        <button
+          onClick={() => setMenuOffen(!menuOffen)}
+          className="rounded-md px-1 py-1 text-sm text-gray-300 transition-colors hover:text-gray-900"
+        >
+          + Einfügen <span className="text-xs">oder „/“ tippen</span>
+        </button>
+        {menuOffen && (
+          <>
+            <div
+              onClick={() => setMenuOffen(false)}
+              className="fixed inset-0 z-20"
+            />
+            <div className="absolute left-0 z-30 mt-1 max-h-80 w-56 overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-md">
+              <p className="px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                Blöcke
+              </p>
+              {basisOptionen.map((o) => (
+                <MenuEintrag key={o.typ} onClick={() => addBlock(o)}>
+                  {o.label}
+                </MenuEintrag>
+              ))}
+              {bereichOptionen.length > 0 && (
+                <>
+                  <p className="px-2 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                    Bereich einbetten
+                  </p>
                   {bereichOptionen.map((o) => (
-                    <button
-                      key={o.label}
-                      onClick={() => addBlock(o)}
-                      className="rounded-sm px-2 py-1.5 text-left text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                    >
+                    <MenuEintrag key={o.label} onClick={() => addBlock(o)}>
                       {o.label}
-                    </button>
+                    </MenuEintrag>
                   ))}
-                </div>
+                </>
               )}
             </div>
-            <button
-              onClick={() => {
-                setMenuOffen(false)
-                setBereichMenu(false)
-              }}
-              className="ml-auto px-1.5 py-1 text-xs text-gray-400 hover:text-gray-900"
-            >
-              Fertig
-            </button>
-          </div>
+          </>
         )}
       </div>
     </div>

@@ -2,12 +2,11 @@ import { useEffect, useState } from "react"
 import useStored from "../lib/useStored"
 import { tageBis, tageBisZahl } from "../lib/datum"
 import ProjektDetail, {
-  MODULE,
-  STANDARD_MODULE,
   STATUS_OPTIONEN,
   PRIORITAETEN,
 } from "./ProjektDetail"
 import Seitenkopf from "./Seitenkopf"
+import LoeschKnopf from "./LoeschKnopf"
 import { SortMenu, LayoutUmschalter } from "./ListenControls"
 
 const ORDNER_SORT = [
@@ -215,14 +214,9 @@ export default function OrdnerSeite({
     setOrdner(ordner.filter((o) => o.id !== id))
   }
 
+  // Rückfrage stellt der Löschknopf selbst (LoeschKnopf), daher hier ohne
+  // Systemdialog.
   function removeProjekt(id) {
-    const p = projekte.find((x) => x.id === id)
-    if (
-      !window.confirm(
-        `Projekt${p?.name ? ` „${p.name}"` : ""} wirklich löschen? Das kann nicht rückgängig gemacht werden.`
-      )
-    )
-      return
     setProjekte(projekte.filter((x) => x.id !== id))
   }
 
@@ -386,16 +380,11 @@ export default function OrdnerSeite({
                     </span>
                     <span className="shrink-0 text-xs text-gray-400">{anzahl}</span>
                     {anzahl === 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeOrdner(o.id)
-                        }}
-                        title="Leeren Ordner löschen"
-                        className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                      >
-                        ×
-                      </button>
+                      <LoeschKnopf
+                        onLoeschen={() => removeOrdner(o.id)}
+                        titel="Leeren Ordner löschen"
+                        klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                      />
                     )}
                   </li>
                 )
@@ -421,16 +410,11 @@ export default function OrdnerSeite({
                       {anzahl}
                     </span>
                     {anzahl === 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeOrdner(o.id)
-                        }}
-                        title="Leeren Ordner löschen"
-                        className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                      >
-                        ×
-                      </button>
+                      <LoeschKnopf
+                        onLoeschen={() => removeOrdner(o.id)}
+                        titel="Leeren Ordner löschen"
+                        klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                      />
                     )}
                   </div>
                 )
@@ -514,27 +498,23 @@ function AnsichtToggle({ ansicht, setAnsicht }) {
   )
 }
 
-// Wiederverwendbare Projektkarte (Ordner- und Alle-Ansicht).
+// Wiederverwendbare Projektkarte (Ordner- und Alle-Ansicht). Bewusst
+// karg: Name, Beschreibung, Fortschritt, Fälligkeit – die Bereichs-Tags
+// von früher haben die Übersicht nur zugestellt.
 function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
-  const tags = (p.module ?? STANDARD_MODULE)
-    .map((k) => MODULE.find((m) => m.key === k)?.label)
-    .filter(Boolean)
   return (
     <div
       onClick={() => onOeffnen(p.id)}
       className="group relative flex cursor-pointer flex-col rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-gray-400"
     >
       {onRemove && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove(p.id)
-          }}
-          title="Projekt löschen"
-          className="absolute right-3 top-3 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 max-md:opacity-100"
-        >
-          ×
-        </button>
+        <span className="absolute right-3 top-3">
+          <LoeschKnopf
+            onLoeschen={() => onRemove(p.id)}
+            titel="Projekt löschen"
+            klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
+          />
+        </span>
       )}
       <h3 className="truncate pr-4 text-sm font-medium text-gray-900">
         {p.name}
@@ -547,24 +527,11 @@ function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
       <div className="mt-4">
         <Fortschrittsbalken {...projektFortschrittWerte(p, todos)} />
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        {tags.slice(0, 2).map((label) => (
-          <span
-            key={label}
-            className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500"
-          >
-            {label}
-          </span>
-        ))}
-        {tags.length > 2 && (
-          <span className="text-[10px] text-gray-400">+{tags.length - 2}</span>
-        )}
-        {p.deadline && (
-          <span className="ml-auto">
-            <DeadlineChip datum={p.deadline} />
-          </span>
-        )}
-      </div>
+      {p.deadline && (
+        <div className="mt-3">
+          <DeadlineChip datum={p.deadline} />
+        </div>
+      )}
     </div>
   )
 }
@@ -584,16 +551,11 @@ function ProjektZeile({ p, todos, onOeffnen, onRemove }) {
       </div>
       {p.deadline && <DeadlineChip datum={p.deadline} />}
       {onRemove && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove(p.id)
-          }}
-          title="Projekt löschen"
-          className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 max-md:opacity-100"
-        >
-          ×
-        </button>
+        <LoeschKnopf
+          onLoeschen={() => onRemove(p.id)}
+          titel="Projekt löschen"
+          klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
+        />
       )}
     </li>
   )
@@ -898,13 +860,12 @@ function ArchivAnsicht({ archivierte, projekte, setProjekte, onOeffnen }) {
               >
                 Wiederherstellen
               </button>
-              <button
-                onClick={() => loeschen(p.id)}
-                title="Endgültig löschen"
-                className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
-              >
-                ×
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => loeschen(p.id)}
+                titel="Endgültig löschen"
+                frageText="Endgültig löschen?"
+                klasse="text-gray-300"
+              />
             </li>
           ))}
         </ul>

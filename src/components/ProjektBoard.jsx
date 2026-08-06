@@ -1,5 +1,6 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Eigenständiges Board pro Projekt: Ideen/Aufgaben als Karten, die per
 // Drag&Drop zwischen Inbox / In Arbeit / Fertig wandern. Eigene
@@ -92,16 +93,11 @@ export default function ProjektBoard({ projekt }) {
                       <span className="min-w-0 flex-1 text-sm text-gray-900">
                         {k.titel}
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeKarte(k.id)
-                        }}
-                        title="Karte löschen"
-                        className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                      >
-                        ×
-                      </button>
+                      <LoeschKnopf
+                        onLoeschen={() => removeKarte(k.id)}
+                        titel="Karte löschen"
+                        klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                      />
                     </div>
                     {offen && (
                       <textarea

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import { faelltAuf } from "../lib/wiederholung"
@@ -11,6 +11,7 @@ import ProjektArtikel from "./ProjektArtikel"
 import ProjektKarten from "./ProjektKarten"
 import ProjektBoard from "./ProjektBoard"
 import BlockEditor, { bloeckeVon } from "./BlockEditor"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
 // jederzeit über „Bereiche anpassen“) wählbar – so wird aus demselben
@@ -110,6 +111,13 @@ export default function ProjektDetail({
   const module = projekt.module ?? STANDARD_MODULE
   const eigene = projekt.eigeneModule ?? []
   const [neuerBereichName, setNeuerBereichName] = useState("")
+  // Unterseiten des Projekts (wie Seiten in einem Textdokument): liegen
+  // flach in projekt.seiten, die Verschachtelung ergibt sich aus den
+  // „seite"-Blöcken, die auf sie zeigen.
+  const seiten = projekt.seiten ?? []
+  const [offeneSeiteId, setOffeneSeiteId] = useState(null)
+  // Vorgemerkte Seiten-Änderungen (siehe „Unterseiten" weiter unten).
+  const vorgemerkt = useRef({ neu: [], weg: [] })
 
   // Ordnerpfad als Eyebrow – zeigt, wo das Projekt liegt. Läuft von der
   // Projekt-Zuordnung über parentId nach oben (wie in OrdnerSeite).
@@ -215,11 +223,150 @@ export default function ProjektDetail({
         <EigenerModul
           projekt={projekt}
           modulKey={key}
-          onUpdate={onUpdate}
+          onBloecke={speichereEigenenBereich}
           bereichRenderer={bereichRenderer}
+          seitenProps={seitenProps}
         />
       )
     return null
+  }
+
+  // --- Unterseiten -------------------------------------------------------
+  //
+  // Anlegen und Löschen einer Seite fallen immer zusammen mit einer
+  // Änderung an der Blockliste, die sie einbindet. Beides in getrennten
+  // onUpdate-Aufrufen zu schreiben würde sich gegenseitig überschreiben
+  // (beide gehen vom selben, noch alten `projekt` aus). Darum merken sich
+  // seiteNeu/seiteLoeschen ihre Änderung nur vor; geschrieben wird sie
+  // zusammen mit den Blöcken im direkt folgenden Speichern.
+
+  function seiteNeu() {
+    const id = Date.now() + Math.floor(Math.random() * 1000)
+    vorgemerkt.current.neu.push({ id, titel: "", bloecke: [] })
+    return id
+  }
+
+  function seiteLoeschen(id) {
+    vorgemerkt.current.weg.push(id)
+  }
+
+  // Seitenliste inklusive der vorgemerkten Änderungen. Gelöscht wird eine
+  // Seite mitsamt den Seiten, die nur von ihr aus erreichbar sind – sonst
+  // blieben sie ohne Verweis im Projekt zurück.
+  function seitenStand() {
+    const { neu, weg } = vorgemerkt.current
+    vorgemerkt.current = { neu: [], weg: [] }
+    let liste = neu.length > 0 ? [...seiten, ...neu] : seiten
+    if (weg.length > 0) {
+      const raus = new Set()
+      const sammle = (sid) => {
+        if (raus.has(sid)) return
+        raus.add(sid)
+        const s = liste.find((x) => x.id === sid)
+        for (const b of s?.bloecke ?? []) {
+          if (b.typ === "seite" && b.seiteId) sammle(b.seiteId)
+        }
+      }
+      weg.forEach(sammle)
+      liste = liste.filter((s) => !raus.has(s.id))
+      if (offeneSeiteId != null && raus.has(offeneSeiteId)) {
+        setOffeneSeiteId(null)
+      }
+    }
+    return liste
+  }
+
+  function speichereSeitenBloecke(id, bloecke) {
+    onUpdate({
+      ...projekt,
+      seiten: seitenStand().map((s) => (s.id === id ? { ...s, bloecke } : s)),
+    })
+  }
+
+  function speichereSeitenTitel(id, titel) {
+    onUpdate({
+      ...projekt,
+      seiten: seitenStand().map((s) => (s.id === id ? { ...s, titel } : s)),
+    })
+  }
+
+  function speichereUebersicht(bloecke) {
+    onUpdate({ ...projekt, bloecke, seiten: seitenStand() })
+  }
+
+  function speichereEigenenBereich(modulKey, bloecke) {
+    onUpdate({
+      ...projekt,
+      eigeneModule: eigene.map((m) =>
+        m.key === modulKey ? { ...m, bloecke } : m
+      ),
+      seiten: seitenStand(),
+    })
+  }
+
+  const seitenProps = {
+    seiten,
+    onSeiteNeu: seiteNeu,
+    onSeiteOeffnen: setOffeneSeiteId,
+    onSeiteLoeschen: seiteLoeschen,
+  }
+
+  const offeneSeite = seiten.find((s) => s.id === offeneSeiteId)
+  if (offeneSeite) {
+    // Pfad zur Seite über die Blöcke der Elternseiten (Schutz gegen Zyklen).
+    const pfad = []
+    let zeiger = offeneSeite
+    const gesehen = new Set()
+    while (zeiger && !gesehen.has(zeiger.id)) {
+      gesehen.add(zeiger.id)
+      pfad.unshift(zeiger)
+      zeiger = seiten.find((s) =>
+        (s.bloecke ?? []).some(
+          (b) => b.typ === "seite" && b.seiteId === zeiger.id
+        )
+      )
+    }
+
+    return (
+      <div className="mx-auto flex min-h-[calc(100vh-3.25rem)] w-full max-w-3xl flex-col px-4 pb-10 pt-6 sm:px-6">
+        <nav className="flex flex-wrap items-center gap-1 text-xs text-gray-400">
+          <button
+            onClick={() => setOffeneSeiteId(null)}
+            className="rounded-md px-1 py-0.5 hover:bg-gray-100 hover:text-gray-900"
+          >
+            ‹ {projekt.name}
+          </button>
+          {pfad.slice(0, -1).map((s) => (
+            <span key={s.id} className="flex items-center gap-1">
+              <span>/</span>
+              <button
+                onClick={() => setOffeneSeiteId(s.id)}
+                className="rounded-md px-1 py-0.5 hover:bg-gray-100 hover:text-gray-900"
+              >
+                {s.titel?.trim() || "Unbenannte Seite"}
+              </button>
+            </span>
+          ))}
+        </nav>
+
+        <input
+          value={offeneSeite.titel ?? ""}
+          onChange={(e) => speichereSeitenTitel(offeneSeite.id, e.target.value)}
+          placeholder="Unbenannte Seite"
+          className="mt-3 w-full border-none bg-transparent text-3xl font-medium text-gray-900 outline-none placeholder:text-gray-300"
+        />
+
+        <div className="mt-6 flex flex-1 flex-col">
+          <BlockEditor
+            bloecke={offeneSeite.bloecke ?? []}
+            onChange={(bloecke) => speichereSeitenBloecke(offeneSeite.id, bloecke)}
+            bereichRenderer={bereichRenderer}
+            projekt={projekt}
+            {...seitenProps}
+          />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -408,13 +555,12 @@ export default function ProjektDetail({
                         {m.label}
                       </button>
                       {m.key.startsWith("eigen-") && (
-                        <button
-                          onClick={() => removeEigenerBereich(m.key)}
-                          title="Bereich endgültig löschen"
-                          className="ml-1 rounded-sm px-1 text-gray-400 hover:text-red-400"
-                        >
-                          ×
-                        </button>
+                        <LoeschKnopf
+                          onLoeschen={() => removeEigenerBereich(m.key)}
+                          titel="Bereich endgültig löschen"
+                          frageText="Bereich löschen?"
+                          klasse="ml-1 rounded-sm px-1 text-gray-400"
+                        />
                       )}
                     </span>
                   ))}
@@ -485,8 +631,9 @@ export default function ProjektDetail({
         {aktiv === "uebersicht" ? (
           <UebersichtModul
             projekt={projekt}
-            onUpdate={onUpdate}
+            onBloecke={speichereUebersicht}
             bereichRenderer={bereichRenderer}
+            seitenProps={seitenProps}
           />
         ) : (
           bereichRenderer(aktiv)
@@ -522,32 +669,34 @@ function Dokument({ children }) {
 
 // Hauptseite des Projekts als Block-Editor: Text/Überschrift, Tabellen,
 // Dashboards und eingebettete Bereiche. Alter Freitext wird migriert.
-function UebersichtModul({ projekt, onUpdate, bereichRenderer }) {
+function UebersichtModul({ projekt, onBloecke, bereichRenderer, seitenProps }) {
   return (
     <Dokument>
       <BlockEditor
         bloecke={bloeckeVon(projekt, "uebersicht")}
-        onChange={(bloecke) => onUpdate({ ...projekt, bloecke })}
+        onChange={onBloecke}
         bereichRenderer={bereichRenderer}
         projekt={projekt}
+        {...seitenProps}
       />
     </Dokument>
   )
 }
 
 // Eigener Bereich – ebenfalls eine Block-Seite.
-function EigenerModul({ projekt, modulKey, onUpdate, bereichRenderer }) {
+function EigenerModul({
+  projekt,
+  modulKey,
+  onBloecke,
+  bereichRenderer,
+  seitenProps,
+}) {
   const eigene = projekt.eigeneModule ?? []
   const modul = eigene.find((m) => m.key === modulKey)
   if (!modul) return null
 
   function setBloecke(bloecke) {
-    onUpdate({
-      ...projekt,
-      eigeneModule: eigene.map((m) =>
-        m.key === modulKey ? { ...m, bloecke } : m
-      ),
-    })
+    onBloecke(modulKey, bloecke)
   }
 
   return (
@@ -561,6 +710,7 @@ function EigenerModul({ projekt, modulKey, onUpdate, bereichRenderer }) {
         bereichRenderer={bereichRenderer}
         projekt={projekt}
         ausschluss={[modulKey]}
+        {...seitenProps}
       />
     </Dokument>
   )
@@ -707,13 +857,11 @@ function WorkflowModul({ projekt, onUpdate }) {
                   {new Date(s.datum).toLocaleDateString("de-DE")}
                 </span>
               )}
-              <button
-                onClick={() => remove(s.id)}
-                title="Schritt löschen"
-                className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-              >
-                ×
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => remove(s.id)}
+                titel="Schritt löschen"
+                klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+              />
             </li>
           ))}
         </ul>
@@ -817,13 +965,11 @@ function WorkflowTimeline({ workflow, onToggle, onRemove }) {
                         month: "2-digit",
                       })}
                     </span>
-                    <button
-                      onClick={() => onRemove(s.id)}
-                      title="Schritt löschen"
-                      className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                    >
-                      ×
-                    </button>
+                    <LoeschKnopf
+                      onLoeschen={() => onRemove(s.id)}
+                      titel="Schritt löschen"
+                      klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                    />
                   </div>
                 </div>
               )
@@ -856,13 +1002,11 @@ function WorkflowTimeline({ workflow, onToggle, onRemove }) {
                 >
                   {s.text}
                 </span>
-                <button
-                  onClick={() => onRemove(s.id)}
-                  title="Schritt löschen"
-                  className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                >
-                  ×
-                </button>
+                <LoeschKnopf
+                  onLoeschen={() => onRemove(s.id)}
+                  titel="Schritt löschen"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                />
               </li>
             ))}
           </ul>
