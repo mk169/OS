@@ -5,6 +5,7 @@ import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { rangVon, xpVonTodos, levelVon } from "../lib/spiel"
 import Seitenkopf from "./Seitenkopf"
 import TodoErstellen, { EINTEILUNGEN, einteilungVon } from "./TodoErstellen"
+import LoeschKnopf from "./LoeschKnopf"
 
 const FONT_ARCADE = '"Press Start 2P", ui-monospace, monospace'
 const FONT_TERMINAL = '"VT323", ui-monospace, "SF Mono", Menlo, monospace'
@@ -78,13 +79,11 @@ function TodoRow({ todo, onToggle, onRemove, zuordnungsName }) {
       {todo.datum && (
         <span className="text-xs text-gray-400">{tageBis(todo.datum)}</span>
       )}
-      <button
-        onClick={() => onRemove(todo.id)}
-        title="Todo löschen"
-        className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-      >
-        ×
-      </button>
+      <LoeschKnopf
+        onLoeschen={() => onRemove(todo.id)}
+        titel="Todo löschen"
+        klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+      />
     </li>
   )
 }
@@ -356,12 +355,10 @@ function CleanGirlZeile({ todo, onToggle, onRemove, zuordnungsName }) {
       {todo.datum && (
         <span className="text-[11px] text-rose-300">{tageBis(todo.datum)}</span>
       )}
-      <button
-        onClick={() => onRemove(todo.id)}
-        className="text-rose-200 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
-      >
-        ×
-      </button>
+      <LoeschKnopf
+        onLoeschen={() => onRemove(todo.id)}
+        klasse="text-rose-200 opacity-0 hover:text-rose-400 group-hover:opacity-100"
+      />
     </li>
   )
 }
@@ -438,12 +435,10 @@ function NotionZeile({ todo, onToggle, onRemove, zuordnungsName }) {
       {todo.datum && (
         <span className="shrink-0 text-xs text-gray-400">{tageBis(todo.datum)}</span>
       )}
-      <button
-        onClick={() => onRemove(todo.id)}
-        className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-gray-500 group-hover:opacity-100"
-      >
-        ×
-      </button>
+      <LoeschKnopf
+        onLoeschen={() => onRemove(todo.id)}
+        klasse="text-gray-300 opacity-0 hover:text-gray-500 group-hover:opacity-100"
+      />
     </li>
   )
 }
@@ -551,13 +546,11 @@ function QuestKarte({ todo, rang, zuordnung, onToggle, onRemove }) {
       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${pal.punkt}`}>
         +{rang.xp} XP
       </span>
-      <button
-        onClick={() => onRemove(todo.id)}
-        title="Quest aufgeben"
-        className="shrink-0 text-white/20 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
-      >
-        ×
-      </button>
+      <LoeschKnopf
+        onLoeschen={() => onRemove(todo.id)}
+        titel="Quest aufgeben"
+        klasse="text-white/20 opacity-0 group-hover:opacity-100"
+      />
     </li>
   )
 }
@@ -673,13 +666,11 @@ function TodosGamified({ todos, offene, erledigte, toggle, remove, zuordnungsNam
                     </button>
                     <span className="min-w-0 flex-1 truncate text-sm text-white/40 line-through">{t.text}</span>
                     <span className="shrink-0 text-[10px] font-semibold text-amber-300/70">+{rang.xp} XP</span>
-                    <button
-                      onClick={() => remove(t.id)}
-                      title="Löschen"
-                      className="shrink-0 text-white/20 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
-                    >
-                      ×
-                    </button>
+                    <LoeschKnopf
+                      onLoeschen={() => remove(t.id)}
+                      titel="Löschen"
+                      klasse="text-white/20 opacity-0 group-hover:opacity-100"
+                    />
                   </li>
                 )
               })}

@@ -7,6 +7,7 @@ import LernenGlobal from "./LernenGlobal"
 import { Suchfeld, SortMenu } from "./ListenControls"
 import { VORLAGEN } from "../lib/wissen"
 import { extrahiereWikilinks } from "../lib/wikilinks"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Leere Notiz für den direkten „+ Neue Notiz"-Klick (ohne Vorlage).
 const LEER_VORLAGE = VORLAGEN.find((v) => v.key === "leer") ?? { inhalt: "" }
@@ -530,20 +531,12 @@ function OrdnerLeiste({
               </span>
             </button>
             {aktiv === o.id && (
-              <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Ordner „${o.name}" löschen? Unterordner und Einträge wandern eine Ebene nach oben.`
-                    )
-                  )
-                    onRemove(o.id)
-                }}
-                title="Ordner löschen"
-                className="ml-1.5 text-white/60 hover:text-white"
-              >
-                ×
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => onRemove(o.id)}
+                titel="Ordner löschen – Inhalte wandern eine Ebene nach oben"
+                frageText="Ordner löschen?"
+                klasse="ml-1.5 text-white/60 hover:text-white"
+              />
             )}
           </span>
         )
@@ -642,16 +635,11 @@ function WissenZeile({ w, eingehend, onOeffnen, onPin, onRemove, onZiehStart, wi
         >
           📌
         </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove(w.id)
-          }}
-          title="Löschen"
-          className="text-gray-300 hover:text-red-500"
-        >
-          ×
-        </button>
+        <LoeschKnopf
+          onLoeschen={() => onRemove(w.id)}
+          titel="Löschen"
+          klasse="text-gray-300"
+        />
       </div>
     </li>
   )

@@ -11,6 +11,11 @@ import ProjektArtikel from "./ProjektArtikel"
 import ProjektKarten from "./ProjektKarten"
 import ProjektBoard from "./ProjektBoard"
 import BlockEditor, { bloeckeVon } from "./BlockEditor"
+import {
+  DeadlineChip,
+  Fortschrittsbalken,
+  projektFortschrittWerte,
+} from "./OrdnerSeite"
 import LoeschKnopf from "./LoeschKnopf"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
@@ -104,6 +109,12 @@ export default function ProjektDetail({
   onNavigate,
 }) {
   const [ordner] = useStored("ordner", [])
+  const [alleProjekte, setAlleProjekte] = useStored("projekte", [])
+  // Areas = dauerhafte Lebensbereiche, denen Projekte zugeordnet werden.
+  const areas = alleProjekte.filter(
+    (p) => (p.typ ?? "projekt") === "area" && !p.archiviert
+  )
+  const istArea = (projekt.typ ?? "projekt") === "area"
   // Kopfbereich (Eigenschaften) ist zuklappbar, damit vom Projekt nur das
   // volle Blatt zu sehen ist. Die Wahl gilt für alle Projekte und bleibt
   // gespeichert.
@@ -129,7 +140,8 @@ export default function ProjektDetail({
     ordnerPfad.unshift(o.name)
     pfadZeiger = o.parentId ?? null
   }
-  const eyebrow = ordnerPfad.length > 0 ? ordnerPfad.join(" / ") : "Projekt"
+  const eyebrow =
+    ordnerPfad.length > 0 ? ordnerPfad.join(" / ") : istArea ? "Area" : "Projekt"
 
   function modulInfo(key) {
     return (
@@ -155,6 +167,9 @@ export default function ProjektDetail({
 
   const workflow = projekt.workflow ?? []
   const erledigt = workflow.filter((s) => s.erledigt).length
+  const areaProjekte = istArea
+    ? alleProjekte.filter((p) => p.areaId === projekt.id && !p.archiviert)
+    : []
 
   function toggleModul(key) {
     const neu = module.includes(key)
@@ -447,7 +462,37 @@ export default function ProjektDetail({
               </select>
             </EigenschaftsZeile>
 
-            {(projekt.typ ?? "projekt") !== "area" && (
+            {!istArea && areas.length > 0 && (
+              <EigenschaftsZeile
+                label="Area"
+                icon={
+                  <PropIcon>
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 3v18M3 12h18" />
+                  </PropIcon>
+                }
+              >
+                <select
+                  value={projekt.areaId ?? ""}
+                  onChange={(e) =>
+                    onUpdate({
+                      ...projekt,
+                      areaId: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="w-full cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
+                >
+                  <option value="">Keine Area</option>
+                  {areas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </EigenschaftsZeile>
+            )}
+
+            {!istArea && (
               <EigenschaftsZeile
                 label="Fälligkeit"
                 icon={
@@ -483,7 +528,7 @@ export default function ProjektDetail({
               />
             </EigenschaftsZeile>
 
-            {(projekt.typ ?? "projekt") !== "area" && (
+            {!istArea && (
               <EigenschaftsZeile
                 label="Status"
                 icon={
@@ -611,6 +656,19 @@ export default function ProjektDetail({
         >
           Übersicht
         </TabButton>
+        {istArea && (
+          <TabButton
+            active={aktiv === "areaprojekte"}
+            onClick={() => setAktiv("areaprojekte")}
+          >
+            Projekte
+            {areaProjekte.length > 0 && (
+              <span className="ml-1.5 text-xs text-gray-400">
+                {areaProjekte.filter((p) => (p.status ?? "offen") !== "fertig").length}
+              </span>
+            )}
+          </TabButton>
+        )}
         {sichtbareModule.map((m) => (
           <TabButton
             key={m.key}
@@ -628,7 +686,14 @@ export default function ProjektDetail({
       </nav>
 
       <div className="mt-6 flex flex-1 flex-col">
-        {aktiv === "uebersicht" ? (
+        {aktiv === "areaprojekte" ? (
+          <AreaProjekte
+            area={projekt}
+            projekte={alleProjekte}
+            setProjekte={setAlleProjekte}
+            onOeffnen={(id) => onOeffneZiel?.({ typ: "projekt", id })}
+          />
+        ) : aktiv === "uebersicht" ? (
           <UebersichtModul
             projekt={projekt}
             onBloecke={speichereUebersicht}
@@ -639,6 +704,126 @@ export default function ProjektDetail({
           bereichRenderer(aktiv)
         )}
       </div>
+    </div>
+  )
+}
+
+// Die Projekte einer Area: das, was eine Area von einem Ordner unterscheidet
+// – sie bündelt laufende Vorhaben eines Lebensbereichs und zeigt, wie es um
+// sie steht. Neue Projekte entstehen direkt hier und erben Area und Ordner.
+function AreaProjekte({ area, projekte, setProjekte, onOeffnen }) {
+  const [todos] = useStored("todos", [])
+  const [name, setName] = useState("")
+
+  const zugeordnet = projekte.filter(
+    (p) => p.areaId === area.id && !p.archiviert
+  )
+  const laufend = zugeordnet.filter((p) => (p.status ?? "offen") !== "fertig")
+  const fertig = zugeordnet.filter((p) => (p.status ?? "offen") === "fertig")
+  // Offene Aufgaben der Area selbst und ihrer Projekte.
+  const offeneTodos = todos.filter((t) => {
+    if (t.erledigt) return false
+    const ziel = t.projektId ?? t.kursId
+    return ziel === area.id || zugeordnet.some((p) => p.id === ziel)
+  })
+
+  function addProjekt(e) {
+    e.preventDefault()
+    if (!name.trim()) return
+    const neu = {
+      id: Date.now(),
+      name: name.trim(),
+      beschreibung: "",
+      ordnerId: area.ordnerId ?? null,
+      areaId: area.id,
+      deadline: "",
+      typ: "projekt",
+      module: [],
+      ziel: "",
+      workflow: [],
+    }
+    setProjekte((alle) => [...alle, neu])
+    setName("")
+  }
+
+  function loeseZuordnung(id) {
+    setProjekte((alle) =>
+      alle.map((p) => (p.id === id ? { ...p, areaId: null } : p))
+    )
+  }
+
+  return (
+    <div className="py-2">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-gray-100 pb-4">
+        <p className="text-sm font-medium text-gray-900">
+          {laufend.length} {laufend.length === 1 ? "laufendes" : "laufende"}{" "}
+          {laufend.length === 1 ? "Projekt" : "Projekte"}
+        </p>
+        <p className="text-xs text-gray-400">
+          {fertig.length > 0 && `${fertig.length} erledigt · `}
+          {offeneTodos.length} offene {offeneTodos.length === 1 ? "Aufgabe" : "Aufgaben"}
+        </p>
+      </div>
+
+      {zugeordnet.length === 0 ? (
+        <p className="mt-4 text-sm text-gray-400">
+          Dieser Area ist noch kein Projekt zugeordnet. Lege hier eins an –
+          oder wähle die Area in einem bestehenden Projekt unter „Area".
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-1.5">
+          {[...laufend, ...fertig].map((p) => {
+            const status = STATUS_OPTIONEN.find(
+              (s) => s.value === (p.status ?? "offen")
+            )
+            return (
+              <li
+                key={p.id}
+                className="group flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2"
+              >
+                <button
+                  onClick={() => onOeffnen(p.id)}
+                  className="min-w-0 flex-1 truncate text-left text-sm font-medium text-gray-900"
+                >
+                  {p.name}
+                </button>
+                {status && (
+                  <span
+                    className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-medium ${status.tag}`}
+                  >
+                    {status.label}
+                  </span>
+                )}
+                {p.deadline && <DeadlineChip datum={p.deadline} />}
+                <div className="w-28 shrink-0">
+                  <Fortschrittsbalken {...projektFortschrittWerte(p, todos)} />
+                </div>
+                <LoeschKnopf
+                  onLoeschen={() => loeseZuordnung(p.id)}
+                  titel="Aus dieser Area lösen (Projekt bleibt bestehen)"
+                  frageText="Aus Area lösen?"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                />
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      <form onSubmit={addProjekt} className="mt-4 flex gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Neues Projekt in dieser Area"
+          className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+        >
+          Anlegen
+        </button>
+      </form>
     </div>
   )
 }

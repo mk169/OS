@@ -823,13 +823,11 @@ export function NotizBearbeiten({
                   <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-black/60 px-1 text-[9px] text-white">
                     {formatBytes(a.groesse)}
                   </span>
-                  <button
-                    onClick={() => anhangEntfernen(a.id)}
-                    title="Anhang entfernen"
-                    className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-xs text-white opacity-0 transition-opacity group-hover/anhang:opacity-100"
-                  >
-                    ×
-                  </button>
+                  <LoeschKnopf
+                    onLoeschen={() => anhangEntfernen(a.id)}
+                    titel="Anhang entfernen"
+                    klasse="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-xs text-white opacity-0 group-hover/anhang:opacity-100"
+                  />
                 </div>
               ))}
             </div>

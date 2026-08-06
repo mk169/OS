@@ -8,6 +8,7 @@ import Seitenkopf from "./Seitenkopf"
 import { PROFILE } from "./Onboarding"
 import ZyklenEinstellungen from "./ZyklenEinstellungen"
 import { DASHBOARD_BLOECKE, dashboardConfig } from "../lib/dashboard"
+import LoeschKnopf from "./LoeschKnopf"
 
 const FARBEN_OPTIONEN = Object.keys(FARBEN).filter((f) => f !== "gray")
 
@@ -826,13 +827,12 @@ export default function Einstellungen() {
                 onBlur={zeigeSpeichert}
                 className="flex-1 bg-transparent text-sm font-medium text-gray-800 outline-none"
               />
-              <button
-                onClick={() => bereichEntfernen(b.id)}
-                title="Bereich entfernen"
-                className="flex h-6 w-6 items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-              >
-                <NavIcon className="h-4 w-4"><path d="M18 6 6 18M6 6l12 12" /></NavIcon>
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => bereichEntfernen(b.id)}
+                titel="Bereich entfernen"
+                frageText="Bereich entfernen?"
+                klasse="flex h-6 w-6 items-center justify-center rounded-md text-gray-300"
+              />
             </div>
           ))}
         </div>

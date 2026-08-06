@@ -12,6 +12,7 @@ import {
   durchschnitt,
   eineStelle,
 } from "../lib/vitalitaet"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Vitalität: der tägliche Körper-Check-in. Ein Eintrag je Tag; alles
 // Optionale, aber jeder Wert füttert später den Mentor (lib/insights.js).
@@ -343,13 +344,11 @@ export default function VitalitaetSeite() {
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => loesche(e.datum)}
-                    title="Eintrag löschen"
-                    className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 max-md:opacity-100"
-                  >
-                    ×
-                  </button>
+                  <LoeschKnopf
+                    onLoeschen={() => loesche(e.datum)}
+                    titel="Eintrag löschen"
+                    klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
+                  />
                 </li>
               )
             })}

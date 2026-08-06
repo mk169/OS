@@ -2,6 +2,7 @@ import { useState } from "react"
 import { schreibeStore } from "../lib/useStored"
 import { FARBEN } from "../lib/farben"
 import { STIL_STANDARD } from "../lib/stil"
+import LoeschKnopf from "./LoeschKnopf"
 
 // App-Profile: vordefinierte Konfigurationen für verschiedene Nutzungsszenarien
 export const PROFILE = [
@@ -297,12 +298,11 @@ export default function Onboarding({ onFertig }) {
               <span className="flex-1 text-sm font-medium text-gray-800">
                 {b.name}
               </span>
-              <button
-                onClick={() => bereichEntfernen(b.id)}
-                className="text-gray-300 transition-colors hover:text-red-400"
-              >
-                ×
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => bereichEntfernen(b.id)}
+                titel="Bereich entfernen"
+                klasse="text-gray-300"
+              />
             </div>
           ))}
         </div>

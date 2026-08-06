@@ -107,7 +107,9 @@ export default function OrdnerSeite({
   const [offeneNotizId, setOffeneNotizId] = useState(startNotizId)
   const [ordnerFormOffen, setOrdnerFormOffen] = useState(false)
   const [ordnerName, setOrdnerName] = useState("")
+  // Formular für neue Projekte/Areas: der Wert ist zugleich der Starttyp.
   const [projektFormOffen, setProjektFormOffen] = useState(false)
+  const [formTyp, setFormTyp] = useState("projekt")
   const [ansicht, setAnsicht] = useState("ordner")
   const [ordnerSort, setOrdnerSort] = useStored("projekteOrdnerSort", "name")
   const [ordnerLayout, setOrdnerLayout] = useStored("projekteOrdnerLayout", "raster")
@@ -234,7 +236,10 @@ export default function OrdnerSeite({
               + Ordner
             </button>
             <button
-              onClick={() => setProjektFormOffen(!projektFormOffen)}
+              onClick={() => {
+                setFormTyp("projekt")
+                setProjektFormOffen(!projektFormOffen)
+              }}
               className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
             >
               + Projekt
@@ -273,6 +278,8 @@ export default function OrdnerSeite({
 
       {projektFormOffen && (
         <ProjektErstellen
+          key={formTyp}
+          startTyp={formTyp}
           ordnerId={aktuellerOrdnerId}
           projekte={projekte}
           setProjekte={setProjekte}
@@ -310,6 +317,10 @@ export default function OrdnerSeite({
           todos={todos}
           onOeffnen={setOffenesProjektId}
           onRemove={removeProjekt}
+          onNeueArea={() => {
+            setFormTyp("area")
+            setProjektFormOffen(true)
+          }}
         />
       )}
       {ansicht === "anstehend" && (
@@ -820,24 +831,174 @@ function AlleAnsicht({ projekte, todos, onOeffnen, onRemove }) {
   )
 }
 
-// Areas: dauerhafte Lebensbereiche – dieselbe Projekt-Infrastruktur, nur
-// ohne Fälligkeit/Status. ProjektKarte bleibt unverändert wiederverwendet.
-function AreasAnsicht({ projekte, todos, onOeffnen, onRemove }) {
+// Areas: dauerhafte Lebensbereiche (Gesundheit, Finanzen, Wohnung …). Anders
+// als ein Ordner, der nur sortiert, bündelt eine Area laufende Vorhaben und
+// zeigt, wie es um den Bereich steht: laufende Projekte, offene und
+// überfällige Aufgaben. Eine Area ohne laufendes Projekt fällt hier auf –
+// genau dafür sind Areas da.
+function AreaKarte({ area, projekte, todos, onOeffnen, onRemove }) {
+  const zugeordnet = projekte.filter(
+    (p) => p.areaId === area.id && !p.archiviert
+  )
+  const laufend = zugeordnet.filter((p) => (p.status ?? "offen") !== "fertig")
+  // Aufgaben der Area: direkt an ihr hängende plus die ihrer Projekte.
+  const gehoert = (t) => {
+    const ziel = t.projektId ?? t.kursId
+    return ziel === area.id || zugeordnet.some((p) => p.id === ziel)
+  }
+  const offen = todos.filter((t) => !t.erledigt && gehoert(t))
+  const ueberfaellig = offen.filter((t) => t.datum && tageBisZahl(t.datum) < 0)
+
+  return (
+    <div
+      onClick={() => onOeffnen(area.id)}
+      className="group relative flex cursor-pointer flex-col rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-gray-400"
+    >
+      {onRemove && (
+        <span className="absolute right-3 top-3">
+          <LoeschKnopf
+            onLoeschen={() => onRemove(area.id)}
+            titel="Area löschen"
+            klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
+          />
+        </span>
+      )}
+      <h3 className="truncate pr-4 text-sm font-medium text-gray-900">
+        {area.name}
+      </h3>
+      {area.beschreibung && (
+        <p className="mt-1 line-clamp-2 text-xs text-gray-400">
+          {area.beschreibung}
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <span
+          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+            laufend.length === 0
+              ? "bg-gray-100 text-gray-400"
+              : "bg-blue-50 text-blue-700"
+          }`}
+        >
+          {laufend.length === 0
+            ? "kein laufendes Projekt"
+            : `${laufend.length} ${laufend.length === 1 ? "Projekt" : "Projekte"}`}
+        </span>
+        {offen.length > 0 && (
+          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+            {offen.length} offen
+          </span>
+        )}
+        {ueberfaellig.length > 0 && (
+          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-600">
+            {ueberfaellig.length} überfällig
+          </span>
+        )}
+      </div>
+
+      {laufend.length > 0 && (
+        <ul className="mt-3 space-y-1 border-t border-gray-100 pt-2">
+          {laufend.slice(0, 3).map((p) => (
+            <li key={p.id}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOeffnen(p.id)
+                }}
+                className="block w-full truncate text-left text-xs text-gray-500 transition-colors hover:text-gray-900"
+              >
+                → {p.name}
+              </button>
+            </li>
+          ))}
+          {laufend.length > 3 && (
+            <li className="text-[10px] text-gray-400">
+              +{laufend.length - 3} weitere
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function AreasAnsicht({ projekte, todos, onOeffnen, onRemove, onNeueArea }) {
   const areas = projekte.filter((p) => (p.typ ?? "projekt") === "area")
+  const ohneArea = projekte.filter(
+    (p) =>
+      (p.typ ?? "projekt") !== "area" && !p.archiviert && p.areaId == null
+  )
+
   return (
     <div className="mt-4">
-      {areas.length === 0 ? null : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {areas.map((p) => (
-            <ProjektKarte
-              key={p.id}
-              p={p}
-              todos={todos}
-              onOeffnen={onOeffnen}
-              onRemove={onRemove}
-            />
-          ))}
+      {areas.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center">
+          <p className="text-sm font-medium text-gray-900">
+            Noch keine Area angelegt.
+          </p>
+          <p className="mx-auto mt-1 max-w-md text-xs text-gray-400">
+            Eine Area ist ein dauerhafter Lebensbereich ohne Enddatum –
+            Gesundheit, Finanzen, Wohnung, Beruf. Projekte laufen darin ab und
+            hören auf; die Area bleibt.
+          </p>
+          <button
+            onClick={onNeueArea}
+            className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            + Area anlegen
+          </button>
         </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-400">
+              {areas.length} {areas.length === 1 ? "Area" : "Areas"}
+            </p>
+            <button
+              onClick={onNeueArea}
+              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+            >
+              + Area
+            </button>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {areas.map((a) => (
+              <AreaKarte
+                key={a.id}
+                area={a}
+                projekte={projekte}
+                todos={todos}
+                onOeffnen={onOeffnen}
+                onRemove={onRemove}
+              />
+            ))}
+          </div>
+
+          {ohneArea.length > 0 && (
+            <section className="mt-8">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+                Projekte ohne Area
+              </h2>
+              <p className="mt-1 text-xs text-gray-400">
+                Zuordnen im Projekt unter „Area" – oder bewusst so lassen.
+              </p>
+              <ul className="mt-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                {ohneArea.map((p) => (
+                  <li
+                    key={p.id}
+                    onClick={() => onOeffnen(p.id)}
+                    className="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
+                      {p.name}
+                    </span>
+                    {p.deadline && <DeadlineChip datum={p.deadline} />}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
       )}
     </div>
   )
@@ -1041,8 +1202,14 @@ function ArchivAnsicht({ archivierte, projekte, setProjekte, onOeffnen }) {
   )
 }
 
-function ProjektErstellen({ ordnerId, projekte, setProjekte, onFertig }) {
-  const [typ, setTyp] = useState("projekt")
+function ProjektErstellen({
+  ordnerId,
+  projekte,
+  setProjekte,
+  onFertig,
+  startTyp = "projekt",
+}) {
+  const [typ, setTyp] = useState(startTyp)
   const [name, setName] = useState("")
   const [beschreibung, setBeschreibung] = useState("")
   const [deadline, setDeadline] = useState("")

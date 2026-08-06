@@ -27,6 +27,7 @@ import {
   WAEHRUNGEN,
 } from "../lib/finanzen"
 import { alsCsv, parseCsv } from "../lib/finanzenCsv"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Lebensbereich „Finanzen": Konten, Buchungen, Budgets und Sparziele an
 // einem Ort. Alle Daten liegen in useStored (localStorage + Cloud-Sync).
@@ -386,13 +387,11 @@ function BuchungsZeile({ t, konten, w, onLoeschen }) {
         {geld(t.betrag, w)}
       </span>
       {onLoeschen && (
-        <button
-          onClick={() => onLoeschen(t.id)}
-          title="Löschen"
-          className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-rose-500 group-hover:opacity-100 max-md:opacity-100"
-        >
-          ×
-        </button>
+        <LoeschKnopf
+          onLoeschen={() => onLoeschen(t.id)}
+          titel="Löschen"
+          klasse="text-gray-300 opacity-0 hover:text-rose-500 group-hover:opacity-100 max-md:opacity-100"
+        />
       )}
     </li>
   )
@@ -889,13 +888,9 @@ function Konten({ konten, setKonten, transaktionen, w }) {
     setOffen(false)
   }
 
+  // Rückfrage stellt der Löschknopf selbst; zugeordnete Buchungen bleiben
+  // erhalten und verlieren nur ihre Kontozuordnung.
   function loeschen(id) {
-    const anzahl = transaktionen.filter((t) => t.kontoId === id).length
-    const frage =
-      anzahl > 0
-        ? `Konto löschen? ${anzahl} zugeordnete Buchung(en) bleiben erhalten, verlieren aber die Kontozuordnung.`
-        : "Konto wirklich löschen?"
-    if (!window.confirm(frage)) return
     setKonten(konten.filter((k) => k.id !== id))
   }
 
@@ -997,13 +992,11 @@ function Konten({ konten, setKonten, transaktionen, w }) {
                   >
                     {geld(saldo, w)}
                   </span>
-                  <button
-                    onClick={() => loeschen(k.id)}
-                    title="Konto löschen"
-                    className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-rose-500 group-hover:opacity-100 max-md:opacity-100"
-                  >
-                    ×
-                  </button>
+                  <LoeschKnopf
+                    onLoeschen={() => loeschen(k.id)}
+                    titel="Konto löschen"
+                    klasse="text-gray-300 opacity-0 hover:text-rose-500 group-hover:opacity-100 max-md:opacity-100"
+                  />
                 </li>
               )
             })}
@@ -1156,13 +1149,11 @@ function Budgets({ budgets, setBudgets, transaktionen, w }) {
                     <span className="text-sm text-gray-500">
                       {geld(ausgegeben, w)} / {geld(b.betrag, w)}
                     </span>
-                    <button
-                      onClick={() => loeschen(b.kategorie)}
-                      title="Budget entfernen"
-                      className="text-gray-300 opacity-0 transition-opacity hover:text-rose-500 group-hover:opacity-100 max-md:opacity-100"
-                    >
-                      ×
-                    </button>
+                    <LoeschKnopf
+                      onLoeschen={() => loeschen(b.kategorie)}
+                      titel="Budget entfernen"
+                      klasse="text-gray-300 opacity-0 hover:text-rose-500 group-hover:opacity-100 max-md:opacity-100"
+                    />
                   </div>
                 </div>
                 <Balken anteil={anteil} farbe={kat.farbe} />
@@ -1234,7 +1225,6 @@ function Sparziele({ sparziele, setSparziele, w }) {
   }
 
   function loeschen(id) {
-    if (!window.confirm("Sparziel wirklich löschen?")) return
     setSparziele(sparziele.filter((z) => z.id !== id))
   }
 
@@ -1326,13 +1316,11 @@ function Sparziele({ sparziele, setSparziele, w }) {
                       <p className="text-xs text-gray-400">bis {z.faelligkeit}</p>
                     )}
                   </div>
-                  <button
-                    onClick={() => loeschen(z.id)}
-                    title="Sparziel löschen"
-                    className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-rose-500 group-hover:opacity-100 max-md:opacity-100"
-                  >
-                    ×
-                  </button>
+                  <LoeschKnopf
+                    onLoeschen={() => loeschen(z.id)}
+                    titel="Sparziel löschen"
+                    klasse="text-gray-300 opacity-0 hover:text-rose-500 group-hover:opacity-100 max-md:opacity-100"
+                  />
                 </div>
 
                 <Balken anteil={anteil} farbe={z.farbe ?? "emerald"} />

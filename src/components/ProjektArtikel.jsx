@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Artikel: ein Substack-artiges Schreibwerkzeug für Projekte. Jedes Projekt
 // kann mehrere Artikel/Entwürfe halten (Karten-Liste), die im Vollbild-Editor
@@ -116,13 +117,11 @@ export default function ProjektArtikel({ projekt }) {
                       {woerter > 0 && ` · ~${minuten} Min Lesezeit`}
                     </p>
                   </button>
-                  <button
-                    onClick={() => removeArtikel(a.id)}
-                    title="Artikel löschen"
-                    className="absolute right-3 top-3 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                  >
-                    ×
-                  </button>
+                  <LoeschKnopf
+                    onLoeschen={() => removeArtikel(a.id)}
+                    titel="Artikel löschen"
+                    klasse="absolute right-3 top-3 text-gray-300 opacity-0 group-hover:opacity-100"
+                  />
                 </li>
               )
             })}
