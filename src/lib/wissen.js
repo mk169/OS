@@ -79,3 +79,39 @@ export function leseDateiAlsDataUri(datei) {
     leser.readAsDataURL(datei)
   })
 }
+
+// Wandelt den Text einer Vorlage in Blöcke für den Projekt-Block-Editor:
+// „## Überschrift" wird eine Überschrift, aufeinanderfolgende „- "-Zeilen
+// werden eine Checkliste, „> " ein Callout, alles andere ein Textblock. So
+// dient dieselbe Vorlage sowohl einer Notiz in Sammeln als auch einer
+// eigenen Projektseite.
+export function vorlageZuBloecken(inhalt, neueId) {
+  const bloecke = []
+  let liste = null
+  const schliesseListe = () => {
+    if (liste) {
+      bloecke.push({ id: neueId(), typ: "checkliste", items: liste })
+      liste = null
+    }
+  }
+  for (const zeile of (inhalt ?? "").split("\n")) {
+    const ueberschrift = zeile.match(/^#{1,3}\s+(.*)$/)
+    const punkt = zeile.match(/^\s*[-*]\s+(.*)$/)
+    const zitat = zeile.match(/^>\s*(.*)$/)
+    if (punkt) {
+      liste = liste ?? []
+      liste.push({ id: neueId(), text: punkt[1].trim(), erledigt: false })
+      continue
+    }
+    schliesseListe()
+    if (ueberschrift) {
+      bloecke.push({ id: neueId(), typ: "ueberschrift", text: ueberschrift[1].trim() })
+    } else if (zitat) {
+      bloecke.push({ id: neueId(), typ: "callout", emoji: "❞", text: zitat[1].trim() })
+    } else if (zeile.trim()) {
+      bloecke.push({ id: neueId(), typ: "text", text: zeile.trim() })
+    }
+  }
+  schliesseListe()
+  return bloecke.length > 0 ? bloecke : [{ id: neueId(), typ: "text", text: "" }]
+}

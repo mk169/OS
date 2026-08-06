@@ -11,7 +11,8 @@ import ProjektArtikel from "./ProjektArtikel"
 import ProjektKarten from "./ProjektKarten"
 import ProjektLernen from "./ProjektLernen"
 import ProjektBoard from "./ProjektBoard"
-import BlockEditor, { bloeckeVon } from "./BlockEditor"
+import BlockEditor, { bloeckeVon, neueBlockId } from "./BlockEditor"
+import { VORLAGEN, vorlageZuBloecken } from "../lib/wissen"
 import {
   DeadlineChip,
   Fortschrittsbalken,
@@ -113,6 +114,9 @@ export default function ProjektDetail({
 }) {
   const [ordner] = useStored("ordner", [])
   const [alleProjekte, setAlleProjekte] = useStored("projekte", [])
+  // Ziele für Verknüpfungen aus den Seiten heraus (Sammeln & Projekt-Notizen).
+  const [wissen, setWissen] = useStored("wissen", [])
+  const [notizen] = useStored("notizen", [])
   // Areas = dauerhafte Lebensbereiche, denen Projekte zugeordnet werden.
   const areas = alleProjekte.filter(
     (p) => (p.typ ?? "projekt") === "area" && !p.archiviert
@@ -129,7 +133,13 @@ export default function ProjektDetail({
   // flach in projekt.seiten, die Verschachtelung ergibt sich aus den
   // „seite"-Blöcken, die auf sie zeigen.
   const seiten = projekt.seiten ?? []
+  // Seiten, die oben als Reiter stehen (Reihenfolge = Reihenfolge der Tabs).
+  // Unterseiten aus „Seite"-Blöcken stehen bewusst nicht darin.
+  const seitenTabs = (projekt.seitenTabs ?? [])
+    .map((id) => seiten.find((s) => s.id === id))
+    .filter(Boolean)
   const [offeneSeiteId, setOffeneSeiteId] = useState(null)
+  const [vorlagenMenu, setVorlagenMenu] = useState(false)
   // Vorgemerkte Seiten-Änderungen (siehe „Unterseiten" weiter unten).
   const vorgemerkt = useRef({ neu: [], weg: [] })
 
@@ -153,7 +163,7 @@ export default function ProjektDetail({
   }
 
   const [aktiv, setAktiv] = useState(
-    startNotizId ? "notizen" : (startModul ?? "uebersicht")
+    startNotizId ? "notizen" : (startModul ?? null)
   )
   const [anpassen, setAnpassen] = useState(false)
 
@@ -164,10 +174,32 @@ export default function ProjektDetail({
   // Auswahl des Projekts hinter dem Rücken des Nutzers zu ändern.
   const sichtbareModule = module.map(modulInfo).filter(Boolean)
   const gastModul =
-    aktiv !== "uebersicht" && aktiv !== "areaprojekte" && !module.includes(aktiv)
+    aktiv && !aktiv.startsWith("seite:") && aktiv !== "areaprojekte" && !module.includes(aktiv)
       ? modulInfo(aktiv)
       : null
   const tabModule = gastModul ? [...sichtbareModule, gastModul] : sichtbareModule
+
+  // Früher hatte jedes Projekt automatisch eine „Übersicht". Seiten entstehen
+  // jetzt bewusst – vorhandene Übersichts-Inhalte werden einmalig zu einer
+  // ganz normalen Seite „Übersicht", leere Übersichten verschwinden.
+  useEffect(() => {
+    if (projekt.uebersichtMigriert) return
+    const alteBloecke = bloeckeVon(projekt, "uebersicht")
+    if (alteBloecke.length === 0) {
+      onUpdate({ ...projekt, uebersichtMigriert: true })
+      return
+    }
+    const id = Date.now()
+    onUpdate({
+      ...projekt,
+      seiten: [...(projekt.seiten ?? []), { id, titel: "Übersicht", bloecke: alteBloecke }],
+      seitenTabs: [id, ...(projekt.seitenTabs ?? [])],
+      bloecke: [],
+      uebersicht: "",
+      uebersichtMigriert: true,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projekt.id, projekt.uebersichtMigriert])
 
   // Von außen angesprungene Notiz (z.B. Link-Klick aus einem anderen
   // Projekt): Notizen-Tab erzwingen, auch wenn bereits ein anderer Tab aktiv
@@ -334,10 +366,6 @@ export default function ProjektDetail({
     })
   }
 
-  function speichereUebersicht(bloecke) {
-    onUpdate({ ...projekt, bloecke, seiten: seitenStand() })
-  }
-
   function speichereEigenenBereich(modulKey, bloecke) {
     onUpdate({
       ...projekt,
@@ -353,6 +381,79 @@ export default function ProjektDetail({
     onSeiteNeu: seiteNeu,
     onSeiteOeffnen: setOffeneSeiteId,
     onSeiteLoeschen: seiteLoeschen,
+    linkKontext: {
+      wissen,
+      projekte: alleProjekte,
+      notizen,
+      // "[[Titel]]" führt dorthin, wo das Ziel lebt: Sammeln, ein anderes
+      // Projekt oder eine Projekt-Notiz.
+      onZielKlick: (ziel) => {
+        if (ziel.typ === "wissen") onNavigate?.("sammeln", { wissenId: ziel.id })
+        else onOeffneZiel?.(ziel)
+      },
+      onNotizOeffnen: (id) => onNavigate?.("sammeln", { wissenId: id }),
+      // Neue Notiz aus dem Projekt heraus: sie entsteht in Sammeln (und ist
+      // dort in Suche, Tags und Graph), das Projekt verweist nur darauf.
+      onNotizNeu: (titel) => {
+        const id = Date.now() + Math.floor(Math.random() * 1000)
+        setWissen((alle) => [
+          ...alle,
+          { id, titel, inhalt: "", aktualisiertAm: id, ordnerId: null },
+        ])
+        return id
+      },
+    },
+  }
+
+  // Aktiver Reiter: eine Seite, ein Bereich – oder gar nichts (leeres
+  // Projekt). Ein gelöschter oder noch nicht gewählter Reiter fällt auf die
+  // erste Seite bzw. den ersten Bereich zurück.
+  const aktivTyp = aktiv?.startsWith("seite:") ? "seite" : "modul"
+  const aktiveTabSeite =
+    aktivTyp === "seite"
+      ? seitenTabs.find((s) => `seite:${s.id}` === aktiv) ?? null
+      : null
+  // `tabModule` statt `sichtbareModule`: ein von außen angesprungener
+  // Gast-Bereich (z.B. „Lernen") ist ein gültiger Reiter, auch wenn er im
+  // Projekt nicht dauerhaft aktiviert ist.
+  const gueltig =
+    (aktivTyp === "seite" && aktiveTabSeite) ||
+    aktiv === "areaprojekte" ||
+    (aktiv && tabModule.some((m) => m.key === aktiv))
+  if (!gueltig) {
+    const ersatz =
+      seitenTabs.length > 0
+        ? `seite:${seitenTabs[0].id}`
+        : sichtbareModule[0]?.key ?? null
+    if (ersatz !== aktiv) setAktiv(ersatz)
+  }
+
+  // Neue Seite als Reiter – leer oder aus einer Vorlage (dieselben Vorlagen
+  // wie in Sammeln, damit eine Buchnotiz überall gleich aussieht).
+  function seiteAusVorlage(vorlage) {
+    const id = Date.now() + Math.floor(Math.random() * 1000)
+    const neueSeite = {
+      id,
+      titel: vorlage.key === "leer" ? "" : vorlage.label,
+      bloecke: vorlage.key === "leer" ? [] : vorlageZuBloecken(vorlage.inhalt, neueBlockId),
+    }
+    onUpdate({
+      ...projekt,
+      seiten: [...seitenStand(), neueSeite],
+      seitenTabs: [...(projekt.seitenTabs ?? []), id],
+    })
+    setVorlagenMenu(false)
+    setAktiv(`seite:${id}`)
+  }
+
+  function tabSeiteLoeschen(id) {
+    seiteLoeschen(id)
+    onUpdate({
+      ...projekt,
+      seiten: seitenStand(),
+      seitenTabs: (projekt.seitenTabs ?? []).filter((x) => x !== id),
+    })
+    setAktiv(null)
   }
 
   const offeneSeite = seiten.find((s) => s.id === offeneSeiteId)
@@ -678,13 +779,16 @@ export default function ProjektDetail({
         </>
       )}
 
-      <nav className="sticky top-12 z-10 mt-4 flex gap-5 overflow-x-auto border-b border-gray-200 bg-white/85 backdrop-blur sm:gap-6 md:top-0">
-        <TabButton
-          active={aktiv === "uebersicht"}
-          onClick={() => setAktiv("uebersicht")}
-        >
-          Übersicht
-        </TabButton>
+      <nav className="sticky top-12 z-10 mt-4 flex items-center gap-5 overflow-x-auto border-b border-gray-200 bg-white/85 backdrop-blur sm:gap-6 md:top-0">
+        {seitenTabs.map((s) => (
+          <TabButton
+            key={s.id}
+            active={aktiv === `seite:${s.id}`}
+            onClick={() => setAktiv(`seite:${s.id}`)}
+          >
+            {s.titel?.trim() || "Unbenannte Seite"}
+          </TabButton>
+        ))}
         {istArea && (
           <TabButton
             active={aktiv === "areaprojekte"}
@@ -712,25 +816,63 @@ export default function ProjektDetail({
             )}
           </TabButton>
         ))}
+
+        <div className="relative ml-auto shrink-0 pb-1.5 pl-4">
+          <button
+            onClick={() => setVorlagenMenu(!vorlagenMenu)}
+            title="Neue Seite anlegen"
+            className="rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          >
+            + Seite
+          </button>
+          {vorlagenMenu && (
+            <>
+              <div
+                onClick={() => setVorlagenMenu(false)}
+                className="fixed inset-0 z-20"
+              />
+              <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-gray-200 bg-white p-1 shadow-md">
+                <p className="px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                  Vorlage
+                </p>
+                {VORLAGEN.map((v) => (
+                  <button
+                    key={v.key}
+                    onClick={() => seiteAusVorlage(v)}
+                    className="block w-full rounded-sm px-2 py-1.5 text-left text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <span className="mr-1.5">{v.emoji}</span>
+                    {v.key === "leer" ? "Leere Seite" : v.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </nav>
 
       <div className="mt-6 flex flex-1 flex-col">
-        {aktiv === "areaprojekte" ? (
+        {aktivTyp === "seite" ? (
+          <SeitenBlatt
+            seite={aktiveTabSeite}
+            onTitel={(titel) => speichereSeitenTitel(aktiveTabSeite.id, titel)}
+            onBloecke={(b) => speichereSeitenBloecke(aktiveTabSeite.id, b)}
+            onLoeschen={() => tabSeiteLoeschen(aktiveTabSeite.id)}
+            bereichRenderer={bereichRenderer}
+            projekt={projekt}
+            seitenProps={seitenProps}
+          />
+        ) : aktiv === "areaprojekte" ? (
           <AreaProjekte
             area={projekt}
             projekte={alleProjekte}
             setProjekte={setAlleProjekte}
             onOeffnen={(id) => onOeffneZiel?.({ typ: "projekt", id })}
           />
-        ) : aktiv === "uebersicht" ? (
-          <UebersichtModul
-            projekt={projekt}
-            onBloecke={speichereUebersicht}
-            bereichRenderer={bereichRenderer}
-            seitenProps={seitenProps}
-          />
-        ) : (
+        ) : aktiv ? (
           bereichRenderer(aktiv)
+        ) : (
+          <LeeresProjekt onNeueSeite={() => setVorlagenMenu(true)} />
         )}
       </div>
     </div>
@@ -857,6 +999,65 @@ function AreaProjekte({ area, projekte, setProjekte, onOeffnen }) {
   )
 }
 
+// Eine Seite als Blatt: Titel zum Überschreiben, darunter der Block-Editor.
+function SeitenBlatt({
+  seite,
+  onTitel,
+  onBloecke,
+  onLoeschen,
+  bereichRenderer,
+  projekt,
+  seitenProps,
+}) {
+  return (
+    <div className="flex flex-1 flex-col py-4">
+      <div className="flex items-start gap-2">
+        <input
+          value={seite.titel ?? ""}
+          onChange={(e) => onTitel(e.target.value)}
+          placeholder="Unbenannte Seite"
+          className="min-w-0 flex-1 border-none bg-transparent text-2xl font-medium text-gray-900 outline-none placeholder:text-gray-300"
+        />
+        <LoeschKnopf
+          onLoeschen={onLoeschen}
+          titel="Seite löschen"
+          frageText="Seite löschen?"
+          klasse="mt-2 text-gray-300"
+        />
+      </div>
+      <div className="mt-4 flex flex-1 flex-col">
+        <BlockEditor
+          bloecke={seite.bloecke ?? []}
+          onChange={onBloecke}
+          bereichRenderer={bereichRenderer}
+          projekt={projekt}
+          {...seitenProps}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Ein Projekt ohne Seite und ohne Bereiche: erklärt, wie es losgeht.
+function LeeresProjekt({ onNeueSeite }) {
+  return (
+    <div className="mt-6 rounded-xl border border-dashed border-gray-300 p-10 text-center">
+      <p className="text-sm font-medium text-gray-900">Noch keine Seite.</p>
+      <p className="mx-auto mt-1 max-w-md text-xs text-gray-400">
+        Ein Projekt bekommt seine Seiten, wenn du sie brauchst – leer oder aus
+        einer Vorlage. Bereiche wie Todos oder Kalender kommen über „Bereiche
+        anpassen" dazu.
+      </p>
+      <button
+        onClick={onNeueSeite}
+        className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+      >
+        + Seite
+      </button>
+    </div>
+  )
+}
+
 // Notion-artiger Tab oben in der Leiste.
 function TabButton({ active, onClick, children }) {
   return (
@@ -878,22 +1079,6 @@ function TabButton({ active, onClick, children }) {
 function Dokument({ children }) {
   return (
     <div className="flex flex-1 flex-col py-6">{children}</div>
-  )
-}
-
-// Hauptseite des Projekts als Block-Editor: Text/Überschrift, Tabellen,
-// Dashboards und eingebettete Bereiche. Alter Freitext wird migriert.
-function UebersichtModul({ projekt, onBloecke, bereichRenderer, seitenProps }) {
-  return (
-    <Dokument>
-      <BlockEditor
-        bloecke={bloeckeVon(projekt, "uebersicht")}
-        onChange={onBloecke}
-        bereichRenderer={bereichRenderer}
-        projekt={projekt}
-        {...seitenProps}
-      />
-    </Dokument>
   )
 }
 

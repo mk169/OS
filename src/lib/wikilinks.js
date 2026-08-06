@@ -34,9 +34,33 @@ export function findeZiel(titel, wissen, projekte, notizen = []) {
   return null
 }
 
-// Alle Wissens-Einträge, Projekte und Projekt-Notizen, die per [[titel]] auf
-// den gegebenen Titel verweisen (case-insensitiv).
-export function sammleBacklinks(titel, wissen, projekte, notizen = []) {
+// Alle Projektseiten als durchsuchbare Texte: Titel plus Text der Blöcke.
+// Grundlage dafür, dass eine Notiz auch sieht, welche Projektseite auf sie
+// verweist – sonst wäre die Verknüpfung nur in eine Richtung sichtbar.
+export function projektSeitenTexte(projekte = []) {
+  return projekte.flatMap((p) =>
+    (p.seiten ?? []).map((s) => ({
+      projektId: p.id,
+      projektName: p.name,
+      seiteId: s.id,
+      titel: s.titel?.trim() || "Unbenannte Seite",
+      text: (s.bloecke ?? [])
+        .map((b) => b.text ?? "")
+        .filter(Boolean)
+        .join("\n"),
+    }))
+  )
+}
+
+// Alle Wissens-Einträge, Projekte, Projekt-Notizen und Projektseiten, die per
+// [[titel]] auf den gegebenen Titel verweisen (case-insensitiv).
+export function sammleBacklinks(
+  titel,
+  wissen,
+  projekte,
+  notizen = [],
+  seiten = []
+) {
   const gesucht = titel.trim().toLowerCase()
   const treffer = (text) =>
     extrahiereWikilinks(text).some((t) => t.toLowerCase() === gesucht)
@@ -55,6 +79,14 @@ export function sammleBacklinks(titel, wissen, projekte, notizen = []) {
         id: n.id,
         titel: n.titel,
         projektId: n.projektId ?? n.kursId,
+      })),
+    ...seiten
+      .filter((s) => treffer(s.text))
+      .map((s) => ({
+        typ: "seite",
+        id: s.seiteId,
+        titel: `${s.titel} · ${s.projektName}`,
+        projektId: s.projektId,
       })),
   ]
 }

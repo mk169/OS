@@ -1,5 +1,6 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
+import { heute } from "../lib/datum"
 import {
   zyklusStatus,
   zyklusProjekte,
@@ -510,19 +511,32 @@ function Wochenziele({ periode, onUpdate, onNavigate }) {
 
             {istOffen && (
               <div className="space-y-4 border-t border-gray-100 px-4 py-4">
-                <label className="block text-xs text-gray-500">
-                  Wochenziel
-                  <input
-                    value={eintrag?.text ?? ""}
-                    onChange={(e) => setWoche(w.start, { text: e.target.value })}
-                    placeholder="Das eine Ziel dieser Woche"
-                    className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-                  />
-                </label>
+                <div>
+                  <label className="block text-xs text-gray-500">
+                    Wochenziel
+                    <input
+                      value={eintrag?.text ?? ""}
+                      onChange={(e) => setWoche(w.start, { text: e.target.value })}
+                      placeholder="Das eine Ziel dieser Woche"
+                      className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+                    />
+                  </label>
+                  <div className="mt-1.5 flex justify-end">
+                    <Einplanen
+                      titel={eintrag?.text ?? ""}
+                      wochenStart={w.vonTag}
+                      wochenEnde={w.bisTag}
+                      terminId={eintrag?.terminId ?? null}
+                      onGeplant={(terminId) => setWoche(w.start, { terminId })}
+                    />
+                  </div>
+                </div>
 
                 <Unterziele
                   woche={eintrag}
                   onChange={(liste) => setWoche(w.start, { unterziele: liste })}
+                  wochenStart={w.vonTag}
+                  wochenEnde={w.bisTag}
                 />
 
                 <Verknuepfungen
@@ -542,7 +556,129 @@ function Wochenziele({ periode, onUpdate, onNavigate }) {
   )
 }
 
-function Unterziele({ woche, onChange }) {
+// Ein Ziel in den Kalender legen: aus einem Vorhaben wird Zeit. Erzeugt
+// einen Fokus-Termin im Store `termine` und merkt sich seine ID am Ziel,
+// damit man sieht, dass (und wann) es eingeplant ist.
+function Einplanen({ titel, wochenStart, wochenEnde, terminId, onGeplant }) {
+  const [termine, setTermine] = useStored("termine", [])
+  const [offen, setOffen] = useState(false)
+  const heuteKey = heute()
+  const vorschlag =
+    heuteKey >= wochenStart && heuteKey <= wochenEnde ? heuteKey : wochenStart
+  const [datum, setDatum] = useState(vorschlag)
+  const [zeit, setZeit] = useState("09:00")
+  const [dauer, setDauer] = useState("60")
+
+  const termin = termine.find((t) => t.id === terminId)
+
+  if (termin) {
+    const tag = new Date(termin.datum).toLocaleDateString("de-DE", {
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+    })
+    return (
+      <span className="flex shrink-0 items-center gap-1 rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+        📅 {tag}
+        {termin.zeit ? ` ${termin.zeit}` : ""}
+        <button
+          onClick={() => {
+            setTermine(termine.filter((t) => t.id !== termin.id))
+            onGeplant(null)
+          }}
+          title="Termin wieder entfernen"
+          className="rounded-sm px-0.5 text-violet-400 hover:text-violet-900"
+        >
+          ×
+        </button>
+      </span>
+    )
+  }
+
+  if (!offen) {
+    return (
+      <button
+        onClick={() => setOffen(true)}
+        title="In den Kalender legen"
+        disabled={!titel?.trim()}
+        className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        📅 Einplanen
+      </button>
+    )
+  }
+
+  function speichern(e) {
+    e.preventDefault()
+    const id = Date.now()
+    setTermine([
+      ...termine,
+      {
+        id,
+        titel: titel.trim(),
+        datum,
+        zeit,
+        endeZeit: "",
+        dauer: Number(dauer) || 60,
+        fokus: true,
+        projektId: null,
+        ganztags: false,
+        art: "",
+        wiederholung: "",
+        bis: "",
+        blockId: null,
+      },
+    ])
+    onGeplant(id)
+    setOffen(false)
+  }
+
+  return (
+    <form
+      onSubmit={speichern}
+      className="flex shrink-0 flex-wrap items-center gap-1"
+    >
+      <input
+        type="date"
+        value={datum}
+        min={wochenStart}
+        max={wochenEnde}
+        onChange={(e) => setDatum(e.target.value)}
+        className="rounded-md border border-gray-200 px-1.5 py-0.5 text-xs text-gray-800 outline-none focus:border-gray-900"
+      />
+      <input
+        type="time"
+        value={zeit}
+        onChange={(e) => setZeit(e.target.value)}
+        className="rounded-md border border-gray-200 px-1.5 py-0.5 text-xs text-gray-800 outline-none focus:border-gray-900"
+      />
+      <input
+        type="number"
+        min="15"
+        step="15"
+        value={dauer}
+        onChange={(e) => setDauer(e.target.value)}
+        title="Dauer in Minuten"
+        className="w-14 rounded-md border border-gray-200 px-1.5 py-0.5 text-xs text-gray-800 outline-none focus:border-gray-900"
+      />
+      <button
+        type="submit"
+        className="rounded-md bg-gray-900 px-2 py-0.5 text-xs font-medium text-white hover:bg-gray-700"
+      >
+        In den Kalender
+      </button>
+      <button
+        type="button"
+        onClick={() => setOffen(false)}
+        className="px-1 text-xs text-gray-400 hover:text-gray-900"
+      >
+        Abbrechen
+      </button>
+    </form>
+  )
+}
+
+function Unterziele({ woche, onChange, wochenStart, wochenEnde }) {
   const [text, setText] = useState("")
   const liste = unterziele(woche)
 
@@ -589,6 +725,17 @@ function Unterziele({ woche, onChange }) {
                 className={`min-w-0 flex-1 border-none bg-transparent text-sm outline-none ${
                   u.erledigt ? "text-gray-400 line-through" : "text-gray-800"
                 }`}
+              />
+              <Einplanen
+                titel={u.text}
+                wochenStart={wochenStart}
+                wochenEnde={wochenEnde}
+                terminId={u.terminId ?? null}
+                onGeplant={(terminId) =>
+                  onChange(
+                    liste.map((x) => (x.id === u.id ? { ...x, terminId } : x))
+                  )
+                }
               />
               <LoeschKnopf
                 onLoeschen={() => onChange(liste.filter((x) => x.id !== u.id))}

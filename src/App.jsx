@@ -669,6 +669,9 @@ export default function App() {
           <SammelnSeite
             onNavigate={navigiere}
             startAnsicht={typeof param === "string" ? param : null}
+            startWissenId={
+              param && typeof param === "object" ? param.wissenId : null
+            }
           />
         )}
         {seite === "habits" && <HabitsSeite />}

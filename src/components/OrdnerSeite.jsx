@@ -7,6 +7,9 @@ import ProjektDetail, {
 } from "./ProjektDetail"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
+import { PROJEKT_VORLAGEN, vorlageAnwenden } from "../lib/projektvorlagen"
+import { vorlageZuBloecken } from "../lib/wissen"
+import { neueBlockId } from "./BlockEditor"
 import { SortMenu, LayoutUmschalter } from "./ListenControls"
 
 const ORDNER_SORT = [
@@ -1217,12 +1220,22 @@ function ProjektErstellen({
   const [name, setName] = useState("")
   const [beschreibung, setBeschreibung] = useState("")
   const [deadline, setDeadline] = useState("")
+  const [vorlage, setVorlage] = useState("leer")
 
-  // Projekt entsteht leer (wie ein Notion-Blatt) – Bereiche werden
-  // danach im Übersichts-Sheet hinzugefügt.
+  // Ein Projekt startet leer – oder mit der Struktur einer Vorlage
+  // (Bereiche, Seiten, Ablauf). Areas bleiben bewusst schlicht.
   function speichern(e) {
     e.preventDefault()
     if (!name.trim()) return
+    const gewaehlt =
+      typ === "area"
+        ? null
+        : PROJEKT_VORLAGEN.find((v) => v.key === vorlage) ?? null
+    const struktur = gewaehlt
+      ? vorlageAnwenden(gewaehlt, (t) => vorlageZuBloecken(t, neueBlockId), () =>
+          neueBlockId()
+        )
+      : { module: [], workflow: [], seiten: [], seitenTabs: [], uebersichtMigriert: true }
     setProjekte([
       ...projekte,
       {
@@ -1232,9 +1245,8 @@ function ProjektErstellen({
         ordnerId,
         deadline: typ === "area" ? "" : deadline,
         typ,
-        module: [],
         ziel: "",
-        workflow: [],
+        ...struktur,
       },
     ])
     onFertig()
@@ -1264,6 +1276,34 @@ function ProjektErstellen({
           </button>
         ))}
       </div>
+      {typ === "projekt" && (
+        <div className="mb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+            Vorlage
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {PROJEKT_VORLAGEN.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                onClick={() => setVorlage(v.key)}
+                title={v.beschreibung}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  vorlage === v.key
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-200 text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs text-gray-400">
+            {PROJEKT_VORLAGEN.find((v) => v.key === vorlage)?.beschreibung}
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col text-xs text-gray-500">
           Name

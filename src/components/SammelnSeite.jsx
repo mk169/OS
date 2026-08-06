@@ -93,7 +93,12 @@ function AnsichtWechsler({ ansicht, onWechsel }) {
   )
 }
 
-export default function SammelnSeite({ onNavigate, startAnsicht = null }) {
+export default function SammelnSeite({
+  onNavigate,
+  startAnsicht = null,
+  // Von außen angesprungene Notiz (z.B. Verweis aus einer Projektseite).
+  startWissenId = null,
+}) {
   const [ansicht, setAnsicht] = useState(() =>
     ANSICHTEN.some((a) => a.key === startAnsicht) ? startAnsicht : "wissen"
   )
@@ -115,7 +120,11 @@ export default function SammelnSeite({ onNavigate, startAnsicht = null }) {
     <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
       <AnsichtWechsler ansicht={ansicht} onWechsel={waehleAnsicht} />
       {ansicht === "wissen" && (
-        <WissenAnsicht onNavigate={onNavigate} onTagKlick={oeffneTag} />
+        <WissenAnsicht
+          onNavigate={onNavigate}
+          onTagKlick={oeffneTag}
+          startWissenId={startWissenId}
+        />
       )}
       {ansicht === "tags" && (
         <TagsAnsicht onNavigate={onNavigate} startTag={tagWunsch} />
@@ -128,7 +137,7 @@ export default function SammelnSeite({ onNavigate, startAnsicht = null }) {
   )
 }
 
-function WissenAnsicht({ onNavigate, onTagKlick }) {
+function WissenAnsicht({ onNavigate, onTagKlick, startWissenId = null }) {
   const [wissen, setWissen] = useStored("wissen", [])
   const [ordner, setOrdner] = useStored("wissenOrdner", [])
   const [projekte] = useStored("projekte", [])
@@ -160,6 +169,11 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
     setWissen((w) => [...w, ...uebernommen])
     setInbox([])
   }, [inbox, setWissen, setInbox])
+
+  // Von außen angesprungene Notiz direkt öffnen.
+  useEffect(() => {
+    if (startWissenId != null) setBearbeiteId(startWissenId)
+  }, [startWissenId])
 
   const bearbeiteteNotiz = wissen.find((w) => w.id === bearbeiteId)
 
@@ -307,6 +321,8 @@ function WissenAnsicht({ onNavigate, onTagKlick }) {
     if (ziel.typ === "wissen") setBearbeiteId(ziel.id)
     else if (ziel.typ === "notiz")
       onNavigate?.("projekte", { projektId: ziel.projektId, notizId: ziel.id })
+    // Eine Projektseite: das Projekt öffnen, in dem sie liegt.
+    else if (ziel.typ === "seite") onNavigate?.("projekte", ziel.projektId)
     else onNavigate?.("projekte", ziel.id)
   }
 
