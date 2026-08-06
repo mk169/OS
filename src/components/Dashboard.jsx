@@ -1,6 +1,7 @@
 import useStored from "../lib/useStored"
 import { heute, tageBis, montagVon } from "../lib/datum"
 import { istFaellig } from "../lib/spacedRepetition"
+import { alleLernplaene, lernplanSumme } from "../lib/lernplan"
 import { dashboardConfig } from "../lib/dashboard"
 import ZyklusWidget from "./ZyklusWidget"
 import { FARBEN } from "../lib/farben"
@@ -27,13 +28,28 @@ function begruessung() {
 const FONT_MONO = 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace'
 const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
 
-// Hinweis auf fällige Karteikarten (projektübergreifend). Erscheint nur, wenn
-// wirklich etwas ansteht, und führt direkt in die globale Lern-Session
+// Hinweis auf alles, was heute zu lernen ist: fällige Karteikarten und
+// anstehende Lernplan-Schritte (beides projektübergreifend). Erscheint nur,
+// wenn wirklich etwas ansteht, und führt in die Lern-Übersicht
 // (Sammeln → Lernen). „dunkel" für dunkle Dashboard-Stile (Arcade).
 function LernBanner({ onNavigate, variant = "hell" }) {
   const [karten] = useStored("karten", [])
+  const [projekte] = useStored("projekte", [])
+  const [todos] = useStored("todos", [])
+  const [ablage] = useStored("ablage", [])
+
   const faellig = karten.filter(istFaellig).length
-  if (faellig === 0) return null
+  const summe = lernplanSumme(alleLernplaene(projekte, todos, ablage))
+  const schritte = summe.ueberfaellig + summe.heuteFaellig
+  if (faellig === 0 && schritte === 0) return null
+
+  const titel = [
+    faellig > 0 && `${faellig} ${faellig === 1 ? "Karte" : "Karten"} fällig`,
+    schritte > 0 &&
+      `${schritte} ${schritte === 1 ? "Lernschritt" : "Lernschritte"} heute`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
 
   const dunkel = variant === "dunkel"
   return (
@@ -52,12 +68,12 @@ function LernBanner({ onNavigate, variant = "hell" }) {
         <span
           className={`block text-sm font-semibold ${dunkel ? "text-accent-200" : "text-accent-700"}`}
         >
-          {faellig} {faellig === 1 ? "Karte" : "Karten"} fällig
+          {titel}
         </span>
         <span
           className={`block text-xs ${dunkel ? "text-accent-200/70" : "text-accent-600/70"}`}
         >
-          Karteikarten projektübergreifend wiederholen
+          Karteikarten und Lernpläne projektübergreifend
         </span>
       </span>
       <span

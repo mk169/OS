@@ -2,6 +2,7 @@ import { useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import LoeschKnopf from "./LoeschKnopf"
 import { heute, inTagen } from "../lib/datum"
+import { schrittText } from "../lib/lernplan"
 
 const KATEGORIEN = ["Kapitel", "Skript", "Übung", "Altklausur", "Dokument", "Sonstiges"]
 
@@ -90,7 +91,10 @@ export default function ProjektInhalte({ projekt }) {
       (t) => t.projektId === projekt.id || t.kursId === projekt.id
     )
     const neu = themen.filter(
-      (thema) => !projektTodos.some((t) => t.text === `${thema.titel} lernen`)
+      (thema) =>
+        !projektTodos.some(
+          (t) => t.inhaltId === thema.id || t.text === schrittText(thema.titel)
+        )
     )
     if (neu.length === 0) {
       setMeldung("Alle Inhalte sind bereits im Lernplan.")
@@ -111,7 +115,11 @@ export default function ProjektInhalte({ projekt }) {
     const aufgaben = neu.map((thema, i) => ({
       id: basisId + i,
       projektId: projekt.id,
-      text: `${thema.titel} lernen`,
+      // Markierung für die Lern-Übersicht (Sammeln → Lernen): so bleiben die
+      // Schritte auch dann erkennbar, wenn ihr Text später geändert wird.
+      lernplan: true,
+      inhaltId: thema.id,
+      text: schrittText(thema.titel),
       datum: inTagen(
         Math.max(1, Math.round(((i + 1) * verfuegbareTage) / neu.length))
       ),
