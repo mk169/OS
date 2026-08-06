@@ -36,7 +36,7 @@ export const MODULE = [
   { key: "kalender", label: "Kalender" },
 ]
 
-export const STANDARD_MODULE = ["ziel", "workflow", "todos", "kalender"]
+export const STANDARD_MODULE = ["ziel", "workflow", "todos", "lernen", "kalender"]
 
 // Auswahlwerte für die Eigenschaften Priorität und Status (Notion-artige
 // Tags). Farbe pro Wert; leerer Wert = dezentes „Keine“.
