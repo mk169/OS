@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import useStored from "../lib/useStored"
+import LoeschKnopf from "./LoeschKnopf"
 import { WIKILINK_REGEX, findeZiel, sammleBacklinks } from "../lib/wikilinks"
 import { teileMitTags, sammleTags } from "../lib/tags"
 import { leseDateiAlsDataUri, istBild, formatBytes } from "../lib/wissen"
@@ -148,16 +149,11 @@ export function NotizenRaster({
                 {notiz.inhalt || "Leer – klicken zum Schreiben."}
               </span>
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onRemove(notiz.id)
-              }}
-              title="Notiz löschen"
-              className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-            >
-              ×
-            </button>
+            <LoeschKnopf
+              onLoeschen={() => onRemove(notiz.id)}
+              titel="Notiz löschen"
+              klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+            />
           </li>
         ))}
       </ul>
@@ -179,16 +175,13 @@ export function NotizenRaster({
               {notiz.inhalt || "Leer – klicken zum Schreiben."}
             </p>
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onRemove(notiz.id)
-            }}
-            title="Notiz löschen"
-            className="absolute right-2 top-2 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-          >
-            ×
-          </button>
+          <span className="absolute right-2 top-2">
+            <LoeschKnopf
+              onLoeschen={() => onRemove(notiz.id)}
+              titel="Notiz löschen"
+              klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+            />
+          </span>
         </div>
       ))}
     </div>

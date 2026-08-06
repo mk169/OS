@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
+import { faelltAuf } from "../lib/wiederholung"
 import Kalender from "./Kalender"
 import TodoErstellen from "./TodoErstellen"
 import { TodoZeile } from "./TodosSeite"
@@ -10,6 +11,7 @@ import ProjektArtikel from "./ProjektArtikel"
 import ProjektKarten from "./ProjektKarten"
 import ProjektBoard from "./ProjektBoard"
 import BlockEditor, { bloeckeVon } from "./BlockEditor"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
 // jederzeit über „Bereiche anpassen“) wählbar – so wird aus demselben
@@ -102,9 +104,20 @@ export default function ProjektDetail({
   onNavigate,
 }) {
   const [ordner] = useStored("ordner", [])
+  // Kopfbereich (Eigenschaften) ist zuklappbar, damit vom Projekt nur das
+  // volle Blatt zu sehen ist. Die Wahl gilt für alle Projekte und bleibt
+  // gespeichert.
+  const [kopfOffen, setKopfOffen] = useStored("projektKopfOffen", false)
   const module = projekt.module ?? STANDARD_MODULE
   const eigene = projekt.eigeneModule ?? []
   const [neuerBereichName, setNeuerBereichName] = useState("")
+  // Unterseiten des Projekts (wie Seiten in einem Textdokument): liegen
+  // flach in projekt.seiten, die Verschachtelung ergibt sich aus den
+  // „seite"-Blöcken, die auf sie zeigen.
+  const seiten = projekt.seiten ?? []
+  const [offeneSeiteId, setOffeneSeiteId] = useState(null)
+  // Vorgemerkte Seiten-Änderungen (siehe „Unterseiten" weiter unten).
+  const vorgemerkt = useRef({ neu: [], weg: [] })
 
   // Ordnerpfad als Eyebrow – zeigt, wo das Projekt liegt. Läuft von der
   // Projekt-Zuordnung über parentId nach oben (wie in OrdnerSeite).
@@ -210,223 +223,388 @@ export default function ProjektDetail({
         <EigenerModul
           projekt={projekt}
           modulKey={key}
-          onUpdate={onUpdate}
+          onBloecke={speichereEigenenBereich}
           bereichRenderer={bereichRenderer}
+          seitenProps={seitenProps}
         />
       )
     return null
   }
 
-  return (
-    <div className="mx-auto flex min-h-[calc(100vh-3.25rem)] w-full max-w-6xl flex-col px-4 pb-10 pt-6 sm:px-6">
-      <button
-        onClick={onBack}
-        title="Zurück"
-        className="flex h-7 w-7 items-center justify-center self-start rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
-      >
-        <PropIcon>
-          <path d="m15 18-6-6 6-6" />
-        </PropIcon>
-      </button>
+  // --- Unterseiten -------------------------------------------------------
+  //
+  // Anlegen und Löschen einer Seite fallen immer zusammen mit einer
+  // Änderung an der Blockliste, die sie einbindet. Beides in getrennten
+  // onUpdate-Aufrufen zu schreiben würde sich gegenseitig überschreiben
+  // (beide gehen vom selben, noch alten `projekt` aus). Darum merken sich
+  // seiteNeu/seiteLoeschen ihre Änderung nur vor; geschrieben wird sie
+  // zusammen mit den Blöcken im direkt folgenden Speichern.
 
-      <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-gray-500">
-        {eyebrow}
-      </p>
-      <h1 className="mt-2 text-3xl font-medium text-gray-900">
-        {projekt.name}
-      </h1>
-      {projekt.beschreibung && (
-        <p className="mt-1.5 font-serif text-[15px] italic text-gray-500">
-          {projekt.beschreibung}
-        </p>
-      )}
+  function seiteNeu() {
+    const id = Date.now() + Math.floor(Math.random() * 1000)
+    vorgemerkt.current.neu.push({ id, titel: "", bloecke: [] })
+    return id
+  }
 
-      {/* Notion-artige Eigenschaftsliste */}
-      <div className="mt-5 max-w-xl">
-        <EigenschaftsZeile
-          label="Bereich"
-          icon={
-            <PropIcon>
-              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
-            </PropIcon>
-          }
-        >
-          <select
-            value={projekt.ordnerId ?? ""}
-            onChange={(e) =>
-              onUpdate({
-                ...projekt,
-                ordnerId: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-            className="w-full cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
+  function seiteLoeschen(id) {
+    vorgemerkt.current.weg.push(id)
+  }
+
+  // Seitenliste inklusive der vorgemerkten Änderungen. Gelöscht wird eine
+  // Seite mitsamt den Seiten, die nur von ihr aus erreichbar sind – sonst
+  // blieben sie ohne Verweis im Projekt zurück.
+  function seitenStand() {
+    const { neu, weg } = vorgemerkt.current
+    vorgemerkt.current = { neu: [], weg: [] }
+    let liste = neu.length > 0 ? [...seiten, ...neu] : seiten
+    if (weg.length > 0) {
+      const raus = new Set()
+      const sammle = (sid) => {
+        if (raus.has(sid)) return
+        raus.add(sid)
+        const s = liste.find((x) => x.id === sid)
+        for (const b of s?.bloecke ?? []) {
+          if (b.typ === "seite" && b.seiteId) sammle(b.seiteId)
+        }
+      }
+      weg.forEach(sammle)
+      liste = liste.filter((s) => !raus.has(s.id))
+      if (offeneSeiteId != null && raus.has(offeneSeiteId)) {
+        setOffeneSeiteId(null)
+      }
+    }
+    return liste
+  }
+
+  function speichereSeitenBloecke(id, bloecke) {
+    onUpdate({
+      ...projekt,
+      seiten: seitenStand().map((s) => (s.id === id ? { ...s, bloecke } : s)),
+    })
+  }
+
+  function speichereSeitenTitel(id, titel) {
+    onUpdate({
+      ...projekt,
+      seiten: seitenStand().map((s) => (s.id === id ? { ...s, titel } : s)),
+    })
+  }
+
+  function speichereUebersicht(bloecke) {
+    onUpdate({ ...projekt, bloecke, seiten: seitenStand() })
+  }
+
+  function speichereEigenenBereich(modulKey, bloecke) {
+    onUpdate({
+      ...projekt,
+      eigeneModule: eigene.map((m) =>
+        m.key === modulKey ? { ...m, bloecke } : m
+      ),
+      seiten: seitenStand(),
+    })
+  }
+
+  const seitenProps = {
+    seiten,
+    onSeiteNeu: seiteNeu,
+    onSeiteOeffnen: setOffeneSeiteId,
+    onSeiteLoeschen: seiteLoeschen,
+  }
+
+  const offeneSeite = seiten.find((s) => s.id === offeneSeiteId)
+  if (offeneSeite) {
+    // Pfad zur Seite über die Blöcke der Elternseiten (Schutz gegen Zyklen).
+    const pfad = []
+    let zeiger = offeneSeite
+    const gesehen = new Set()
+    while (zeiger && !gesehen.has(zeiger.id)) {
+      gesehen.add(zeiger.id)
+      pfad.unshift(zeiger)
+      zeiger = seiten.find((s) =>
+        (s.bloecke ?? []).some(
+          (b) => b.typ === "seite" && b.seiteId === zeiger.id
+        )
+      )
+    }
+
+    return (
+      <div className="mx-auto flex min-h-[calc(100vh-3.25rem)] w-full max-w-3xl flex-col px-4 pb-10 pt-6 sm:px-6">
+        <nav className="flex flex-wrap items-center gap-1 text-xs text-gray-400">
+          <button
+            onClick={() => setOffeneSeiteId(null)}
+            className="rounded-md px-1 py-0.5 hover:bg-gray-100 hover:text-gray-900"
           >
-            <option value="">Kein Ordner</option>
-            {ordner.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </EigenschaftsZeile>
+            ‹ {projekt.name}
+          </button>
+          {pfad.slice(0, -1).map((s) => (
+            <span key={s.id} className="flex items-center gap-1">
+              <span>/</span>
+              <button
+                onClick={() => setOffeneSeiteId(s.id)}
+                className="rounded-md px-1 py-0.5 hover:bg-gray-100 hover:text-gray-900"
+              >
+                {s.titel?.trim() || "Unbenannte Seite"}
+              </button>
+            </span>
+          ))}
+        </nav>
 
-        {(projekt.typ ?? "projekt") !== "area" && (
-          <EigenschaftsZeile
-            label="Fälligkeit"
-            icon={
-              <PropIcon>
-                <rect x="3" y="4.5" width="18" height="16" rx="2" />
-                <path d="M3 9.5h18M8 3v3M16 3v3" />
-              </PropIcon>
-            }
-          >
-            <input
-              type="date"
-              value={projekt.deadline ?? ""}
-              onChange={(e) =>
-                onUpdate({ ...projekt, deadline: e.target.value })
-              }
-              className="cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
-            />
-          </EigenschaftsZeile>
-        )}
+        <input
+          value={offeneSeite.titel ?? ""}
+          onChange={(e) => speichereSeitenTitel(offeneSeite.id, e.target.value)}
+          placeholder="Unbenannte Seite"
+          className="mt-3 w-full border-none bg-transparent text-3xl font-medium text-gray-900 outline-none placeholder:text-gray-300"
+        />
 
-        <EigenschaftsZeile
-          label="Priorität"
-          icon={
-            <PropIcon>
-              <path d="M5 21V4h11l-2 4 2 4H5" />
-            </PropIcon>
-          }
-        >
-          <TagSelect
-            value={projekt.prioritaet ?? ""}
-            options={PRIORITAETEN}
-            onChange={(v) => onUpdate({ ...projekt, prioritaet: v })}
+        <div className="mt-6 flex flex-1 flex-col">
+          <BlockEditor
+            bloecke={offeneSeite.bloecke ?? []}
+            onChange={(bloecke) => speichereSeitenBloecke(offeneSeite.id, bloecke)}
+            bereichRenderer={bereichRenderer}
+            projekt={projekt}
+            {...seitenProps}
           />
-        </EigenschaftsZeile>
-
-        {(projekt.typ ?? "projekt") !== "area" && (
-          <EigenschaftsZeile
-            label="Status"
-            icon={
-              <PropIcon>
-                <circle cx="12" cy="12" r="8.5" strokeDasharray="3 3" />
-              </PropIcon>
-            }
-          >
-            <TagSelect
-              value={projekt.status ?? "offen"}
-              options={STATUS_OPTIONEN}
-              onChange={(v) => onUpdate({ ...projekt, status: v })}
-            />
-          </EigenschaftsZeile>
-        )}
-
-        <div className="mt-1 flex flex-wrap items-center gap-1">
-          <button
-            onClick={() => setAnpassen(!anpassen)}
-            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
-          >
-            <PropIcon>
-              <path d="M12 5v14M5 12h14" />
-            </PropIcon>
-            Bereiche anpassen
-          </button>
-          <button
-            onClick={() => {
-              onUpdate({ ...projekt, archiviert: !projekt.archiviert })
-              if (!projekt.archiviert) onBack()
-            }}
-            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
-          >
-            <PropIcon>
-              <path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4" />
-            </PropIcon>
-            {projekt.archiviert ? "Wiederherstellen" : "Archivieren"}
-          </button>
         </div>
       </div>
+    )
+  }
 
-      {anpassen && (
-        <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-              Aktive Bereiche – mit ‹ › verschieben
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {sichtbareModule.map((m) => (
-                <span
-                  key={m.key}
-                  className="flex items-center gap-0.5 rounded-full bg-gray-900 py-1 pl-1.5 pr-2 text-xs font-medium text-white"
-                >
-                  <button
-                    onClick={() => verschiebeModul(m.key, -1)}
-                    title="Nach vorne"
-                    className="rounded-sm px-1 text-gray-400 hover:text-white"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    onClick={() => verschiebeModul(m.key, 1)}
-                    title="Nach hinten"
-                    className="rounded-sm px-1 text-gray-400 hover:text-white"
-                  >
-                    ›
-                  </button>
-                  <button onClick={() => toggleModul(m.key)} title="Ausblenden">
-                    {m.label}
-                  </button>
-                  {m.key.startsWith("eigen-") && (
-                    <button
-                      onClick={() => removeEigenerBereich(m.key)}
-                      title="Bereich endgültig löschen"
-                      className="ml-1 rounded-sm px-1 text-gray-400 hover:text-red-400"
-                    >
-                      ×
-                    </button>
-                  )}
-                </span>
-              ))}
-            </div>
-          </div>
+  return (
+    <div className="mx-auto flex min-h-[calc(100vh-3.25rem)] w-full max-w-6xl flex-col px-4 pb-10 pt-6 sm:px-6">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onBack}
+          title="Zurück"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+        >
+          <PropIcon>
+            <path d="m15 18-6-6 6-6" />
+          </PropIcon>
+        </button>
 
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-              Verfügbar – klicken zum Einblenden
+        {/* Zugeklappt: Titel klein in der Kopfzeile, damit darunter nur das
+            Blatt steht. */}
+        {!kopfOffen && (
+          <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
+            {projekt.name}
+          </p>
+        )}
+
+        <button
+          onClick={() => setKopfOffen(!kopfOffen)}
+          title={kopfOffen ? "Kopf zuklappen" : "Details anzeigen"}
+          className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-gray-100 hover:text-gray-900 ${
+            kopfOffen ? "text-gray-500" : "text-gray-400"
+          }`}
+        >
+          {kopfOffen ? "Zuklappen" : "Details"}
+          <PropIcon>
+            <path d={kopfOffen ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"} />
+          </PropIcon>
+        </button>
+      </div>
+
+      {kopfOffen && (
+        <>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-gray-500">
+            {eyebrow}
+          </p>
+          <h1 className="mt-2 text-3xl font-medium text-gray-900">
+            {projekt.name}
+          </h1>
+          {projekt.beschreibung && (
+            <p className="mt-1.5 font-serif text-[15px] italic text-gray-500">
+              {projekt.beschreibung}
             </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {[...MODULE, ...eigene]
-                .filter((m) => !module.includes(m.key))
-                .map((m) => (
-                  <button
-                    key={m.key}
-                    onClick={() => toggleModul(m.key)}
-                    className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-400 hover:text-gray-900"
-                  >
-                    {m.label}
-                  </button>
+          )}
+
+          {/* Notion-artige Eigenschaftsliste */}
+          <div className="mt-5 max-w-xl">
+            <EigenschaftsZeile
+              label="Bereich"
+              icon={
+                <PropIcon>
+                  <path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+                </PropIcon>
+              }
+            >
+              <select
+                value={projekt.ordnerId ?? ""}
+                onChange={(e) =>
+                  onUpdate({
+                    ...projekt,
+                    ordnerId: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                className="w-full cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
+              >
+                <option value="">Kein Ordner</option>
+                {ordner.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
                 ))}
-              <form onSubmit={addEigenerBereich} className="flex gap-1.5">
+              </select>
+            </EigenschaftsZeile>
+
+            {(projekt.typ ?? "projekt") !== "area" && (
+              <EigenschaftsZeile
+                label="Fälligkeit"
+                icon={
+                  <PropIcon>
+                    <rect x="3" y="4.5" width="18" height="16" rx="2" />
+                    <path d="M3 9.5h18M8 3v3M16 3v3" />
+                  </PropIcon>
+                }
+              >
                 <input
-                  value={neuerBereichName}
-                  onChange={(e) => setNeuerBereichName(e.target.value)}
-                  placeholder="Eigener Bereich, z.B. Recherche"
-                  className="w-48 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-900 outline-none focus:border-gray-900"
+                  type="date"
+                  value={projekt.deadline ?? ""}
+                  onChange={(e) =>
+                    onUpdate({ ...projekt, deadline: e.target.value })
+                  }
+                  className="cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
                 />
-                <button
-                  type="submit"
-                  className="rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700"
-                >
-                  + Erstellen
-                </button>
-              </form>
+              </EigenschaftsZeile>
+            )}
+
+            <EigenschaftsZeile
+              label="Priorität"
+              icon={
+                <PropIcon>
+                  <path d="M5 21V4h11l-2 4 2 4H5" />
+                </PropIcon>
+              }
+            >
+              <TagSelect
+                value={projekt.prioritaet ?? ""}
+                options={PRIORITAETEN}
+                onChange={(v) => onUpdate({ ...projekt, prioritaet: v })}
+              />
+            </EigenschaftsZeile>
+
+            {(projekt.typ ?? "projekt") !== "area" && (
+              <EigenschaftsZeile
+                label="Status"
+                icon={
+                  <PropIcon>
+                    <circle cx="12" cy="12" r="8.5" strokeDasharray="3 3" />
+                  </PropIcon>
+                }
+              >
+                <TagSelect
+                  value={projekt.status ?? "offen"}
+                  options={STATUS_OPTIONEN}
+                  onChange={(v) => onUpdate({ ...projekt, status: v })}
+                />
+              </EigenschaftsZeile>
+            )}
+
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              <button
+                onClick={() => setAnpassen(!anpassen)}
+                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
+              >
+                <PropIcon>
+                  <path d="M12 5v14M5 12h14" />
+                </PropIcon>
+                Bereiche anpassen
+              </button>
+              <button
+                onClick={() => {
+                  onUpdate({ ...projekt, archiviert: !projekt.archiviert })
+                  if (!projekt.archiviert) onBack()
+                }}
+                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
+              >
+                <PropIcon>
+                  <path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4" />
+                </PropIcon>
+                {projekt.archiviert ? "Wiederherstellen" : "Archivieren"}
+              </button>
             </div>
           </div>
-        </div>
+
+          {anpassen && (
+            <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+                  Aktive Bereiche – mit ‹ › verschieben
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {sichtbareModule.map((m) => (
+                    <span
+                      key={m.key}
+                      className="flex items-center gap-0.5 rounded-full bg-gray-900 py-1 pl-1.5 pr-2 text-xs font-medium text-white"
+                    >
+                      <button
+                        onClick={() => verschiebeModul(m.key, -1)}
+                        title="Nach vorne"
+                        className="rounded-sm px-1 text-gray-400 hover:text-white"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        onClick={() => verschiebeModul(m.key, 1)}
+                        title="Nach hinten"
+                        className="rounded-sm px-1 text-gray-400 hover:text-white"
+                      >
+                        ›
+                      </button>
+                      <button onClick={() => toggleModul(m.key)} title="Ausblenden">
+                        {m.label}
+                      </button>
+                      {m.key.startsWith("eigen-") && (
+                        <LoeschKnopf
+                          onLoeschen={() => removeEigenerBereich(m.key)}
+                          titel="Bereich endgültig löschen"
+                          frageText="Bereich löschen?"
+                          klasse="ml-1 rounded-sm px-1 text-gray-400"
+                        />
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+                  Verfügbar – klicken zum Einblenden
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {[...MODULE, ...eigene]
+                    .filter((m) => !module.includes(m.key))
+                    .map((m) => (
+                      <button
+                        key={m.key}
+                        onClick={() => toggleModul(m.key)}
+                        className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-400 hover:text-gray-900"
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  <form onSubmit={addEigenerBereich} className="flex gap-1.5">
+                    <input
+                      value={neuerBereichName}
+                      onChange={(e) => setNeuerBereichName(e.target.value)}
+                      placeholder="Eigener Bereich, z.B. Recherche"
+                      className="w-48 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-900 outline-none focus:border-gray-900"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700"
+                    >
+                      + Erstellen
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      <nav className="sticky top-12 z-10 mt-6 flex gap-5 overflow-x-auto border-b border-gray-200 bg-white/85 backdrop-blur sm:gap-6 md:top-0">
+      <nav className="sticky top-12 z-10 mt-4 flex gap-5 overflow-x-auto border-b border-gray-200 bg-white/85 backdrop-blur sm:gap-6 md:top-0">
         <TabButton
           active={aktiv === "uebersicht"}
           onClick={() => setAktiv("uebersicht")}
@@ -453,8 +631,9 @@ export default function ProjektDetail({
         {aktiv === "uebersicht" ? (
           <UebersichtModul
             projekt={projekt}
-            onUpdate={onUpdate}
+            onBloecke={speichereUebersicht}
             bereichRenderer={bereichRenderer}
+            seitenProps={seitenProps}
           />
         ) : (
           bereichRenderer(aktiv)
@@ -490,32 +669,34 @@ function Dokument({ children }) {
 
 // Hauptseite des Projekts als Block-Editor: Text/Überschrift, Tabellen,
 // Dashboards und eingebettete Bereiche. Alter Freitext wird migriert.
-function UebersichtModul({ projekt, onUpdate, bereichRenderer }) {
+function UebersichtModul({ projekt, onBloecke, bereichRenderer, seitenProps }) {
   return (
     <Dokument>
       <BlockEditor
         bloecke={bloeckeVon(projekt, "uebersicht")}
-        onChange={(bloecke) => onUpdate({ ...projekt, bloecke })}
+        onChange={onBloecke}
         bereichRenderer={bereichRenderer}
         projekt={projekt}
+        {...seitenProps}
       />
     </Dokument>
   )
 }
 
 // Eigener Bereich – ebenfalls eine Block-Seite.
-function EigenerModul({ projekt, modulKey, onUpdate, bereichRenderer }) {
+function EigenerModul({
+  projekt,
+  modulKey,
+  onBloecke,
+  bereichRenderer,
+  seitenProps,
+}) {
   const eigene = projekt.eigeneModule ?? []
   const modul = eigene.find((m) => m.key === modulKey)
   if (!modul) return null
 
   function setBloecke(bloecke) {
-    onUpdate({
-      ...projekt,
-      eigeneModule: eigene.map((m) =>
-        m.key === modulKey ? { ...m, bloecke } : m
-      ),
-    })
+    onBloecke(modulKey, bloecke)
   }
 
   return (
@@ -529,6 +710,7 @@ function EigenerModul({ projekt, modulKey, onUpdate, bereichRenderer }) {
         bereichRenderer={bereichRenderer}
         projekt={projekt}
         ausschluss={[modulKey]}
+        {...seitenProps}
       />
     </Dokument>
   )
@@ -675,13 +857,11 @@ function WorkflowModul({ projekt, onUpdate }) {
                   {new Date(s.datum).toLocaleDateString("de-DE")}
                 </span>
               )}
-              <button
-                onClick={() => remove(s.id)}
-                title="Schritt löschen"
-                className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-              >
-                ×
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => remove(s.id)}
+                titel="Schritt löschen"
+                klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+              />
             </li>
           ))}
         </ul>
@@ -785,13 +965,11 @@ function WorkflowTimeline({ workflow, onToggle, onRemove }) {
                         month: "2-digit",
                       })}
                     </span>
-                    <button
-                      onClick={() => onRemove(s.id)}
-                      title="Schritt löschen"
-                      className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                    >
-                      ×
-                    </button>
+                    <LoeschKnopf
+                      onLoeschen={() => onRemove(s.id)}
+                      titel="Schritt löschen"
+                      klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                    />
                   </div>
                 </div>
               )
@@ -824,13 +1002,11 @@ function WorkflowTimeline({ workflow, onToggle, onRemove }) {
                 >
                   {s.text}
                 </span>
-                <button
-                  onClick={() => onRemove(s.id)}
-                  title="Schritt löschen"
-                  className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                >
-                  ×
-                </button>
+                <LoeschKnopf
+                  onLoeschen={() => onRemove(s.id)}
+                  titel="Schritt löschen"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                />
               </li>
             ))}
           </ul>
@@ -880,10 +1056,22 @@ function TodosModul({ projekt }) {
 
 function KalenderModul({ projekt }) {
   const [alleTodos] = useStored("todos", [])
+  const [alleTermine] = useStored("termine", [])
   const workflow = projekt.workflow ?? []
 
   function eintraegeAm(key) {
     return [
+      // Termine aus dem allgemeinen Kalender, die auf dieses Projekt gebucht
+      // sind – so zeigen beide Kalender dieselben Termine.
+      ...alleTermine
+        .filter((t) => faelltAuf(t, key) && t.projektId === projekt.id)
+        .map((t) => ({
+          typ: t.fokus ? "fokus" : "termin",
+          label: t.titel,
+          zeit: t.ganztags ? "" : t.zeit,
+          bis: t.endeZeit,
+          dauer: t.dauer,
+        })),
       ...(projekt.deadline === key
         ? [{ typ: "projekt", label: `${projekt.name} – Deadline` }]
         : []),
@@ -901,7 +1089,7 @@ function KalenderModul({ projekt }) {
             t.datum === key
         )
         .map((t) => ({ typ: "aufgabe", label: t.text, dauer: t.dauer })),
-    ]
+    ].sort((a, b) => (a.zeit || "99:99").localeCompare(b.zeit || "99:99"))
   }
 
   return (
@@ -911,7 +1099,7 @@ function KalenderModul({ projekt }) {
       </p>
       <Kalender
         eintraegeAm={eintraegeAm}
-        legende={["schritt", "aufgabe", "projekt"]}
+        legende={["termin", "fokus", "schritt", "aufgabe", "projekt"]}
       />
     </div>
   )

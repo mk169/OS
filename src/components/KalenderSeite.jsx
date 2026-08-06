@@ -82,6 +82,18 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
       ...projekte
         .filter((p) => p.deadline === key)
         .map((p) => ({ typ: "projekt", label: `${p.name} – Deadline` })),
+      // Termine aus den Projekten (Workflow-Schritte) laufen im allgemeinen
+      // Kalender mit – archivierte Projekte bleiben außen vor.
+      ...projekte
+        .filter((p) => !p.archiviert)
+        .flatMap((p) =>
+          (p.workflow ?? [])
+            .filter((s) => s.datum === key)
+            .map((s) => ({
+              typ: "schritt",
+              label: `${s.erledigt ? `${s.text} (erledigt)` : s.text} · ${p.name}`,
+            }))
+        ),
       ...todos
         .filter((t) => !t.erledigt && t.datum === key)
         .map((t) => ({ typ: "aufgabe", label: t.text, dauer: t.dauer })),
@@ -395,7 +407,15 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
       ) : (
         <Kalender
           eintraegeAm={eintraegeAm}
-          legende={["termin", "fokus", "geburtstag", "aufgabe", "projekt", "phase"]}
+          legende={[
+            "termin",
+            "fokus",
+            "geburtstag",
+            "aufgabe",
+            "projekt",
+            "schritt",
+            "phase",
+          ]}
           tagesdetail={tagesdetail}
           onNeu={oeffneNeu}
           onNeuZeit={oeffneNeuZeit}

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
 import useStored from "../lib/useStored"
+import LoeschKnopf from "./LoeschKnopf"
 import { heute, inTagen } from "../lib/datum"
 
 const KATEGORIEN = ["Kapitel", "Skript", "Übung", "Altklausur", "Dokument", "Sonstiges"]
@@ -293,13 +294,11 @@ export default function ProjektInhalte({ projekt }) {
                   {eintrag.prioritaet}
                 </span>
               )}
-              <button
-                onClick={() => removeEintrag(eintrag.id)}
-                title="Eintrag löschen"
-                className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-              >
-                ×
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => removeEintrag(eintrag.id)}
+                titel="Eintrag löschen"
+                klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+              />
             </li>
           ))}
         </ul>
