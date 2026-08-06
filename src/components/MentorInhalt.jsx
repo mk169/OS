@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
-import Seitenkopf from "./Seitenkopf"
 import { berechneBefunde, sensorStatus } from "../lib/insights"
 import {
   berechneGleichung,
@@ -12,6 +11,9 @@ import {
 // Der Mentor: liest quer über alle Sensoren und zeigt Befunde. Ganz oben die
 // übergeordnete „Gleichung" (Nordstern + gewichtete Bereiche → Momentum).
 // Rein lesend/rechnend – kein LLM, nur Statistik über die eigenen Daten.
+//
+// Keine eigene Seite mehr: Der Mentor ist der obere Teil des
+// Wochenrückblicks (ReviewSeite) – dort, wo man ohnehin zurückschaut.
 
 const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
 
@@ -223,7 +225,7 @@ function GleichungHero({ gleichung, setGleichung, ergebnis }) {
   )
 }
 
-export default function MentorSeite({ onNavigate }) {
+export default function MentorInhalt({ onNavigate }) {
   const [todos] = useStored("todos", [])
   const [habits] = useStored("habits", [])
   const [deepwork] = useStored("deepwork", [])
@@ -255,13 +257,7 @@ export default function MentorSeite({ onNavigate }) {
   const infos = befunde.filter((b) => b.art === "info")
 
   return (
-    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
-      <Seitenkopf
-        eyebrow="Mentor"
-        titel="Was ich sehe"
-        unterzeile="Deine Gleichung und die Muster über alle Bereiche."
-      />
-
+    <div className="max-w-2xl">
       {/* Übergeordnet: die Gleichung */}
       <GleichungHero
         gleichung={gleichung}

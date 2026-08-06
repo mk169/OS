@@ -75,6 +75,17 @@ const ALLE_SEITEN = [
     ),
   },
   {
+    key: "periode",
+    label: "Periode",
+    beschreibung: "Fokus-Periode mit Wochenzielen",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 6.5V12l3.5 2" />
+      </>
+    ),
+  },
+  {
     key: "finanzen",
     label: "Finanzen",
     beschreibung: "Konten, Budgets & Ausgaben",
@@ -126,12 +137,6 @@ const ALLE_SEITEN = [
     icon: (
       <path d="M20.8 6.6a5 5 0 0 0-7.1 0L12 8.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 22l8.8-8.3a5 5 0 0 0 0-7.1Z" />
     ),
-  },
-  {
-    key: "mentor",
-    label: "Mentor",
-    beschreibung: "Muster über alle Bereiche",
-    icon: <path d="M3 12h4l2.5-7 4 14 2.5-7H21" />,
   },
 ]
 
@@ -866,7 +871,7 @@ export default function Einstellungen() {
       {/* ── Fokus-Perioden ──────────────────────────────────────────────────── */}
       <Abschnitt
         titel="Fokus-Perioden"
-        beschreibung="Zeitlich begrenzte Zyklen (14/30/90 Tage, Halbjahr, Jahr) mit eigenem Ziel und verknüpften Projekten – nach dem Prinzip des 90-Day-Year. Laufende Perioden erscheinen auf dem Dashboard."
+        beschreibung="Zeitlich begrenzte Zyklen (14/30/90 Tage, Halbjahr, Jahr) mit eigenem Ziel und verknüpften Projekten – nach dem Prinzip des 90-Day-Year. Übersicht und Wochenziele stehen im eigenen Bereich „Periode\u201c; hier lassen sie sich anlegen und bearbeiten."
         panel={false}
         icon={
           <>

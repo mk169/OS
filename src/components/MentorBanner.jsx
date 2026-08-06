@@ -4,7 +4,8 @@ import { berechneBefunde } from "../lib/insights"
 import { berechneGleichung, momentumLabel, STANDARD_GLEICHUNG } from "../lib/gleichung"
 
 // Kompakter Mentor-Block für die Startseite: zeigt das übergeordnete Momentum
-// der Gleichung (falls gesetzt) und den stärksten Befund. Führt in den Mentor.
+// der Gleichung (falls gesetzt) und den stärksten Befund. Führt in den
+// Wochenrückblick, wo der Mentor jetzt sitzt.
 // „hell"/„dunkel" analog zu LernBanner, damit er in jedem Dashboard-Stil passt.
 
 function farbeFuer(gesamt) {
@@ -47,7 +48,7 @@ export default function MentorBanner({ onNavigate, variant = "hell" }) {
 
   return (
     <button
-      onClick={() => onNavigate("mentor")}
+      onClick={() => onNavigate("review")}
       className={`mb-6 flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
         dunkel
           ? "border-accent-500/40 bg-accent-500/15 hover:bg-accent-500/25"
@@ -81,7 +82,7 @@ export default function MentorBanner({ onNavigate, variant = "hell" }) {
       </span>
 
       <span className={`shrink-0 text-sm font-medium ${dunkel ? "text-accent-300" : "text-accent-600"}`}>
-        Mentor →
+        Rückblick →
       </span>
     </button>
   )

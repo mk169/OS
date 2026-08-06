@@ -9,15 +9,15 @@ import Dashboard from "./components/Dashboard"
 import KalenderSeite from "./components/KalenderSeite"
 import TodosSeite from "./components/TodosSeite"
 import HabitsSeite from "./components/HabitsSeite"
-import LockedInSeite from "./components/LockedInSeite"
+import LockedInSeite, { lockedInAktiv } from "./components/LockedInSeite"
 import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
+import PeriodeSeite from "./components/PeriodeSeite"
 import FinanzenSeite from "./components/FinanzenSeite"
 import BerufSeite from "./components/BerufSeite"
 import LeisureSeite from "./components/LeisureSeite"
 import DailyOpsSeite from "./components/DailyOpsSeite"
 import VitalitaetSeite from "./components/VitalitaetSeite"
-import MentorSeite from "./components/MentorSeite"
 import SammelnSeite from "./components/SammelnSeite"
 import ReviewSeite from "./components/ReviewSeite"
 import Suche from "./components/Suche"
@@ -59,7 +59,27 @@ function migriereAlteKurse() {
 // Neu eingeführte Bereiche, die bestehenden Nutzern einmalig zur Navigation
 // hinzugefügt werden. Pro Schlüssel nur einmal (Merker `bereicheErgaenzt`),
 // damit ein späteres bewusstes Ausblenden erhalten bleibt.
-const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops", "lockedin", "vitalitaet", "mentor"]
+const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops", "lockedin", "vitalitaet"]
+
+// Der Mentor ist keine eigene Seite mehr – er steckt jetzt im
+// Wochenrückblick. Bei bestehenden Nutzern den alten Eintrag aus der
+// Navigation nehmen (und eine darauf zeigende Startseite umbiegen).
+function migriereMentor() {
+  const roh = localStorage.getItem("einstellungen")
+  if (!roh) return
+  try {
+    const e = JSON.parse(roh)
+    const seiten = e.sichtbareSeiten ?? []
+    if (!seiten.includes("mentor") && e.startseite !== "mentor") return
+    schreibeStore("einstellungen", {}, {
+      ...e,
+      sichtbareSeiten: seiten.filter((k) => k !== "mentor"),
+      startseite: e.startseite === "mentor" ? "dashboard" : e.startseite,
+    })
+  } catch {
+    /* defektes JSON – ignorieren */
+  }
+}
 
 function migriereBereiche() {
   const roh = localStorage.getItem("einstellungen")
@@ -180,6 +200,16 @@ const NAV = [
     ),
   },
   {
+    key: "periode",
+    label: "Periode",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 6.5V12l3.5 2" />
+      </>
+    ),
+  },
+  {
     key: "finanzen",
     label: "Finanzen",
     icon: (
@@ -227,17 +257,12 @@ const NAV = [
       <path d="M20.8 6.6a5 5 0 0 0-7.1 0L12 8.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 22l8.8-8.3a5 5 0 0 0 0-7.1Z" />
     ),
   },
-  {
-    key: "mentor",
-    label: "Mentor",
-    icon: <path d="M3 12h4l2.5-7 4 14 2.5-7H21" />,
-  },
 ]
 
 const EINSTELLUNGEN_STANDARD = {
   onboardingAbgeschlossen: false,
   profil: "komplett",
-  sichtbareSeiten: ["dashboard", "lockedin", "mentor", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
+  sichtbareSeiten: ["dashboard", "lockedin", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "periode", "finanzen", "beruf", "leisure", "dailyops"],
   appName: "OS",
   startseite: "dashboard",
   akzent: "indigo",
@@ -250,6 +275,7 @@ const NAV_NACH_KEY = Object.fromEntries(NAV.map((n) => [n.key, n]))
 
 export default function App() {
   const [einstellungen, setEinstellungen] = useStored("einstellungen", EINSTELLUNGEN_STANDARD)
+  const [lockedInConfig] = useStored("lockedInConfig", {})
   // Startseite aus den Einstellungen – aber nur, wenn das Modul sichtbar ist.
   const [seite, setSeite] = useState(() => {
     const ziel = einstellungen?.startseite ?? "dashboard"
@@ -265,6 +291,7 @@ export default function App() {
   useEffect(() => {
     migriereAlteKurse()
     migriereBereiche()
+    migriereMentor()
   }, [])
 
   // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den Einstellungen).
@@ -329,6 +356,7 @@ export default function App() {
   const sichtbareSeiten = einstellungen?.sichtbareSeiten ?? EINSTELLUNGEN_STANDARD.sichtbareSeiten
   // Navigation in der vom Nutzer gewählten Reihenfolge aufbauen. Dashboard ist
   // immer zuerst dabei; Review und Einstellungen kommen separat.
+  const lockedInLaeuft = lockedInAktiv(lockedInConfig)
   const sichtbareNav = [
     NAV_NACH_KEY.dashboard,
     ...sichtbareSeiten
@@ -339,8 +367,14 @@ export default function App() {
   // Module als feste Tabs, der Rest wandert ins „Mehr"-Sheet – zusammen mit
   // Wochenrückblick, Einstellungen und (falls Cloud) Abmelden.
   const PRIMAER_MAX = 4
-  const primaereNav = sichtbareNav.slice(0, PRIMAER_MAX)
-  const weitereNav = sichtbareNav.slice(PRIMAER_MAX)
+  // Locked In belegt einen der wenigen Handy-Tabs nur, solange der Modus
+  // wirklich läuft. Ist er aus, bleibt der Bereich über „Mehr" erreichbar –
+  // die Leiste zeigt dann die Seiten, mit denen man täglich arbeitet.
+  const tabNav = sichtbareNav.filter(
+    (n) => n.key !== "lockedin" || lockedInLaeuft || seite === "lockedin"
+  )
+  const primaereNav = tabNav.slice(0, PRIMAER_MAX)
+  const weitereNav = sichtbareNav.filter((n) => !primaereNav.includes(n))
   const mobileKolonnen = primaereNav.length + 1
   // Locked-In-Look: die App-Hülle (Kopfzeile, Tab-Leiste, Hintergrund) zieht in
   // den monochromen Look mit – auf der Locked-In-Kommandozentrale immer, auf der
@@ -511,12 +545,12 @@ export default function App() {
             onNavigate={navigiere}
           />
         )}
+        {seite === "periode" && <PeriodeSeite onNavigate={navigiere} />}
         {seite === "finanzen" && <FinanzenSeite />}
         {seite === "beruf" && <BerufSeite />}
         {seite === "leisure" && <LeisureSeite />}
         {seite === "dailyops" && <DailyOpsSeite />}
         {seite === "vitalitaet" && <VitalitaetSeite />}
-        {seite === "mentor" && <MentorSeite onNavigate={navigiere} />}
         {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
         {seite === "einstellungen" && <Einstellungen />}
       </main>

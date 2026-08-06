@@ -4,10 +4,15 @@ import Seitenkopf from "./Seitenkopf"
 import { TodoZeile } from "./TodosSeite"
 import { sammleTermine, DeadlineChip } from "./OrdnerSeite"
 import { wochenZielErreicht } from "./HabitsSeite"
+import MentorInhalt from "./MentorInhalt"
 
 // Wochen-Review: zeigt proaktiv, was liegen geblieben, überfällig oder
 // unbearbeitet ist – kein NAV-Eintrag, erreichbar wie „Suchen" über einen
 // dauerhaften Link neben dem Such-Icon (App.jsx).
+//
+// Oben steht der Mentor (Gleichung, Sensoren, Befunde): das Deuten der
+// eigenen Daten gehört zum Zurückschauen, darum hat er keine eigene Seite
+// mehr, sondern eröffnet den Rückblick.
 
 function Abschnitt({ titel, aktion, children }) {
   return (
@@ -71,7 +76,12 @@ export default function ReviewSeite({ onNavigate }) {
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
-      <Seitenkopf titel="Wochenrückblick" />
+      <Seitenkopf
+        titel="Wochenrückblick"
+        unterzeile="Was der Mentor sieht – und was liegen geblieben ist."
+      />
+
+      <MentorInhalt onNavigate={onNavigate} />
 
       <Abschnitt titel="Überfällig">
         {ueberfaellig.length === 0 ? (
