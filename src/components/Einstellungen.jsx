@@ -138,12 +138,6 @@ const ALLE_SEITEN = [
       <path d="M20.8 6.6a5 5 0 0 0-7.1 0L12 8.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 22l8.8-8.3a5 5 0 0 0 0-7.1Z" />
     ),
   },
-  {
-    key: "mentor",
-    label: "Mentor",
-    beschreibung: "Muster über alle Bereiche",
-    icon: <path d="M3 12h4l2.5-7 4 14 2.5-7H21" />,
-  },
 ]
 
 const DASHBOARD_ICON = <path d="M3 10.75 12 3l9 7.75M5 9.5V21h14V9.5" />

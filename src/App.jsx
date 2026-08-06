@@ -18,7 +18,6 @@ import BerufSeite from "./components/BerufSeite"
 import LeisureSeite from "./components/LeisureSeite"
 import DailyOpsSeite from "./components/DailyOpsSeite"
 import VitalitaetSeite from "./components/VitalitaetSeite"
-import MentorSeite from "./components/MentorSeite"
 import SammelnSeite from "./components/SammelnSeite"
 import ReviewSeite from "./components/ReviewSeite"
 import Suche from "./components/Suche"
@@ -60,7 +59,27 @@ function migriereAlteKurse() {
 // Neu eingeführte Bereiche, die bestehenden Nutzern einmalig zur Navigation
 // hinzugefügt werden. Pro Schlüssel nur einmal (Merker `bereicheErgaenzt`),
 // damit ein späteres bewusstes Ausblenden erhalten bleibt.
-const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops", "lockedin", "vitalitaet", "mentor"]
+const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops", "lockedin", "vitalitaet"]
+
+// Der Mentor ist keine eigene Seite mehr – er steckt jetzt im
+// Wochenrückblick. Bei bestehenden Nutzern den alten Eintrag aus der
+// Navigation nehmen (und eine darauf zeigende Startseite umbiegen).
+function migriereMentor() {
+  const roh = localStorage.getItem("einstellungen")
+  if (!roh) return
+  try {
+    const e = JSON.parse(roh)
+    const seiten = e.sichtbareSeiten ?? []
+    if (!seiten.includes("mentor") && e.startseite !== "mentor") return
+    schreibeStore("einstellungen", {}, {
+      ...e,
+      sichtbareSeiten: seiten.filter((k) => k !== "mentor"),
+      startseite: e.startseite === "mentor" ? "dashboard" : e.startseite,
+    })
+  } catch {
+    /* defektes JSON – ignorieren */
+  }
+}
 
 function migriereBereiche() {
   const roh = localStorage.getItem("einstellungen")
@@ -238,17 +257,12 @@ const NAV = [
       <path d="M20.8 6.6a5 5 0 0 0-7.1 0L12 8.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 22l8.8-8.3a5 5 0 0 0 0-7.1Z" />
     ),
   },
-  {
-    key: "mentor",
-    label: "Mentor",
-    icon: <path d="M3 12h4l2.5-7 4 14 2.5-7H21" />,
-  },
 ]
 
 const EINSTELLUNGEN_STANDARD = {
   onboardingAbgeschlossen: false,
   profil: "komplett",
-  sichtbareSeiten: ["dashboard", "lockedin", "mentor", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "periode", "finanzen", "beruf", "leisure", "dailyops"],
+  sichtbareSeiten: ["dashboard", "lockedin", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "periode", "finanzen", "beruf", "leisure", "dailyops"],
   appName: "OS",
   startseite: "dashboard",
   akzent: "indigo",
@@ -277,6 +291,7 @@ export default function App() {
   useEffect(() => {
     migriereAlteKurse()
     migriereBereiche()
+    migriereMentor()
   }, [])
 
   // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den Einstellungen).
@@ -536,7 +551,6 @@ export default function App() {
         {seite === "leisure" && <LeisureSeite />}
         {seite === "dailyops" && <DailyOpsSeite />}
         {seite === "vitalitaet" && <VitalitaetSeite />}
-        {seite === "mentor" && <MentorSeite onNavigate={navigiere} />}
         {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
         {seite === "einstellungen" && <Einstellungen />}
       </main>
