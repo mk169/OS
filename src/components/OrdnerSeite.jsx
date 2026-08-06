@@ -99,6 +99,7 @@ function OrdnerIcon() {
 export default function OrdnerSeite({
   startProjektId = null,
   startNotizId = null,
+  startModul = null,
   onNavigate,
 }) {
   const [ordner, setOrdner] = useStored("ordner", [])
@@ -108,6 +109,7 @@ export default function OrdnerSeite({
   const [aktuellerOrdnerId, setAktuellerOrdnerId] = useState(null)
   const [offenesProjektId, setOffenesProjektId] = useState(startProjektId)
   const [offeneNotizId, setOffeneNotizId] = useState(startNotizId)
+  const [offenesModul, setOffenesModul] = useState(startModul)
   const [ordnerFormOffen, setOrdnerFormOffen] = useState(false)
   const [ordnerName, setOrdnerName] = useState("")
   // Formular für neue Projekte/Areas: der Wert ist zugleich der Starttyp.
@@ -124,7 +126,8 @@ export default function OrdnerSeite({
   useEffect(() => {
     if (startProjektId != null) setOffenesProjektId(startProjektId)
     setOffeneNotizId(startNotizId)
-  }, [startProjektId, startNotizId])
+    setOffenesModul(startModul)
+  }, [startProjektId, startNotizId, startModul])
 
   function updateProjekt(aktualisiert) {
     setProjekte(
@@ -152,6 +155,7 @@ export default function OrdnerSeite({
         onUpdate={updateProjekt}
         onBack={() => setOffenesProjektId(null)}
         startNotizId={offeneNotizId}
+        startModul={offenesModul}
         onOeffneZiel={oeffneZiel}
         onNavigate={onNavigate}
       />

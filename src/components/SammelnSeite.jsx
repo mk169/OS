@@ -129,7 +129,7 @@ export default function SammelnSeite({
       {ansicht === "tags" && (
         <TagsAnsicht onNavigate={onNavigate} startTag={tagWunsch} />
       )}
-      {ansicht === "lernen" && <LernenGlobal />}
+      {ansicht === "lernen" && <LernenGlobal onNavigate={onNavigate} />}
       {ansicht === "graph" && (
         <WissensGraph onNavigate={onNavigate} onTagKlick={oeffneTag} />
       )}

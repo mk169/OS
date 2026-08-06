@@ -23,6 +23,7 @@ import ReviewSeite from "./components/ReviewSeite"
 import Suche from "./components/Suche"
 import Onboarding from "./components/Onboarding"
 import Einstellungen from "./components/Einstellungen"
+import { STANDARD_MODULE } from "./components/ProjektDetail"
 
 // Einmalige Migration: alte Kurse werden zu Projekten in einem
 // „Uni“-Ordner. Die IDs bleiben erhalten, damit Todos, Karten und
@@ -76,6 +77,59 @@ function migriereMentor() {
       sichtbareSeiten: seiten.filter((k) => k !== "mentor"),
       startseite: e.startseite === "mentor" ? "dashboard" : e.startseite,
     })
+  } catch {
+    /* defektes JSON – ignorieren */
+  }
+}
+
+// Der Bereich „Lernen" bündelt Lernplan und Karteikarten eines Projekts.
+// Bestehende Projekte mit Lernbezug – Inhalte, Karteikarten oder schon
+// erzeugte Lernschritte – bekommen ihn einmalig eingefügt (Merker
+// `lernbereichErgaenzt`), damit er nicht bei jedem Start zurückkommt, wenn
+// jemand ihn bewusst entfernt.
+function migriereLernbereich() {
+  const roh = localStorage.getItem("einstellungen")
+  if (!roh) return // Neue Nutzer erhalten den Bereich bereits im Standard.
+  try {
+    const e = JSON.parse(roh)
+    if (e.lernbereichErgaenzt) return
+
+    const lies = (key) => {
+      try {
+        return JSON.parse(localStorage.getItem(key) ?? "[]") ?? []
+      } catch {
+        return []
+      }
+    }
+    const lernDaten = [...lies("ablage"), ...lies("karten")]
+    const lernTodos = lies("todos").filter((t) => t.lernplan)
+    const hatLernbezug = (id) =>
+      [...lernDaten, ...lernTodos].some(
+        (x) => x.projektId === id || x.kursId === id
+      )
+
+    schreibeStore("projekte", [], (projekte) =>
+      (projekte ?? []).map((p) => {
+        if ((p.typ ?? "projekt") === "area") return p
+        const module = p.module ?? STANDARD_MODULE
+        if (module.includes("lernen")) return p
+        const relevant =
+          module.includes("inhalte") ||
+          module.includes("karten") ||
+          hatLernbezug(p.id)
+        if (!relevant) return p
+        // Direkt hinter Inhalte bzw. Karteikarten einreihen – dort gehört
+        // der Lernbereich thematisch hin.
+        const nach = module.indexOf("inhalte")
+        const ersatz = module.indexOf("karten")
+        const pos = nach >= 0 ? nach + 1 : ersatz >= 0 ? ersatz + 1 : module.length
+        return {
+          ...p,
+          module: [...module.slice(0, pos), "lernen", ...module.slice(pos)],
+        }
+      })
+    )
+    schreibeStore("einstellungen", {}, { ...e, lernbereichErgaenzt: true })
   } catch {
     /* defektes JSON – ignorieren */
   }
@@ -292,6 +346,7 @@ export default function App() {
     migriereAlteKurse()
     migriereBereiche()
     migriereMentor()
+    migriereLernbereich()
   }, [])
 
   // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den Einstellungen).
@@ -545,6 +600,7 @@ export default function App() {
             startNotizId={
               param && typeof param === "object" ? param.notizId : null
             }
+            startModul={param && typeof param === "object" ? param.modul : null}
             onNavigate={navigiere}
           />
         )}

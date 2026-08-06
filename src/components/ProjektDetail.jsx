@@ -9,6 +9,7 @@ import ProjektInhalte from "./ProjektInhalte"
 import ProjektNotizen from "./ProjektNotizen"
 import ProjektArtikel from "./ProjektArtikel"
 import ProjektKarten from "./ProjektKarten"
+import ProjektLernen from "./ProjektLernen"
 import ProjektBoard from "./ProjektBoard"
 import BlockEditor, { bloeckeVon, neueBlockId } from "./BlockEditor"
 import { VORLAGEN, vorlageZuBloecken } from "../lib/wissen"
@@ -29,13 +30,14 @@ export const MODULE = [
   { key: "board", label: "Board" },
   { key: "todos", label: "Todos" },
   { key: "inhalte", label: "Inhalte" },
+  { key: "lernen", label: "Lernen" },
   { key: "notizen", label: "Notizen" },
   { key: "artikel", label: "Artikel" },
   { key: "karten", label: "Karteikarten" },
   { key: "kalender", label: "Kalender" },
 ]
 
-export const STANDARD_MODULE = ["ziel", "workflow", "todos", "kalender"]
+export const STANDARD_MODULE = ["ziel", "workflow", "todos", "lernen", "kalender"]
 
 // Auswahlwerte für die Eigenschaften Priorität und Status (Notion-artige
 // Tags). Farbe pro Wert; leerer Wert = dezentes „Keine“.
@@ -106,6 +108,7 @@ export default function ProjektDetail({
   onUpdate,
   onBack,
   startNotizId = null,
+  startModul = null,
   onOeffneZiel,
   onNavigate,
 }) {
@@ -159,10 +162,22 @@ export default function ProjektDetail({
     )
   }
 
-  // Reihenfolge der Tabs folgt der Reihenfolge in projekt.module
-  const sichtbareModule = module.map(modulInfo).filter(Boolean)
-  const [aktiv, setAktiv] = useState(startNotizId ? "notizen" : null)
+  const [aktiv, setAktiv] = useState(
+    startNotizId ? "notizen" : (startModul ?? null)
+  )
   const [anpassen, setAnpassen] = useState(false)
+
+  // Reihenfolge der Tabs folgt der Reihenfolge in projekt.module. Ein von
+  // außen angesprungener Bereich (z.B. „Lernen" aus der Lern-Übersicht) wird
+  // zusätzlich gezeigt, auch wenn er im Projekt nicht dauerhaft aktiviert
+  // ist – angesprungen werden können soll er trotzdem, ohne die Bereichs-
+  // Auswahl des Projekts hinter dem Rücken des Nutzers zu ändern.
+  const sichtbareModule = module.map(modulInfo).filter(Boolean)
+  const gastModul =
+    aktiv && !aktiv.startsWith("seite:") && aktiv !== "areaprojekte" && !module.includes(aktiv)
+      ? modulInfo(aktiv)
+      : null
+  const tabModule = gastModul ? [...sichtbareModule, gastModul] : sichtbareModule
 
   // Früher hatte jedes Projekt automatisch eine „Übersicht". Seiten entstehen
   // jetzt bewusst – vorhandene Übersichts-Inhalte werden einmalig zu einer
@@ -192,6 +207,10 @@ export default function ProjektDetail({
   useEffect(() => {
     if (startNotizId != null) setAktiv("notizen")
   }, [startNotizId])
+
+  useEffect(() => {
+    if (startModul != null) setAktiv(startModul)
+  }, [startModul])
 
   const verfuegbar = [...MODULE, ...eigene].filter(
     (m) => !module.includes(m.key)
@@ -252,7 +271,16 @@ export default function ProjektDetail({
       return <WorkflowModul projekt={projekt} onUpdate={onUpdate} />
     if (key === "board") return <ProjektBoard projekt={projekt} />
     if (key === "todos") return <TodosModul projekt={projekt} />
-    if (key === "inhalte") return <ProjektInhalte projekt={projekt} />
+    if (key === "inhalte")
+      return <ProjektInhalte projekt={projekt} onModulWechsel={setAktiv} />
+    if (key === "lernen")
+      return (
+        <ProjektLernen
+          projekt={projekt}
+          onModulWechsel={setAktiv}
+          onNavigate={onNavigate}
+        />
+      )
     if (key === "notizen")
       return (
         <ProjektNotizen
@@ -263,7 +291,8 @@ export default function ProjektDetail({
         />
       )
     if (key === "artikel") return <ProjektArtikel projekt={projekt} />
-    if (key === "karten") return <ProjektKarten projekt={projekt} />
+    if (key === "karten")
+      return <ProjektKarten projekt={projekt} onModulWechsel={setAktiv} />
     if (key === "kalender") return <KalenderModul projekt={projekt} />
     if (key.startsWith("eigen-"))
       return (
@@ -770,7 +799,7 @@ export default function ProjektDetail({
             )}
           </TabButton>
         )}
-        {sichtbareModule.map((m) => (
+        {tabModule.map((m) => (
           <TabButton
             key={m.key}
             active={aktiv === m.key}

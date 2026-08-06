@@ -1,21 +1,30 @@
 import { useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import LoeschKnopf from "./LoeschKnopf"
-import { heute, inTagen } from "../lib/datum"
+import { heute } from "../lib/datum"
+import {
+  schrittText,
+  erzeugeSchritte,
+  gehoertZu,
+  istLernschritt,
+  prioGewicht,
+} from "../lib/lernplan"
 
 const KATEGORIEN = ["Kapitel", "Skript", "Übung", "Altklausur", "Dokument", "Sonstiges"]
 
 const PRIORITAETEN = {
-  Hoch: { gewicht: 0, badge: "bg-red-50 text-red-600" },
-  Mittel: { gewicht: 1, badge: "bg-amber-50 text-amber-700" },
-  Niedrig: { gewicht: 2, badge: "bg-gray-100 text-gray-500" },
+  Hoch: { badge: "bg-red-50 text-red-600" },
+  Mittel: { badge: "bg-amber-50 text-amber-700" },
+  Niedrig: { badge: "bg-gray-100 text-gray-500" },
 }
 
 // Inhalte eines Projekts: Themen, Materialien und Dokumente mit Kategorie,
-// Priorität und optionalem Link. Aus den Inhalten kann ein Lernplan
-// generiert werden – als Todos verteilt bis zur Projekt-Deadline.
+// Priorität und optionalem Link. Aus den Inhalten entsteht der Lernplan –
+// als Schritte verteilt bis zur Projekt-Deadline. Jede Zeile zeigt, ob ihr
+// Inhalt schon eingeplant ist, und lässt sich einzeln nachtragen; gepflegt
+// wird der Plan im Lernbereich des Projekts.
 
-export default function ProjektInhalte({ projekt }) {
+export default function ProjektInhalte({ projekt, onModulWechsel }) {
   const [alleEintraege, setAlleEintraege] = useStored("ablage", [])
   const [alleTodos, setAlleTodos] = useStored("todos", [])
   const [titel, setTitel] = useState("")
@@ -27,9 +36,20 @@ export default function ProjektInhalte({ projekt }) {
   const [meldung, setMeldung] = useState("")
   const dateiInput = useRef(null)
 
-  const gehoertZumProjekt = (e) =>
-    e.projektId === projekt.id || e.kursId === projekt.id
-  const eintraege = alleEintraege.filter(gehoertZumProjekt)
+  const eintraege = alleEintraege.filter((e) => gehoertZu(e, projekt.id))
+
+  // Schritt je Inhalt: bevorzugt über die inhaltId, ältere Pläne über den
+  // Text. So zeigt jede Zeile ihren Planstatus.
+  const titelSet = new Set(
+    eintraege.map((i) => (i.titel ?? "").trim().toLowerCase())
+  )
+  const schritte = alleTodos.filter(
+    (t) => gehoertZu(t, projekt.id) && istLernschritt(t, titelSet)
+  )
+  const schrittZu = (eintrag) =>
+    schritte.find(
+      (t) => t.inhaltId === eintrag.id || t.text === schrittText(eintrag.titel)
+    ) ?? null
 
   function addEintrag(e) {
     e.preventDefault()
@@ -76,66 +96,33 @@ export default function ProjektInhalte({ projekt }) {
     setAlleEintraege(alleEintraege.filter((e) => e.id !== id))
   }
 
-  function generiereLernplan() {
-    const themen = [...eintraege].sort(
-      (a, b) =>
-        PRIORITAETEN[a.prioritaet]?.gewicht - PRIORITAETEN[b.prioritaet]?.gewicht
-    )
-    if (themen.length === 0) {
+  // Lernplan erzeugen – für alle offenen Inhalte oder (mit `nurIds`) für
+  // einen einzelnen nachgetragenen Inhalt.
+  function generiereLernplan(nurIds = null) {
+    if (eintraege.length === 0) {
       setMeldung("Lege zuerst Inhalte an – daraus entsteht der Lernplan.")
       return
     }
-
-    const projektTodos = alleTodos.filter(
-      (t) => t.projektId === projekt.id || t.kursId === projekt.id
-    )
-    const neu = themen.filter(
-      (thema) => !projektTodos.some((t) => t.text === `${thema.titel} lernen`)
-    )
-    if (neu.length === 0) {
+    const aufgaben = erzeugeSchritte(projekt, alleEintraege, alleTodos, nurIds)
+    if (aufgaben.length === 0) {
       setMeldung("Alle Inhalte sind bereits im Lernplan.")
       return
     }
 
-    let verfuegbareTage
-    if (projekt.deadline && projekt.deadline > heute()) {
-      const diff = Math.floor(
-        (new Date(projekt.deadline) - new Date(heute())) / (1000 * 60 * 60 * 24)
-      )
-      verfuegbareTage = Math.max(1, diff - 2) // Puffer vor der Deadline
-    } else {
-      verfuegbareTage = neu.length * 7 // ohne Deadline: ein Thema pro Woche
-    }
-
-    const basisId = Date.now()
-    const aufgaben = neu.map((thema, i) => ({
-      id: basisId + i,
-      projektId: projekt.id,
-      text: `${thema.titel} lernen`,
-      datum: inTagen(
-        Math.max(1, Math.round(((i + 1) * verfuegbareTage) / neu.length))
-      ),
-      wichtig: thema.prioritaet === "Hoch",
-      dringend: false,
-      erledigt: false,
-    }))
-
     setAlleTodos([...alleTodos, ...aufgaben])
     setMeldung(
-      `${aufgaben.length} ${aufgaben.length === 1 ? "Aufgabe" : "Aufgaben"} erstellt${
+      `${aufgaben.length} ${aufgaben.length === 1 ? "Schritt" : "Schritte"} erstellt${
         projekt.deadline ? " – verteilt bis zur Deadline." : " – im Wochenrhythmus."
-      }`
+      } Nachschärfen im Lernbereich.`
     )
   }
 
   const sichtbar = eintraege
     .filter((e) => filter === "Alle" || e.prioritaet === filter)
     .filter((e) => katFilter === "Alle" || e.kategorie === katFilter)
-    .sort(
-      (a, b) =>
-        (PRIORITAETEN[a.prioritaet]?.gewicht ?? 1) -
-        (PRIORITAETEN[b.prioritaet]?.gewicht ?? 1)
-    )
+    .sort((a, b) => prioGewicht(a.prioritaet) - prioGewicht(b.prioritaet))
+
+  const ungeplant = eintraege.filter((e) => !schrittZu(e)).length
 
   return (
     <div>
@@ -143,6 +130,21 @@ export default function ProjektInhalte({ projekt }) {
         <div>
           <p className="text-sm font-medium text-gray-900">
             {eintraege.length} {eintraege.length === 1 ? "Inhalt" : "Inhalte"}
+          </p>
+          <p className="mt-0.5 text-xs text-gray-400">
+            {schritte.length > 0 && (
+              <>
+                {eintraege.length - ungeplant} von {eintraege.length} im
+                Lernplan ·{" "}
+              </>
+            )}
+            <button
+              onClick={() => onModulWechsel?.("lernen")}
+              title="Lernplan und Karten dieses Projekts"
+              className="underline decoration-gray-300 underline-offset-2 hover:text-gray-900"
+            >
+              Lernbereich öffnen →
+            </button>
           </p>
         </div>
         <div className="flex gap-2">
@@ -160,10 +162,10 @@ export default function ProjektInhalte({ projekt }) {
             className="hidden"
           />
           <button
-            onClick={generiereLernplan}
+            onClick={() => generiereLernplan()}
             className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
           >
-            Lernplan erstellen
+            {schritte.length > 0 ? "Lernplan ergänzen" : "Lernplan erstellen"}
           </button>
         </div>
       </div>
@@ -284,6 +286,11 @@ export default function ProjektInhalte({ projekt }) {
                   {eintrag.titel}
                 </span>
               )}
+              <PlanStatus
+                schritt={schrittZu(eintrag)}
+                onEinplanen={() => generiereLernplan([eintrag.id])}
+                onOeffnen={() => onModulWechsel?.("lernen")}
+              />
               <span className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
                 {eintrag.kategorie}
               </span>
@@ -304,5 +311,50 @@ export default function ProjektInhalte({ projekt }) {
         </ul>
       )}
     </div>
+  )
+}
+
+// Planstatus eines Inhalts: erledigt, eingeplant (mit Datum, führt in den
+// Lernbereich) oder noch nicht eingeplant – dann direkt nachtragbar.
+function PlanStatus({ schritt, onEinplanen, onOeffnen }) {
+  if (!schritt)
+    return (
+      <button
+        onClick={onEinplanen}
+        title="Diesen Inhalt in den Lernplan aufnehmen"
+        className="shrink-0 rounded border border-dashed border-gray-300 px-1.5 py-0.5 text-[10px] text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-900"
+      >
+        + einplanen
+      </button>
+    )
+
+  if (schritt.erledigt)
+    return (
+      <span
+        title="Lernschritt erledigt"
+        className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600"
+      >
+        ✓ gelernt
+      </span>
+    )
+
+  const ueberfaellig = schritt.datum && schritt.datum < heute()
+  return (
+    <button
+      onClick={onOeffnen}
+      title="Im Lernbereich öffnen"
+      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+        ueberfaellig
+          ? "bg-red-50 text-red-600"
+          : "bg-gray-100 text-gray-500 hover:text-gray-900"
+      }`}
+    >
+      {schritt.datum
+        ? new Date(schritt.datum).toLocaleDateString("de-DE", {
+            day: "2-digit",
+            month: "2-digit",
+          })
+        : "geplant"}
+    </button>
   )
 }
