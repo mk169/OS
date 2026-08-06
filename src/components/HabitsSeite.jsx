@@ -7,6 +7,7 @@ import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { levelVon, attributLevel } from "../lib/spiel"
 import { Fortschrittsbalken } from "./OrdnerSeite"
 import Seitenkopf from "./Seitenkopf"
+import LoeschKnopf from "./LoeschKnopf"
 
 const STANDARD_BEREICHE = [
   { id: "koerper", name: "Körper", farbe: "emerald" },
@@ -284,13 +285,11 @@ function HabitHeatmapKarte({
           {habit.name}
         </span>
         {onRemove && (
-          <button
-            onClick={() => onRemove(habit.id)}
-            title="Habit löschen"
-            className="shrink-0 text-gray-300 transition-colors hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"
-          >
-            ×
-          </button>
+          <LoeschKnopf
+            onLoeschen={() => onRemove(habit.id)}
+            titel="Habit löschen"
+            klasse="text-gray-300 sm:opacity-0 sm:group-hover:opacity-100"
+          />
         )}
       </div>
 
@@ -759,12 +758,10 @@ function HabitsCleanGirl({ habits, _bereiche, toggle, remove }) {
                   {h.name}
                 </span>
                 <span className="text-[11px] text-rose-300">🔥{wochenStreakVon(h)}</span>
-                <button
-                  onClick={() => remove(h.id)}
-                  className="text-rose-200 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
-                >
-                  ×
-                </button>
+                <LoeschKnopf
+                  onLoeschen={() => remove(h.id)}
+                  klasse="text-rose-200 opacity-0 hover:text-rose-400 group-hover:opacity-100"
+                />
               </li>
             )
           })}
@@ -817,12 +814,10 @@ function HabitsNotion({ habits, bereiche, setHabits, setBereiche, toggle, remove
                     {h.name}
                   </span>
                   <span className="text-[11px] text-gray-400">🔥{wochenStreakVon(h)}</span>
-                  <button
-                    onClick={() => remove(h.id)}
-                    className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-gray-500 group-hover:opacity-100"
-                  >
-                    ×
-                  </button>
+                  <LoeschKnopf
+                    onLoeschen={() => remove(h.id)}
+                    klasse="text-gray-300 opacity-0 hover:text-gray-500 group-hover:opacity-100"
+                  />
                 </li>
               )
             })}
@@ -920,13 +915,11 @@ function HabitGamifiedKarte({
           </p>
         </div>
         {onRemove && (
-          <button
-            onClick={() => onRemove(habit.id)}
-            title="Fähigkeit löschen"
-            className="shrink-0 text-white/30 transition-colors hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
-          >
-            ×
-          </button>
+          <LoeschKnopf
+            onLoeschen={() => onRemove(habit.id)}
+            titel="Fähigkeit löschen"
+            klasse="text-white/30 sm:opacity-0 sm:group-hover:opacity-100"
+          />
         )}
       </div>
 

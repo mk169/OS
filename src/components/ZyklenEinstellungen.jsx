@@ -18,6 +18,7 @@ import {
   naechsterTag,
 } from "../lib/zyklen"
 import PhasenZeitstrahl from "./PhasenZeitstrahl"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Zwischenphasen chronologisch mit Anzeige-Label („Phase N" als Fallback für
 // titellose Phasen) – für die Zielphasen-Auswahl an den einzelnen Zielen.
@@ -171,14 +172,11 @@ function ProjektZiele({
             >
               {name(e.projektId)}
             </span>
-            <button
-              type="button"
-              onClick={() => entferne(e.projektId)}
-              title="Projekt entfernen"
-              className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
-            >
-              ×
-            </button>
+            <LoeschKnopf
+              onLoeschen={() => entferne(e.projektId)}
+              titel="Projekt entfernen"
+              klasse="text-gray-300"
+            />
           </div>
           <input
             value={e.ziel}
@@ -289,14 +287,11 @@ function EigeneZiele({ ziele, onChange, phasen = [] }) {
                   {erledigt}/{gesamt}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={() => entferne(z.id)}
-                title="Ziel entfernen"
-                className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
-              >
-                ×
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => entferne(z.id)}
+                titel="Ziel entfernen"
+                klasse="text-gray-300"
+              />
             </div>
 
             {offen && (
@@ -384,14 +379,11 @@ function ZielSchritte({ schritte, onChange, neueId }) {
               s.erledigt ? "text-gray-400 line-through" : "text-gray-700"
             }`}
           />
-          <button
-            type="button"
-            onClick={() => entferne(s.id)}
-            title="Teilschritt entfernen"
-            className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
-          >
-            ×
-          </button>
+          <LoeschKnopf
+            onLoeschen={() => entferne(s.id)}
+            titel="Teilschritt entfernen"
+            klasse="text-gray-300"
+          />
         </div>
       ))}
       <input
@@ -479,14 +471,11 @@ function Zwischenphasen({ phasen, start, ende, onChange }) {
                 placeholder="Phasentitel, z.B. Umsetzung"
                 className="min-w-0 flex-1 border-none bg-transparent text-sm font-medium text-gray-800 outline-none placeholder:text-gray-300"
               />
-              <button
-                type="button"
-                onClick={() => entferne(p.id)}
-                title="Zwischenphase entfernen"
-                className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
-              >
-                ×
-              </button>
+              <LoeschKnopf
+                onLoeschen={() => entferne(p.id)}
+                titel="Zwischenphase entfernen"
+                klasse="text-gray-300"
+              />
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               <input
@@ -547,13 +536,11 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
           onChange={(e) => patch({ titel: e.target.value })}
           className="min-w-0 flex-1 border-none bg-transparent text-sm font-semibold text-gray-900 outline-none"
         />
-        <button
-          onClick={() => onRemove(zyklus.id)}
-          title="Periode löschen"
-          className="shrink-0 text-gray-300 transition-colors hover:text-red-500"
-        >
-          ×
-        </button>
+        <LoeschKnopf
+          onLoeschen={() => onRemove(zyklus.id)}
+          titel="Periode löschen"
+          klasse="text-gray-300"
+        />
       </div>
 
       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-400">

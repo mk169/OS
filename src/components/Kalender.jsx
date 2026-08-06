@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { heute, montagVon } from "../lib/datum"
 import { FARBEN } from "../lib/farben"
+import LoeschKnopf from "./LoeschKnopf"
 
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 const MONATE = [
@@ -471,13 +472,11 @@ export function TagesAnsicht({ cursor, eintraegeAm, onNeu, onNeuZeit }) {
               </span>
               <span className="flex-1 text-sm text-gray-800">{e.label}</span>
               {e.onRemove && (
-                <button
-                  onClick={e.onRemove}
-                  title="Eintrag löschen"
-                  className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                >
-                  ×
-                </button>
+                <LoeschKnopf
+                  onLoeschen={e.onRemove}
+                  titel="Eintrag löschen"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                />
               )}
             </li>
           ))}
@@ -549,13 +548,11 @@ export function TagesAnsicht({ cursor, eintraegeAm, onNeu, onNeuZeit }) {
               {e.label}
               {!e.bis && <span className="ml-1 opacity-60">({dauer} Min.)</span>}
               {e.onRemove && (
-                <button
-                  onClick={e.onRemove}
-                  title="Eintrag löschen"
-                  className="pointer-events-auto absolute right-1.5 top-1 opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100"
-                >
-                  ×
-                </button>
+                <LoeschKnopf
+                  onLoeschen={e.onRemove}
+                  titel="Eintrag löschen"
+                  klasse="pointer-events-auto absolute right-1.5 top-1 opacity-0 hover:text-red-600 group-hover:opacity-100"
+                />
               )}
             </div>
           )

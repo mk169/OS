@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
 import Seitenkopf from "./Seitenkopf"
+import LoeschKnopf from "./LoeschKnopf"
 
 // Lebensbereich „Leisure & Kultur": eine kleine Medienbibliothek – Filme,
 // Serien, Bücher, Podcasts & Spiele als Watch/Read-Later-Liste mit Status
@@ -157,13 +158,11 @@ export default function LeisureSeite() {
                       </option>
                     ))}
                   </select>
-                  <button
-                    onClick={() => entferne(m.id)}
-                    title="Entfernen"
-                    className="shrink-0 text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 max-md:opacity-100"
-                  >
-                    ×
-                  </button>
+                  <LoeschKnopf
+                    onLoeschen={() => entferne(m.id)}
+                    titel="Entfernen"
+                    klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
+                  />
                 </li>
               ))}
             </ul>

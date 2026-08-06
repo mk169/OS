@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import Seitenkopf from "./Seitenkopf"
+import LoeschKnopf from "./LoeschKnopf"
 
 const VORGABEN = [25, 50, 90]
 
@@ -296,15 +297,11 @@ export default function DeepWorkSeite() {
                 <span className="text-xs text-gray-400">
                   {new Date(s.datum).toLocaleDateString("de-DE")}
                 </span>
-                <button
-                  onClick={() =>
-                    setSessions(sessions.filter((x) => x.id !== s.id))
-                  }
-                  title="Eintrag löschen"
-                  className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                >
-                  ×
-                </button>
+                <LoeschKnopf
+                  onLoeschen={() => setSessions(sessions.filter((x) => x.id !== s.id))}
+                  titel="Eintrag löschen"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                />
               </li>
             ))}
           </ul>
