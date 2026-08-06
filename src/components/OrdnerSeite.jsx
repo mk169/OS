@@ -288,6 +288,15 @@ export default function OrdnerSeite({
           onRemove={removeProjekt}
         />
       )}
+      {ansicht === "backlog" && (
+        <BacklogAnsicht
+          ordner={ordner}
+          projekte={projekte}
+          setProjekte={setProjekte}
+          aktuellerOrdnerId={aktuellerOrdnerId}
+          onOeffnen={setOffenesProjektId}
+        />
+      )}
       {ansicht === "board" && (
         <BoardAnsicht
           projekte={projekte.filter((p) => (p.typ ?? "projekt") !== "area")}
@@ -466,6 +475,7 @@ export default function OrdnerSeite({
 const ANSICHTEN = [
   { key: "ordner", label: "Ordner" },
   { key: "alle", label: "Alle" },
+  { key: "backlog", label: "Backlog" },
   { key: "areas", label: "Areas" },
   { key: "board", label: "Board" },
   { key: "anstehend", label: "Anstehend" },
@@ -558,6 +568,163 @@ function ProjektZeile({ p, todos, onOeffnen, onRemove }) {
         />
       )}
     </li>
+  )
+}
+
+// Backlog: der Sammelplatz für alles, was noch kein Projekt ist – Ideen,
+// Vorhaben, Vielleicht-irgendwann. Festhalten geht in einer Zeile; erst
+// wenn etwas daraus wird, macht ein Klick ein Projekt daraus (die Notiz
+// wird dessen Beschreibung).
+function BacklogAnsicht({
+  ordner,
+  projekte,
+  setProjekte,
+  aktuellerOrdnerId,
+  onOeffnen,
+}) {
+  const [ideen, setIdeen] = useStored("projektIdeen", [])
+  const [text, setText] = useState("")
+  const [offeneId, setOffeneId] = useState(null)
+  const [zielOrdner, setZielOrdner] = useStored("backlogZielOrdner", "")
+
+  // Neueste zuerst – frisch Notiertes steht oben.
+  const liste = [...ideen].sort((a, b) => b.id - a.id)
+
+  function addIdee(e) {
+    e.preventDefault()
+    if (!text.trim()) return
+    // Bewusst ohne Notizfeld aufzuklappen: schnelles Festhalten bleibt
+    // einzeilig, die Notiz kommt später über „Notiz".
+    setIdeen([...ideen, { id: Date.now(), text: text.trim(), notiz: "" }])
+    setText("")
+  }
+
+  function setIdee(id, patch) {
+    setIdeen(ideen.map((i) => (i.id === id ? { ...i, ...patch } : i)))
+  }
+
+  // Aus einer Idee ein Projekt machen: Titel wird Projektname, die Notiz
+  // die Beschreibung. Die Idee verlässt damit den Backlog.
+  function zuProjekt(idee) {
+    const id = Date.now()
+    const ordnerId = zielOrdner ? Number(zielOrdner) : (aktuellerOrdnerId ?? null)
+    setProjekte([
+      ...projekte,
+      {
+        id,
+        name: idee.text.trim(),
+        beschreibung: (idee.notiz ?? "").trim(),
+        ordnerId,
+        deadline: "",
+        typ: "projekt",
+        module: [],
+        ziel: "",
+        workflow: [],
+      },
+    ])
+    setIdeen(ideen.filter((i) => i.id !== idee.id))
+    onOeffnen(id)
+  }
+
+  return (
+    <div className="mt-4">
+      <form
+        onSubmit={addIdee}
+        className="flex gap-2 rounded-xl border border-gray-300 bg-white p-3"
+      >
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Idee festhalten – alles, was noch kein Projekt ist"
+          className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+        >
+          Merken
+        </button>
+      </form>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-gray-400">
+          {liste.length === 0
+            ? "Der Backlog ist leer."
+            : `${liste.length} ${liste.length === 1 ? "Idee" : "Ideen"}`}
+        </p>
+        {ordner.length > 0 && (
+          <label className="flex items-center gap-1.5 text-xs text-gray-400">
+            Neue Projekte in
+            <select
+              value={zielOrdner}
+              onChange={(e) => setZielOrdner(e.target.value)}
+              className="cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 outline-none focus:border-gray-900"
+            >
+              <option value="">Kein Ordner</option>
+              {ordner.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+
+      {liste.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {liste.map((idee) => {
+            const offen = offeneId === idee.id
+            return (
+              <li
+                key={idee.id}
+                className="group rounded-xl border border-gray-200 bg-white px-4 py-3"
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    value={idee.text}
+                    onChange={(e) => setIdee(idee.id, { text: e.target.value })}
+                    className="min-w-0 flex-1 border-none bg-transparent text-sm font-medium text-gray-900 outline-none"
+                  />
+                  <button
+                    onClick={() => setOffeneId(offen ? null : idee.id)}
+                    title="Notiz"
+                    className={`shrink-0 text-xs transition-colors hover:text-gray-900 ${
+                      idee.notiz?.trim() ? "text-gray-500" : "text-gray-300"
+                    }`}
+                  >
+                    Notiz
+                  </button>
+                  <button
+                    onClick={() => zuProjekt(idee)}
+                    title="Daraus ein Projekt machen"
+                    className="shrink-0 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                  >
+                    → Projekt
+                  </button>
+                  <LoeschKnopf
+                    onLoeschen={() =>
+                      setIdeen(ideen.filter((i) => i.id !== idee.id))
+                    }
+                    titel="Idee verwerfen"
+                    klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
+                  />
+                </div>
+                {(offen || idee.notiz?.trim()) && (
+                  <textarea
+                    value={idee.notiz ?? ""}
+                    onChange={(e) => setIdee(idee.id, { notiz: e.target.value })}
+                    rows={offen ? 3 : 2}
+                    placeholder="Notiz – worum geht es, warum, was wäre der erste Schritt?"
+                    className="mt-2 w-full resize-none rounded-md bg-gray-50/60 px-3 py-2 text-sm leading-relaxed text-gray-700 outline-none placeholder:text-gray-300 focus:bg-gray-50"
+                  />
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
   )
 }
 
