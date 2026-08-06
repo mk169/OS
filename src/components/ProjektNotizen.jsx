@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import LoeschKnopf from "./LoeschKnopf"
-import { WIKILINK_REGEX, findeZiel, sammleBacklinks } from "../lib/wikilinks"
+import {
+  WIKILINK_REGEX,
+  findeZiel,
+  sammleBacklinks,
+  projektSeitenTexte,
+} from "../lib/wikilinks"
 import { teileMitTags, sammleTags } from "../lib/tags"
 import { leseDateiAlsDataUri, istBild, formatBytes } from "../lib/wissen"
 
@@ -527,7 +532,8 @@ export function NotizBearbeiten({
     notiz.titel,
     wissen,
     projekte,
-    notizen
+    notizen,
+    projektSeitenTexte(projekte)
   ).filter((b) => !(b.typ === eigenerTyp && b.id === notiz.id))
 
   function inhaltOnChange(text) {

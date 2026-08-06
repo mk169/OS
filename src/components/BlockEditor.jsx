@@ -7,6 +7,7 @@ import {
   DeadlineChip,
 } from "./OrdnerSeite"
 import LoeschKnopf from "./LoeschKnopf"
+import { WIKILINK_REGEX, findeZiel } from "../lib/wikilinks"
 
 // Block-Editor für Projekt-Seiten (Notion-artig): eine Seite ist eine
 // Liste von Blöcken. Blöcke: Text, Überschrift, Tabelle, Dashboard und
@@ -48,6 +49,9 @@ const BASIS_BLOECKE = [
     typ: "checkliste",
     neu: () => ({ items: [{ id: neueId(), text: "", erledigt: false }] }),
   },
+  // Verweis auf einen Eintrag aus Sammeln – die Notiz bleibt dort, das
+  // Projekt zeigt nur darauf.
+  { label: "Notiz aus Sammeln", typ: "notiz", neu: () => ({ wissenId: null }) },
   { label: "Trenner", typ: "trenner", neu: () => ({}) },
   { label: "Callout", typ: "callout", neu: () => ({ text: "", emoji: "💡" }) },
   { label: "Link", typ: "link", neu: () => ({ url: "", titel: "" }) },
@@ -88,8 +92,20 @@ function neueId() {
   return idZaehler
 }
 
+// Blöcke außerhalb des Editors erzeugen (z.B. beim Anlegen einer Seite aus
+// einer Vorlage) – dieselbe ID-Quelle, damit nichts kollidiert.
+export { neueId as neueBlockId }
+
 // Randlose, automatisch mitwachsende Schreibfläche.
-function AutoTextarea({ value, onChange, onKeyDown, placeholder, className }) {
+function AutoTextarea({
+  value,
+  onChange,
+  onKeyDown,
+  onBlur,
+  autoFocus,
+  placeholder,
+  className,
+}) {
   const ref = useRef(null)
   useEffect(() => {
     const el = ref.current
@@ -103,6 +119,8 @@ function AutoTextarea({ value, onChange, onKeyDown, placeholder, className }) {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={onKeyDown}
+      onBlur={onBlur}
+      autoFocus={autoFocus}
       placeholder={placeholder}
       rows={1}
       className={`w-full resize-none border-none bg-transparent outline-none placeholder:text-gray-300 ${className}`}
@@ -110,15 +128,146 @@ function AutoTextarea({ value, onChange, onKeyDown, placeholder, className }) {
   )
 }
 
-function TextBlock({ block, onChange, onKeyDown }) {
+// Textblock. Enthält der Text "[[Titel]]"-Verweise, wird er außerhalb des
+// Schreibens als Fließtext mit klickbaren Verweisen gezeigt (ein Klick
+// hinein macht ihn wieder editierbar). So sind Verknüpfungen nach Sammeln
+// nicht nur Syntax, sondern echte Wege.
+function TextBlock({ block, onChange, onKeyDown, linkKontext }) {
+  const [schreiben, setSchreiben] = useState(false)
+  const text = block.text ?? ""
+  const hatLinks = WIKILINK_REGEX.test(text)
+  WIKILINK_REGEX.lastIndex = 0
+
+  if (hatLinks && !schreiben) {
+    return (
+      <p
+        onClick={() => setSchreiben(true)}
+        className="cursor-text text-[15px] leading-relaxed text-gray-800"
+      >
+        {text.split(WIKILINK_REGEX).map((teil, i) =>
+          i % 2 === 1 ? (
+            <WikiLink key={i} titel={teil} kontext={linkKontext} />
+          ) : (
+            <span key={i}>{teil}</span>
+          )
+        )}
+      </p>
+    )
+  }
+
   return (
     <AutoTextarea
-      value={block.text ?? ""}
-      onChange={(text) => onChange({ ...block, text })}
+      value={text}
+      onChange={(t) => onChange({ ...block, text: t })}
       onKeyDown={onKeyDown}
+      onBlur={() => setSchreiben(false)}
+      autoFocus={schreiben}
       placeholder="Schreib etwas, oder tippe / für einen Block …"
       className="text-[15px] leading-relaxed text-gray-800"
     />
+  )
+}
+
+// Ein "[[Titel]]"-Verweis: führt in Sammeln, in ein Projekt oder in eine
+// Projekt-Notiz. Unbekannte Ziele bleiben dezent und nicht klickbar.
+function WikiLink({ titel, kontext }) {
+  const { wissen = [], projekte = [], notizen = [], onZielKlick } = kontext ?? {}
+  const ziel = findeZiel(titel, wissen, projekte, notizen)
+  if (!ziel) {
+    return (
+      <span
+        title="Kein Ziel mit diesem Titel"
+        className="rounded-sm bg-gray-100 px-1 text-gray-400"
+      >
+        {titel}
+      </span>
+    )
+  }
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onZielKlick?.(ziel)
+      }}
+      className="rounded-sm px-0.5 font-medium text-accent-600 underline decoration-accent-200 underline-offset-4 hover:bg-accent-50"
+    >
+      {ziel.titel}
+    </button>
+  )
+}
+
+// Verweis auf einen Sammeln-Eintrag: zeigt Titel und Anfang des Inhalts,
+// Klick öffnet ihn in Sammeln. Ohne Auswahl steht hier ein Wähler.
+function NotizBlock({ block, onChange, kontext }) {
+  const { wissen = [], onNotizOeffnen, onNotizNeu } = kontext ?? {}
+  const [neuerTitel, setNeuerTitel] = useState("")
+  const notiz = wissen.find((w) => w.id === block.wissenId)
+
+  if (!notiz) {
+    return (
+      <div className="rounded-lg border border-dashed border-gray-300 p-3">
+        <p className="text-xs text-gray-400">Notiz aus Sammeln wählen</p>
+        <select
+          value=""
+          onChange={(e) =>
+            onChange({ ...block, wissenId: Number(e.target.value) })
+          }
+          className="mt-1.5 w-full cursor-pointer rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 outline-none focus:border-gray-900"
+        >
+          <option value="">– Notiz wählen –</option>
+          {wissen.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.titel?.trim() || "Ohne Titel"}
+            </option>
+          ))}
+        </select>
+        {onNotizNeu && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!neuerTitel.trim()) return
+              const id = onNotizNeu(neuerTitel.trim())
+              setNeuerTitel("")
+              if (id != null) onChange({ ...block, wissenId: id })
+            }}
+            className="mt-1.5 flex gap-1.5"
+          >
+            <input
+              value={neuerTitel}
+              onChange={(e) => setNeuerTitel(e.target.value)}
+              placeholder="… oder neue Notiz anlegen"
+              className="min-w-0 flex-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-gray-900"
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-md border border-gray-200 px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              In Sammeln anlegen
+            </button>
+          </form>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => onNotizOeffnen?.(notiz.id)}
+      className="flex w-full items-start gap-2.5 rounded-lg border border-gray-200 p-3 text-left transition-colors hover:border-gray-400"
+    >
+      <span className="text-gray-400">📝</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium text-gray-900">
+          {notiz.titel?.trim() || "Ohne Titel"}
+        </span>
+        <span className="mt-0.5 block truncate text-xs text-gray-400">
+          {(notiz.inhalt ?? "").replace(/\s+/g, " ").slice(0, 90) || "Leer"}
+        </span>
+      </span>
+      <span className="shrink-0 text-[10px] uppercase tracking-widest text-gray-300">
+        Sammeln
+      </span>
+    </button>
   )
 }
 
@@ -497,6 +646,8 @@ export default function BlockEditor({
   onSeiteNeu,
   onSeiteOeffnen,
   onSeiteLoeschen,
+  // Verknüpfungen: Ziele für "[[Titel]]"-Verweise und Notiz-Blöcke.
+  linkKontext,
 }) {
   const [menuOffen, setMenuOffen] = useState(false)
   // Slash-Menü: { blockId, query } | null, plus markierter Eintrag.
@@ -659,6 +810,7 @@ export default function BlockEditor({
                 block={block}
                 onChange={(n) => textOnChange(block, n)}
                 onKeyDown={(e) => slashKeyDown(block, e)}
+                linkKontext={linkKontext}
               />
             )}
             {block.typ === "ueberschrift" && (
@@ -698,6 +850,13 @@ export default function BlockEditor({
               <BildBlock
                 block={block}
                 onChange={(n) => updateBlock(block.id, n)}
+              />
+            )}
+            {block.typ === "notiz" && (
+              <NotizBlock
+                block={block}
+                onChange={(n) => updateBlock(block.id, n)}
+                kontext={linkKontext}
               />
             )}
             {block.typ === "seite" && (
