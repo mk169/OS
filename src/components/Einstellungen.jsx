@@ -8,6 +8,7 @@ import Seitenkopf from "./Seitenkopf"
 import { PROFILE } from "./Onboarding"
 import ZyklenEinstellungen from "./ZyklenEinstellungen"
 import { DASHBOARD_BLOECKE, dashboardConfig } from "../lib/dashboard"
+import { navConfig, gruppeVon } from "../lib/navigation"
 import LoeschKnopf from "./LoeschKnopf"
 
 const FARBEN_OPTIONEN = Object.keys(FARBEN).filter((f) => f !== "gray")
@@ -515,6 +516,15 @@ export default function Einstellungen() {
     zeigeSpeichert()
   }
 
+  const nav = navConfig(einstellungen)
+  function navUmschalten(key) {
+    setEinstellungen((e) => ({
+      ...e,
+      navigation: { ...navConfig(e), [key]: !navConfig(e)[key] },
+    }))
+    zeigeSpeichert()
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf titel="Einstellungen" unterzeile="Passe dein OS an deinen Workflow an." />
@@ -708,7 +718,7 @@ export default function Einstellungen() {
       {/* ── Navigation / Sparten ────────────────────────────────────────────── */}
       <Abschnitt
         titel="Navigation"
-        beschreibung="Bestimme, welche Module erscheinen – und in welcher Reihenfolge."
+        beschreibung="Bestimme, wie die Navigation aufgebaut ist – und welche Module in welcher Reihenfolge erscheinen."
         icon={
           <>
             <rect x="3.5" y="3.5" width="17" height="17" rx="3" />
@@ -716,6 +726,28 @@ export default function Einstellungen() {
           </>
         }
       >
+        <Zeile
+          titel="Nach Gruppen sortieren"
+          beschreibung="Bündelt die Module unter „Täglich“, „Arbeiten“ und „Leben“ statt einer langen Liste."
+        >
+          <Toggle
+            an={nav.gruppiert}
+            onChange={() => navUmschalten("gruppiert")}
+            title={nav.gruppiert ? "Flache Liste zeigen" : "Gruppieren"}
+          />
+        </Zeile>
+
+        <Zeile
+          titel="Sekundäre Bereiche einklappen"
+          beschreibung="Vitalität, Finanzen & Leisure starten zugeklappt und öffnen sich per Klick."
+        >
+          <Toggle
+            an={nav.sekundaerEingeklappt}
+            onChange={() => navUmschalten("sekundaerEingeklappt")}
+            title={nav.sekundaerEingeklappt ? "Immer ausgeklappt" : "Einklappen"}
+          />
+        </Zeile>
+
         <div className="py-2">
           <p className="px-1 py-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
             Sichtbar
@@ -763,7 +795,12 @@ export default function Einstellungen() {
               <ModulIcon aktiv>{s.icon}</ModulIcon>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-900">{s.label}</p>
-                <p className="mt-0.5 text-[11px] text-gray-400">{s.beschreibung}</p>
+                <p className="mt-0.5 text-[11px] text-gray-400">
+                  {s.beschreibung}
+                  {nav.gruppiert && (
+                    <span className="text-gray-300"> · {gruppeVon(s.key).label}</span>
+                  )}
+                </p>
               </div>
               <Toggle an onChange={() => spartenUmschalten(s.key)} title="Ausblenden" />
             </div>

@@ -4,6 +4,7 @@ import useStored from "./lib/useStored"
 import { supabase, cloudAktiv } from "./lib/supabase"
 import { wendeAkzentAn } from "./lib/akzent"
 import { normalisiereStil } from "./lib/stil"
+import { navConfig, navSektionen, sektionOffen } from "./lib/navigation"
 import Login from "./components/Login"
 import Dashboard from "./components/Dashboard"
 import KalenderSeite from "./components/KalenderSeite"
@@ -285,6 +286,9 @@ export default function App() {
   const [param, setParam] = useState(null)
   const [sucheOffen, setSucheOffen] = useState(false)
   const [mehrOffen, setMehrOffen] = useState(false)
+  // Manuell auf-/zugeklappte Navigations-Gruppen (Schlüssel → offen?).
+  // Nur für die laufende Sitzung; der Standard kommt aus den Einstellungen.
+  const [offeneSektionen, setOffeneSektionen] = useState({})
   const [session, setSession] = useState(null)
   const [authBereit, setAuthBereit] = useState(!cloudAktiv)
 
@@ -376,6 +380,14 @@ export default function App() {
   const primaereNav = tabNav.slice(0, PRIMAER_MAX)
   const weitereNav = sichtbareNav.filter((n) => !primaereNav.includes(n))
   const mobileKolonnen = primaereNav.length + 1
+  // Gruppierung/Einklappen der Navigation (Einstellungen → Navigation).
+  const navCfg = navConfig(einstellungen)
+  const sidebarSektionen = navSektionen(sichtbareNav, navCfg)
+  const sheetSektionen = navSektionen(weitereNav, navCfg)
+  const istOffen = (sektion) =>
+    sektionOffen(sektion, { offeneSektionen, aktiveSeite: seite, config: navCfg })
+  const sektionUmschalten = (sektion) =>
+    setOffeneSektionen((o) => ({ ...o, [sektion.key]: !istOffen(sektion) }))
   // Locked-In-Look: die App-Hülle (Kopfzeile, Tab-Leiste, Hintergrund) zieht in
   // den monochromen Look mit – auf der Locked-In-Kommandozentrale immer, auf der
   // Habits-Seite nur, wenn dort der Locked-In-Stil aktiv ist. So wird der
@@ -431,25 +443,45 @@ export default function App() {
           Wochenrückblick
         </button>
 
-        {/* Hauptnavigation */}
-        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-600">
-          Navigation
-        </p>
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
-          {sichtbareNav.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => navigiere(item.key)}
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                seite === item.key
-                  ? "bg-accent-500/20 font-medium text-accent-300"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-              }`}
-            >
-              <NavIcon className="h-[16px] w-[16px] shrink-0">{item.icon}</NavIcon>
-              {item.label}
-            </button>
-          ))}
+        {/* Hauptnavigation – je nach Einstellung flach oder nach Gruppen */}
+        <nav className="flex flex-1 flex-col overflow-y-auto">
+          {sidebarSektionen.map((sektion) => {
+            const offen = istOffen(sektion)
+            return (
+              <div key={sektion.key} className="mb-1.5 last:mb-0">
+                {sektion.label ? (
+                  <SektionsKopf
+                    label={sektion.label}
+                    anzahl={sektion.items.length}
+                    offen={offen}
+                    onClick={() => sektionUmschalten(sektion)}
+                  />
+                ) : (
+                  <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-600">
+                    Navigation
+                  </p>
+                )}
+                {offen && (
+                  <div className="flex flex-col gap-0.5">
+                    {sektion.items.map((item) => (
+                      <button
+                        key={item.key}
+                        onClick={() => navigiere(item.key)}
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                          seite === item.key
+                            ? "bg-accent-500/20 font-medium text-accent-300"
+                            : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                        }`}
+                      >
+                        <NavIcon className="h-[16px] w-[16px] shrink-0">{item.icon}</NavIcon>
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </nav>
 
         {/* Einstellungen + Abmelden */}
@@ -569,16 +601,40 @@ export default function App() {
             style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
           >
             <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-200" />
+            {sheetSektionen.map((sektion) => {
+              const offen = istOffen(sektion)
+              return (
+                <div key={sektion.key} className="mb-1 last:mb-0">
+                  {sektion.label && (
+                    <SheetSektionsKopf
+                      label={sektion.label}
+                      anzahl={sektion.items.length}
+                      offen={offen}
+                      onClick={() => sektionUmschalten(sektion)}
+                    />
+                  )}
+                  {offen && (
+                    <div className="grid grid-cols-4 gap-1">
+                      {sektion.items.map((item) => (
+                        <SheetKnopf
+                          key={item.key}
+                          aktiv={seite === item.key}
+                          onClick={() => navigiere(item.key)}
+                          label={item.label}
+                          icon={item.icon}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {navCfg.gruppiert && (
+              <p className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                App
+              </p>
+            )}
             <div className="grid grid-cols-4 gap-1">
-              {weitereNav.map((item) => (
-                <SheetKnopf
-                  key={item.key}
-                  aktiv={seite === item.key}
-                  onClick={() => navigiere(item.key)}
-                  label={item.label}
-                  icon={item.icon}
-                />
-              ))}
               <SheetKnopf
                 aktiv={seite === "review"}
                 onClick={() => navigiere("review")}
@@ -660,6 +716,45 @@ export default function App() {
         </button>
       </nav>
     </div>
+  )
+}
+
+// Gruppen-Überschrift in der Desktop-Sidebar. Klappt die Gruppe auf und zu;
+// im zugeklappten Zustand zeigt sie, wie viele Einträge darunter liegen.
+function SektionsKopf({ label, anzahl, offen, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-expanded={offen}
+      className="mb-1 flex w-full items-center gap-1.5 rounded-lg px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-gray-600 transition-colors hover:text-gray-400"
+    >
+      <NavIcon
+        className={`h-3 w-3 shrink-0 transition-transform ${offen ? "" : "-rotate-90"}`}
+      >
+        <path d="m6 9 6 6 6-6" />
+      </NavIcon>
+      <span className="truncate">{label}</span>
+      {!offen && <span className="ml-auto text-gray-700">{anzahl}</span>}
+    </button>
+  )
+}
+
+// Gruppen-Überschrift im mobilen „Mehr"-Sheet (heller Hintergrund).
+function SheetSektionsKopf({ label, anzahl, offen, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-expanded={offen}
+      className="flex w-full items-center gap-1.5 px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400 transition-colors hover:text-gray-600"
+    >
+      <NavIcon
+        className={`h-3 w-3 shrink-0 transition-transform ${offen ? "" : "-rotate-90"}`}
+      >
+        <path d="m6 9 6 6 6-6" />
+      </NavIcon>
+      <span className="truncate">{label}</span>
+      {!offen && <span className="ml-auto text-gray-300">{anzahl}</span>}
+    </button>
   )
 }
 
