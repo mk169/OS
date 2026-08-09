@@ -1,4 +1,5 @@
 import { montagVon, wochenSchluessel } from "./datum"
+import { faelltAuf } from "./wiederholung"
 
 // Wochenabschluss: Am Ende einer Woche wird festgehalten, was sie enthielt –
 // erledigte Aufgaben, Fokuszeit, Habits und das Wochenziel der Periode. Die
@@ -9,8 +10,11 @@ import { montagVon, wochenSchluessel } from "./datum"
 // Ein Bericht im Store `wochenberichte`:
 //   { woche: "JJJJ-MM-TT" (Montag), von, bis, erstelltAm,
 //     todos: [{ text, projekt, datum }], fokusMinuten, fokusSessions,
-//     habits: { erreicht, gesamt }, wochenziel: { text, erledigt, gesamt },
-//     notiz }
+//     karten, termine, habits: { erreicht, gesamt },
+//     vitalitaet: { energie, schlaf, tage },
+//     wochenziel: { text, erledigt, gesamt }, notiz }
+// Ältere Berichte kennen die späteren Felder nicht – die Tabelle zeigt dort
+// einen Strich statt einer erfundenen Null.
 
 export function wochenStartVon(datum = new Date()) {
   return wochenSchluessel(datum)
@@ -57,6 +61,9 @@ export function baueBericht({
   deepwork = [],
   habits = [],
   zyklen = [],
+  lernprotokoll = {},
+  vitalitaet = [],
+  termine = [],
   wochenZielErreicht,
 }) {
   const von = woche
@@ -100,6 +107,30 @@ export function baueBericht({
     }
   }
 
+  // Bewertete Karteikarten der Woche (Lernprotokoll zählt pro Tag).
+  let karten = 0
+  for (const [tag, anzahl] of Object.entries(lernprotokoll ?? {})) {
+    if (imZeitraum(tag, von, bis)) karten += Number(anzahl) || 0
+  }
+
+  // Termine der Woche (inklusive Wiederholungen).
+  let terminAnzahl = 0
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(von)
+    d.setDate(d.getDate() + i)
+    const tag = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    if (tag > bis) break
+    terminAnzahl += termine.filter((t) => faelltAuf(t, tag)).length
+  }
+
+  // Vitalität: Durchschnitt der ausgefüllten Tage dieser Woche.
+  const checkins = vitalitaet.filter((e) => imZeitraum(e.datum, von, bis))
+  const schnitt = (feld) => {
+    const werte = checkins.map((e) => Number(e[feld])).filter((n) => n > 0)
+    if (werte.length === 0) return null
+    return Math.round((werte.reduce((a, b) => a + b, 0) / werte.length) * 10) / 10
+  }
+
   return {
     woche,
     von,
@@ -113,7 +144,14 @@ export function baueBericht({
     })),
     fokusMinuten,
     fokusSessions: sessions.length,
+    karten,
+    termine: terminAnzahl,
     habits: habitBilanz,
+    vitalitaet: {
+      energie: schnitt("energie"),
+      schlaf: schnitt("schlaf"),
+      tage: checkins.length,
+    },
     wochenziel,
     notiz: "",
   }
