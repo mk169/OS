@@ -8,6 +8,13 @@ import Seitenkopf from "./Seitenkopf"
 import { PROFILE } from "./Onboarding"
 import ZyklenEinstellungen from "./ZyklenEinstellungen"
 import { DASHBOARD_BLOECKE, dashboardConfig } from "../lib/dashboard"
+import {
+  navConfig,
+  gruppeVon,
+  setzeGruppe,
+  SONSTIGE_GRUPPE,
+  STANDARD_GRUPPEN,
+} from "../lib/navigation"
 import LoeschKnopf from "./LoeschKnopf"
 
 const FARBEN_OPTIONEN = Object.keys(FARBEN).filter((f) => f !== "gray")
@@ -240,6 +247,38 @@ function Gruppe({ titel, erste = false }) {
   )
 }
 
+// Kompakte Bereichs-Zuordnung unter einem Modul-Namen. Sieht wie Text aus,
+// ist aber ein echtes Select – damit die Modul-Zeile nicht breiter wird.
+function GruppenWahl({ wert, gruppen, onChange }) {
+  return (
+    <label className="mt-1 inline-flex items-center gap-0.5 rounded-md bg-gray-50 pl-1.5 text-[11px] text-gray-500 transition-colors hover:bg-gray-100">
+      <select
+        value={wert}
+        onChange={(e) => onChange(e.target.value)}
+        title="Bereich wechseln"
+        className="cursor-pointer appearance-none bg-transparent py-0.5 pr-4 text-[11px] font-medium text-gray-500 outline-none"
+      >
+        {gruppen.map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.label}
+          </option>
+        ))}
+        <option value={SONSTIGE_GRUPPE.id}>{SONSTIGE_GRUPPE.label}</option>
+      </select>
+      <NavIcon className="pointer-events-none -ml-4 h-3 w-3 text-gray-400">
+        <path d="m6 9 6 6 6-6" />
+      </NavIcon>
+    </label>
+  )
+}
+
+// „a, b und c" – für Beschreibungstexte mit Bereichsnamen.
+function aufzaehlung(teile) {
+  if (teile.length === 0) return ""
+  if (teile.length === 1) return teile[0]
+  return `${teile.slice(0, -1).join(", ")} und ${teile[teile.length - 1]}`
+}
+
 // Einstellungs-Zeile: Label/Beschreibung links, Control rechts.
 function Zeile({ titel, beschreibung, children }) {
   return (
@@ -274,6 +313,7 @@ export default function Einstellungen() {
 
   const [neuerName, setNeuerName] = useState("")
   const [neueFarbe, setNeueFarbe] = useState("emerald")
+  const [neuerGruppenName, setNeuerGruppenName] = useState("")
   const [gespeichert, setGespeichert] = useState(false)
   const [appNameEntwurf, setAppNameEntwurf] = useState(einstellungen.appName ?? "OS")
   const dateiRef = useRef(null)
@@ -515,6 +555,72 @@ export default function Einstellungen() {
     zeigeSpeichert()
   }
 
+  const nav = navConfig(einstellungen)
+  function navUmschalten(key) {
+    setEinstellungen((e) => ({
+      ...e,
+      navigation: { ...navConfig(e), [key]: !navConfig(e)[key] },
+    }))
+    zeigeSpeichert()
+  }
+
+  // ── Navigations-Bereiche ────────────────────────────────────────────────────
+  // `stillt` unterdrückt den Toast bei Tipp-Eingaben (Umbenennen).
+  function setzeGruppen(bauer, still = false) {
+    setEinstellungen((e) => ({
+      ...e,
+      navigation: { ...navConfig(e), gruppen: bauer(navConfig(e).gruppen) },
+    }))
+    if (!still) zeigeSpeichert()
+  }
+
+  function gruppeHinzufuegen() {
+    const name = neuerGruppenName.trim()
+    if (!name) return
+    setzeGruppen((g) => [
+      ...g,
+      { id: `g${Date.now()}`, label: name, keys: [], sekundaer: false },
+    ])
+    setNeuerGruppenName("")
+  }
+
+  // Module eines gelöschten Bereichs landen automatisch unter „Weiteres“.
+  function gruppeEntfernen(id) {
+    setzeGruppen((g) => g.filter((x) => x.id !== id))
+  }
+
+  function gruppeUmbenennen(id, label) {
+    setzeGruppen((g) => g.map((x) => (x.id === id ? { ...x, label } : x)), true)
+  }
+
+  function gruppeSekundaerUmschalten(id) {
+    setzeGruppen((g) =>
+      g.map((x) => (x.id === id ? { ...x, sekundaer: !x.sekundaer } : x))
+    )
+  }
+
+  function gruppeVerschieben(id, richtung) {
+    setzeGruppen((g) => {
+      const i = g.findIndex((x) => x.id === id)
+      const j = i + richtung
+      if (i < 0 || j < 0 || j >= g.length) return g
+      const neu = [...g]
+      ;[neu[i], neu[j]] = [neu[j], neu[i]]
+      return neu
+    })
+  }
+
+  function modulGruppeSetzen(key, zielId) {
+    setzeGruppen((g) => setzeGruppe(g, key, zielId))
+  }
+
+  const sekundaereGruppen = nav.gruppen.filter((g) => g.sekundaer)
+
+  function gruppenZuruecksetzen() {
+    if (!window.confirm("Bereiche auf die Vorgabe zurücksetzen?")) return
+    setzeGruppen(() => STANDARD_GRUPPEN.map((g) => ({ ...g, keys: [...g.keys] })))
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf titel="Einstellungen" unterzeile="Passe dein OS an deinen Workflow an." />
@@ -708,7 +814,7 @@ export default function Einstellungen() {
       {/* ── Navigation / Sparten ────────────────────────────────────────────── */}
       <Abschnitt
         titel="Navigation"
-        beschreibung="Bestimme, welche Module erscheinen – und in welcher Reihenfolge."
+        beschreibung="Bestimme, wie die Navigation aufgebaut ist – und welche Module in welcher Reihenfolge erscheinen."
         icon={
           <>
             <rect x="3.5" y="3.5" width="17" height="17" rx="3" />
@@ -716,6 +822,40 @@ export default function Einstellungen() {
           </>
         }
       >
+        <Zeile
+          titel="Nach Bereichen sortieren"
+          beschreibung={
+            nav.gruppen.length > 0
+              ? `Bündelt die Module unter ${aufzaehlung(
+                  nav.gruppen.map((g) => `„${g.label}“`)
+                )} statt einer langen Liste.`
+              : "Es gibt zurzeit keinen Bereich – lege weiter unten einen an."
+          }
+        >
+          <Toggle
+            an={nav.gruppiert}
+            onChange={() => navUmschalten("gruppiert")}
+            title={nav.gruppiert ? "Flache Liste zeigen" : "Gruppieren"}
+          />
+        </Zeile>
+
+        <Zeile
+          titel="Sekundäre Bereiche einklappen"
+          beschreibung={
+            sekundaereGruppen.length > 0
+              ? `${aufzaehlung(
+                  sekundaereGruppen.map((g) => `„${g.label}“`)
+                )} starten zugeklappt und öffnen sich per Klick.`
+              : "Zurzeit ist kein Bereich als „sekundär“ markiert – das stellst du weiter unten bei „Bereiche der Navigation“ ein."
+          }
+        >
+          <Toggle
+            an={nav.sekundaerEingeklappt}
+            onChange={() => navUmschalten("sekundaerEingeklappt")}
+            title={nav.sekundaerEingeklappt ? "Immer ausgeklappt" : "Einklappen"}
+          />
+        </Zeile>
+
         <div className="py-2">
           <p className="px-1 py-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
             Sichtbar
@@ -764,6 +904,13 @@ export default function Einstellungen() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-900">{s.label}</p>
                 <p className="mt-0.5 text-[11px] text-gray-400">{s.beschreibung}</p>
+                {nav.gruppiert && (
+                  <GruppenWahl
+                    wert={gruppeVon(s.key, nav.gruppen).id}
+                    gruppen={nav.gruppen}
+                    onChange={(id) => modulGruppeSetzen(s.key, id)}
+                  />
+                )}
               </div>
               <Toggle an onChange={() => spartenUmschalten(s.key)} title="Ausblenden" />
             </div>
@@ -787,6 +934,133 @@ export default function Einstellungen() {
               ))}
             </>
           )}
+        </div>
+      </Abschnitt>
+
+      {/* ── Navigations-Bereiche ────────────────────────────────────────────── */}
+      <Abschnitt
+        titel="Bereiche der Navigation"
+        beschreibung="Deine eigenen Gruppen für Seitenleiste und Ansichts-Wechsler. Welches Modul in welchen Bereich gehört, stellst du oben bei „Navigation“ ein."
+        panel={false}
+        icon={
+          <>
+            <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
+            <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
+            <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
+            <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
+          </>
+        }
+      >
+        {!nav.gruppiert && (
+          <p className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-700">
+            Die Gruppierung ist aus – die Bereiche steuern gerade nur, was als
+            „sekundär“ gilt und sich einklappen lässt.
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {nav.gruppen.length === 0 && (
+            <p className="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center text-xs text-gray-400">
+              Noch kein Bereich – alle Module stehen unter „Weiteres“.
+            </p>
+          )}
+          {nav.gruppen.map((g, i) => {
+            const anzahl = g.keys.filter((k) => sichtbar.includes(k)).length
+            return (
+              <div
+                key={g.id}
+                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5"
+              >
+                <div className="flex w-6 flex-col items-center">
+                  <button
+                    onClick={() => gruppeVerschieben(g.id, -1)}
+                    disabled={i === 0}
+                    title="Nach oben"
+                    className="text-gray-300 transition-colors hover:text-gray-600 disabled:opacity-30 disabled:hover:text-gray-300"
+                  >
+                    <NavIcon className="h-3.5 w-3.5"><path d="m6 15 6-6 6 6" /></NavIcon>
+                  </button>
+                  <button
+                    onClick={() => gruppeVerschieben(g.id, 1)}
+                    disabled={i === nav.gruppen.length - 1}
+                    title="Nach unten"
+                    className="text-gray-300 transition-colors hover:text-gray-600 disabled:opacity-30 disabled:hover:text-gray-300"
+                  >
+                    <NavIcon className="h-3.5 w-3.5"><path d="m6 9 6 6 6-6" /></NavIcon>
+                  </button>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <input
+                    type="text"
+                    value={g.label}
+                    onChange={(e) => gruppeUmbenennen(g.id, e.target.value)}
+                    onBlur={zeigeSpeichert}
+                    className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none"
+                  />
+                  <p className="text-[11px] text-gray-400">
+                    {anzahl === 0
+                      ? "noch kein Modul"
+                      : `${anzahl} ${anzahl === 1 ? "Modul" : "Module"}`}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => gruppeSekundaerUmschalten(g.id)}
+                  title={
+                    g.sekundaer
+                      ? "Bereich immer ausklappen"
+                      : "Bereich einklappbar machen"
+                  }
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                    g.sekundaer
+                      ? "bg-accent-50 text-accent-600"
+                      : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                  }`}
+                >
+                  {g.sekundaer ? "sekundär" : "primär"}
+                </button>
+
+                <LoeschKnopf
+                  onLoeschen={() => gruppeEntfernen(g.id)}
+                  titel="Navigations-Bereich entfernen"
+                  frageText="Bereich entfernen? Die Module wandern nach „Weiteres“."
+                  klasse="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-300"
+                />
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="mt-2 flex gap-2">
+          <input
+            type="text"
+            value={neuerGruppenName}
+            onChange={(e) => setNeuerGruppenName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && gruppeHinzufuegen()}
+            placeholder="Neuer Navigations-Bereich…"
+            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-accent-400 focus:bg-white"
+          />
+          <button
+            onClick={gruppeHinzufuegen}
+            title="Navigations-Bereich hinzufügen"
+            className="flex items-center rounded-xl bg-gray-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-gray-700"
+          >
+            <NavIcon className="h-4 w-4"><path d="M12 5v14M5 12h14" /></NavIcon>
+          </button>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3 px-1">
+          <p className="text-[11px] leading-relaxed text-gray-400">
+            „sekundär“ heisst: Der Bereich startet zugeklappt, wenn die
+            Einstellung „Sekundäre Bereiche einklappen“ aktiv ist.
+          </p>
+          <button
+            onClick={gruppenZuruecksetzen}
+            className="shrink-0 text-xs font-medium text-gray-400 underline-offset-2 transition-colors hover:text-gray-700 hover:underline"
+          >
+            Zurücksetzen
+          </button>
         </div>
       </Abschnitt>
 
