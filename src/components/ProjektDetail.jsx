@@ -18,6 +18,7 @@ import {
   Fortschrittsbalken,
   projektFortschrittWerte,
 } from "./OrdnerSeite"
+import { prozentVon } from "../lib/projektfortschritt"
 import LoeschKnopf from "./LoeschKnopf"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
@@ -1164,11 +1165,53 @@ function WorkflowModul({ projekt, onUpdate }) {
     onUpdate({ ...projekt, workflow: workflow.filter((s) => s.id !== id) })
   }
 
+  const erledigt = workflow.filter((s) => s.erledigt).length
+  const prozent = prozentVon({ erledigt, gesamt: workflow.length })
+  const offen = workflow.find((s) => !s.erledigt)
+
   return (
     <div>
       <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
         Ablauf & Termine
       </p>
+
+      {/* Fortschritt des Ablaufs – dieselbe Zahl, die auch auf der
+       * Projektkarte und im Dashboard steht. */}
+      {workflow.length > 0 && (
+        <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              Fortschritt
+            </span>
+            <span className="text-xl font-semibold tabular-nums leading-none text-gray-900">
+              {prozent}
+              <span className="ml-0.5 text-xs font-medium text-gray-400">%</span>
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                prozent === 100 ? "bg-emerald-500" : "bg-accent-500"
+              }`}
+              style={{ width: `${prozent}%` }}
+              role="progressbar"
+              aria-valuenow={prozent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            />
+          </div>
+          <p className="mt-2 truncate text-xs text-gray-400">
+            {erledigt}/{workflow.length} Schritten erledigt
+            {offen && (
+              <>
+                {" · nächster: "}
+                <span className="text-gray-600">{offen.text}</span>
+              </>
+            )}
+          </p>
+        </div>
+      )}
+
       <form
         onSubmit={addSchritt}
         className="flex flex-wrap items-end gap-2 border-b border-gray-100 pb-5"

@@ -10,6 +10,7 @@ import { datumLang } from "./Kalender"
 import { KalenderPanel } from "./KalenderSeite"
 import TodoErstellen, { EINTEILUNGEN, einteilungVon } from "./TodoErstellen"
 import MentorBanner from "./MentorBanner"
+import ProjektFortschritt from "./ProjektFortschritt"
 import {
   useHabitDaten,
   nutzeHabitToggle,
@@ -281,6 +282,8 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
         </div>
       )}
 
+      {dashboard.projekte && <ProjektFortschritt onNavigate={onNavigate} />}
+
       {dashboard.kalender && (
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
@@ -496,6 +499,8 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
         </div>
       )}
 
+      {dashboard.projekte && <ProjektFortschritt onNavigate={onNavigate} />}
+
       {/* Aktions-Kacheln */}
       <section className="mb-8">
         <div className="mb-3 flex items-center justify-between">
@@ -658,6 +663,10 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
           </div>
         )}
 
+        {dashboard.projekte && (
+          <ProjektFortschritt onNavigate={onNavigate} variant="dunkel" />
+        )}
+
         {/* Aufgaben & Habits */}
         <TermSection label="tasks" onClick={() => onNavigate("todos")}>
           <span className="text-xs text-zinc-600">
@@ -776,6 +785,10 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
         {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
       {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
       {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
+
+        {dashboard.projekte && (
+          <ProjektFortschritt onNavigate={onNavigate} variant="clean" />
+        )}
 
         {dashboard.kalender && (
           <section className="mb-8">
@@ -992,6 +1005,10 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard })
           </div>
         )}
       </section>
+
+      {dashboard.projekte && (
+        <ProjektFortschritt onNavigate={onNavigate} variant="notion" />
+      )}
 
       {dashboard.habits && <HabitsPanel onNavigate={onNavigate} />}
 

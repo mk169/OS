@@ -11,6 +11,13 @@ import { PROJEKT_VORLAGEN, vorlageAnwenden } from "../lib/projektvorlagen"
 import { vorlageZuBloecken } from "../lib/wissen"
 import { neueBlockId } from "./BlockEditor"
 import { SortMenu, LayoutUmschalter } from "./ListenControls"
+import {
+  projektFortschrittWerte,
+  projektMetrik,
+  projektMetriken,
+  portfolioKennzahlen,
+  prozentVon,
+} from "../lib/projektfortschritt"
 
 const ORDNER_SORT = [
   { value: "name", label: "Name A–Z" },
@@ -23,18 +30,10 @@ const ORDNER_SORT = [
 // (z.B. Uni → 4. Semester → Statistik). Jedes Projekt wird individuell
 // erstellt und bringt nur die Bereiche mit, die es braucht.
 
-// Fortschritt eines Projekts als Werte: erst der Workflow, sonst die
-// zugeordneten Todos. gesamt === 0 heißt „nichts zum Abhaken“.
-export function projektFortschrittWerte(projekt, todos) {
-  const schritte = projekt.workflow ?? []
-  if (schritte.length > 0) {
-    return { erledigt: schritte.filter((s) => s.erledigt).length, gesamt: schritte.length }
-  }
-  const eigene = todos.filter(
-    (t) => t.projektId === projekt.id || t.kursId === projekt.id
-  )
-  return { erledigt: eigene.filter((t) => t.erledigt).length, gesamt: eigene.length }
-}
+// Die Fortschritts-Rechnung liegt in lib/projektfortschritt.js – hier nur
+// weitergereicht, weil etliche Bereiche sie seit jeher von der Projekte-Seite
+// importieren (Periode, Zyklus-Widget, Block-Editor …).
+export { projektFortschrittWerte }
 
 export function projektFortschritt(projekt, todos) {
   const { erledigt, gesamt } = projektFortschrittWerte(projekt, todos)
@@ -46,35 +45,156 @@ export function DeadlineChip({ datum }) {
   if (!datum) return null
   const tage = tageBisZahl(datum)
   const stil =
-    tage <= 0
-      ? "bg-red-50 text-red-600"
+    tage < 0
+      ? "bg-rose-50 text-rose-600 ring-rose-100"
       : tage <= 3
-        ? "bg-amber-50 text-amber-700"
-        : "bg-gray-100 text-gray-500"
+        ? "bg-amber-50 text-amber-700 ring-amber-100"
+        : "bg-gray-50 text-gray-500 ring-gray-200"
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${stil}`}>
+    <span
+      className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${stil}`}
+    >
       {tageBis(datum)}
     </span>
   )
 }
 
-// Schlanker Fortschrittsbalken mit erledigt/gesamt-Beschriftung.
-export function Fortschrittsbalken({ erledigt, gesamt }) {
+// Schlanker Fortschrittsbalken. Standardmäßig mit erledigt/gesamt-
+// Beschriftung; `prozent` stellt stattdessen den Prozentwert daneben.
+// Ein fertiger Balken wird grün, ein überfälliger rot – die Farbe soll die
+// Zahl bestätigen, nicht nur schmücken.
+export function Fortschrittsbalken({
+  erledigt,
+  gesamt,
+  prozent = false,
+  ueberfaellig = false,
+  leerText = "Noch keine Aufgaben",
+}) {
   if (gesamt === 0) {
-    return <span className="text-xs text-gray-300">Noch keine Aufgaben</span>
+    return <span className="text-xs text-gray-300">{leerText}</span>
   }
-  const prozent = Math.round((erledigt / gesamt) * 100)
+  const anteil = prozentVon({ erledigt, gesamt })
+  const farbe =
+    anteil === 100
+      ? "bg-emerald-500"
+      : ueberfaellig
+        ? "bg-rose-500"
+        : "bg-accent-500"
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
         <div
-          className="h-full rounded-full bg-gray-900 transition-all"
-          style={{ width: `${prozent}%` }}
+          className={`h-full rounded-full transition-all duration-500 ${farbe}`}
+          style={{ width: `${anteil}%` }}
+          role="progressbar"
+          aria-valuenow={anteil}
+          aria-valuemin={0}
+          aria-valuemax={100}
         />
       </div>
-      <span className="shrink-0 text-xs tabular-nums text-gray-400">
-        {erledigt}/{gesamt}
+      <span className="shrink-0 text-xs font-medium tabular-nums text-gray-400">
+        {prozent ? `${anteil} %` : `${erledigt}/${gesamt}`}
       </span>
+    </div>
+  )
+}
+
+// Status-Punkt: ein Blick genügt – rot überfällig, bernstein diese Woche,
+// grün fertig, grau ruhend, sonst Akzent.
+function StatusPunkt({ metrik }) {
+  const farbe = metrik.ueberfaellig
+    ? "bg-rose-500"
+    : metrik.fertig
+      ? "bg-emerald-500"
+      : metrik.tageUebrig != null && metrik.tageUebrig <= 7
+        ? "bg-amber-500"
+        : metrik.gesamt === 0
+          ? "bg-gray-300"
+          : "bg-accent-500"
+  return <span className={`h-2 w-2 shrink-0 rounded-full ${farbe}`} />
+}
+
+// Kennzahlen über alle laufenden Projekte, direkt unter dem Seitenkopf:
+// wie viele laufen, wie weit sie im Mittel sind, was diese Woche fällig ist
+// und was schon überfällig ist. Der breite Balken zeigt den Mittelwert.
+function PortfolioLeiste({ kennzahlen }) {
+  if (kennzahlen.laufend === 0) return null
+  const zahlen = [
+    { wert: kennzahlen.laufend, label: "laufend" },
+    { wert: kennzahlen.offen, label: "offene Schritte" },
+    {
+      wert: kennzahlen.dieseWoche,
+      label: "diese Woche fällig",
+      ton: kennzahlen.dieseWoche > 0 ? "text-amber-600" : null,
+    },
+    {
+      wert: kennzahlen.ueberfaellig,
+      label: "überfällig",
+      ton: kennzahlen.ueberfaellig > 0 ? "text-rose-600" : null,
+    },
+  ]
+
+  return (
+    <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm shadow-gray-100">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            Ø Fortschritt
+          </p>
+          <p className="mt-0.5 text-3xl font-semibold tabular-nums leading-none text-gray-900">
+            {kennzahlen.durchschnitt}
+            <span className="ml-0.5 text-lg font-medium text-gray-400">%</span>
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-x-7 gap-y-3">
+          {zahlen.map((z) => (
+            <div key={z.label}>
+              <p
+                className={`text-lg font-semibold tabular-nums leading-none ${z.ton ?? "text-gray-900"}`}
+              >
+                {z.wert}
+              </p>
+              <p className="mt-1 text-[11px] font-medium text-gray-400">
+                {z.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+        <div
+          className="h-full rounded-full bg-accent-500 transition-all duration-500"
+          style={{ width: `${kennzahlen.durchschnitt}%` }}
+          role="progressbar"
+          aria-valuenow={kennzahlen.durchschnitt}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Durchschnittlicher Projektfortschritt"
+        />
+      </div>
+      {kennzahlen.verfolgt < kennzahlen.laufend && (
+        <p className="mt-2 text-[11px] text-gray-400">
+          {kennzahlen.laufend - kennzahlen.verfolgt} Projekt
+          {kennzahlen.laufend - kennzahlen.verfolgt === 1 ? "" : "e"} ohne
+          Ablauf – zählt im Mittel nicht mit.
+        </p>
+      )}
+    </div>
+  )
+}
+
+// Freundlicher Leerzustand statt einer stummen Seite: sagt, was hier
+// hingehört, und bietet den nächsten Schritt an.
+function Leerzustand({ titel, text, aktion }) {
+  return (
+    <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-white/60 px-6 py-12 text-center">
+      <p className="text-sm font-medium text-gray-900">{titel}</p>
+      {text && (
+        <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-gray-400">
+          {text}
+        </p>
+      )}
+      {aktion && <div className="mt-4">{aktion}</div>}
     </div>
   )
 }
@@ -105,6 +225,9 @@ export default function OrdnerSeite({
   const [ordner, setOrdner] = useStored("ordner", [])
   const [projekte, setProjekte] = useStored("projekte", [])
   const [todos] = useStored("todos", [])
+  // Nur für den Zähler an der Ansichts-Leiste – gepflegt wird der Backlog
+  // in BacklogAnsicht (derselbe Speicher, dieselben Daten).
+  const [ideen] = useStored("projektIdeen", [])
 
   const [aktuellerOrdnerId, setAktuellerOrdnerId] = useState(null)
   const [offenesProjektId, setOffenesProjektId] = useState(startProjektId)
@@ -170,6 +293,23 @@ export default function OrdnerSeite({
   // echte Projekte. Anstehend/Dashboard filtern bewusst nicht nach typ,
   // damit Areas' datierte Todos/Deadlines dort trotzdem auftauchen.
   const aktiveProjekte = aktive.filter((p) => (p.typ ?? "projekt") !== "area")
+  const areas = aktive.filter((p) => (p.typ ?? "projekt") === "area")
+
+  // Portfolio-Blick über alle laufenden Projekte (Kopf der Seite) und die
+  // Zähler an der Ansichts-Leiste.
+  const metriken = projektMetriken(projekte, todos)
+  const kennzahlen = portfolioKennzahlen(metriken)
+  const zaehler = {
+    alle: aktiveProjekte.length,
+    backlog: ideen.length,
+    areas: areas.length,
+    archiv: archivierte.length,
+    // Zählt dasselbe, was die Anstehend-Ansicht listet – aber nur das, was
+    // wirklich drängt: überfällig oder innerhalb der nächsten sieben Tage.
+    anstehend: sammleTermine(aktive, todos).filter(
+      (e) => tageBisZahl(e.datum) <= 7
+    ).length,
+  }
 
   const unterordner = ordner
     .filter((o) => (o.parentId ?? null) === aktuellerOrdnerId)
@@ -232,13 +372,18 @@ export default function OrdnerSeite({
   return (
     <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf
+        eyebrow={
+          kennzahlen.laufend > 0
+            ? `${kennzahlen.laufend} ${kennzahlen.laufend === 1 ? "Projekt läuft" : "Projekte laufen"}`
+            : "Portfolio"
+        }
         titel="Projekte"
+        unterzeile="Ordner, Areas und alles, was gerade in Arbeit ist."
         aktion={
           <div className="flex flex-wrap items-center gap-2">
-            <AnsichtToggle ansicht={ansicht} setAnsicht={setAnsicht} />
             <button
               onClick={() => setOrdnerFormOffen(!ordnerFormOffen)}
-              className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
             >
               + Ordner
             </button>
@@ -247,13 +392,17 @@ export default function OrdnerSeite({
                 setFormTyp("projekt")
                 setProjektFormOffen(!projektFormOffen)
               }}
-              className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
+              className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-700"
             >
               + Projekt
             </button>
           </div>
         }
       />
+
+      <PortfolioLeiste kennzahlen={kennzahlen} />
+
+      <AnsichtToggle ansicht={ansicht} setAnsicht={setAnsicht} zaehler={zaehler} />
 
       {ordnerFormOffen && (
         <form
@@ -484,6 +633,28 @@ export default function OrdnerSeite({
         </section>
       )}
 
+      {unterordner.length === 0 && hiesigeProjekte.length === 0 && (
+        <Leerzustand
+          titel={
+            aktuellerOrdnerId === null
+              ? "Noch nichts angelegt."
+              : "Dieser Ordner ist leer."
+          }
+          text="Ordner sortieren, Projekte arbeiten. Lege ein Projekt an – oder halte die Idee erst im Backlog fest, wenn sie noch nicht so weit ist."
+          aktion={
+            <button
+              onClick={() => {
+                setFormTyp("projekt")
+                setProjektFormOffen(true)
+              }}
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+            >
+              + Projekt anlegen
+            </button>
+          }
+        />
+      )}
+
         </div>
       )}
     </div>
@@ -502,38 +673,61 @@ const ANSICHTEN = [
 
 const PRIO_RANG = { hoch: 3, mittel: 2, niedrig: 1, "": 0 }
 
-function AnsichtToggle({ ansicht, setAnsicht }) {
-  // Auf schmalen Handys passen die sechs Ansichten nicht nebeneinander. Statt
-  // die Seite zu verbreitern (horizontaler Overflow), wird die Leiste auf die
-  // Viewport-Breite begrenzt und scrollt bei Bedarf intern. `100vw − 3rem`
-  // entspricht der Seitenpolsterung (px-6) des umgebenden Containers.
+// Ansichts-Leiste als Reiter statt als Pillen-Gruppe: sieben Ansichten in
+// einer Pillen-Leiste wirken wie sieben gleichrangige Knöpfe, Reiter mit
+// Unterstrich lesen sich als eine Seite mit mehreren Blickwinkeln. Die Zähler
+// ersparen den Klick ins Leere.
+//
+// Auf schmalen Handys passen die Reiter nicht nebeneinander. Statt die Seite
+// zu verbreitern (horizontaler Overflow), wird die Leiste auf die
+// Viewport-Breite begrenzt und scrollt bei Bedarf intern. `100vw − 3rem`
+// entspricht der Seitenpolsterung (px-6) des umgebenden Containers.
+function AnsichtToggle({ ansicht, setAnsicht, zaehler = {} }) {
   return (
-    <div className="flex max-w-[calc(100vw-3rem)] overflow-x-auto rounded-md border border-gray-200 p-0.5 text-xs">
-      {ANSICHTEN.map((a) => (
-        <button
-          key={a.key}
-          onClick={() => setAnsicht(a.key)}
-          className={`shrink-0 whitespace-nowrap rounded px-2.5 py-1 font-medium transition-colors ${
-            ansicht === a.key
-              ? "bg-gray-900 text-white"
-              : "text-gray-500 hover:text-gray-900"
-          }`}
-        >
-          {a.label}
-        </button>
-      ))}
+    <div className="mb-2 flex max-w-[calc(100vw-3rem)] items-center gap-5 overflow-x-auto border-b border-gray-200 sm:gap-6">
+      {ANSICHTEN.map((a) => {
+        const aktiv = ansicht === a.key
+        const anzahl = zaehler[a.key]
+        return (
+          <button
+            key={a.key}
+            onClick={() => setAnsicht(a.key)}
+            aria-current={aktiv ? "page" : undefined}
+            className={`-mb-px shrink-0 whitespace-nowrap border-b-2 pb-2.5 text-sm font-medium transition-colors ${
+              aktiv
+                ? "border-gray-900 text-gray-900"
+                : "border-transparent text-gray-400 hover:text-gray-700"
+            }`}
+          >
+            {a.label}
+            {anzahl > 0 && (
+              <span
+                className={`ml-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
+                  aktiv ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {anzahl}
+              </span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }
 
-// Wiederverwendbare Projektkarte (Ordner- und Alle-Ansicht). Bewusst
-// karg: Name, Beschreibung, Fortschritt, Fälligkeit – die Bereichs-Tags
-// von früher haben die Übersicht nur zugestellt.
+// Wiederverwendbare Projektkarte (Ordner- und Alle-Ansicht). Die Karte
+// beantwortet drei Fragen auf einen Blick: Wie weit bin ich (Prozent +
+// Leiste), was ist der nächste Griff (offener Workflow-Schritt) und wie
+// eilig ist es (Statuspunkt + Deadline-Chip).
 function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
+  const m = projektMetrik(p, todos)
+  const prio = PRIORITAETEN.find((x) => x.value === (p.prioritaet ?? ""))
+
   return (
     <div
       onClick={() => onOeffnen(p.id)}
-      className="group relative flex cursor-pointer flex-col rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-gray-400"
+      className="group relative flex cursor-pointer flex-col rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-gray-100 transition-all hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md hover:shadow-gray-200/60"
     >
       {onRemove && (
         <span className="absolute right-3 top-3">
@@ -544,20 +738,57 @@ function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
           />
         </span>
       )}
-      <h3 className="truncate pr-4 text-sm font-medium text-gray-900">
-        {p.name}
-      </h3>
+
+      <div className="flex items-center gap-2 pr-6">
+        <StatusPunkt metrik={m} />
+        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+          {p.name}
+        </h3>
+      </div>
+
       {p.beschreibung && (
-        <p className="mt-1 line-clamp-2 text-xs text-gray-400">
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-400">
           {p.beschreibung}
         </p>
       )}
-      <div className="mt-4">
-        <Fortschrittsbalken {...projektFortschrittWerte(p, todos)} />
+
+      {/* mt-auto: In einer Kartenreihe strecken sich alle Karten auf dieselbe
+       * Höhe – der Fortschritt soll dann auch auf derselben Linie sitzen,
+       * egal wie lang die Beschreibung darüber ist. */}
+      <div className="mt-auto flex items-baseline justify-between gap-2 pt-4">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+          {m.quelle === "todos" ? "Aufgaben" : "Workflow"}
+        </span>
+        <span className="text-lg font-semibold tabular-nums leading-none text-gray-900">
+          {m.prozent}
+          <span className="ml-0.5 text-xs font-medium text-gray-400">%</span>
+        </span>
       </div>
-      {p.deadline && (
-        <div className="mt-3">
+      <div className="mt-1.5">
+        <Fortschrittsbalken
+          erledigt={m.erledigt}
+          gesamt={m.gesamt}
+          ueberfaellig={m.ueberfaellig}
+          leerText="Noch kein Ablauf"
+        />
+      </div>
+
+      {m.schritt && (
+        <p className="mt-2.5 truncate text-xs text-gray-500">
+          <span className="text-gray-300">▸</span> {m.schritt.text}
+        </p>
+      )}
+
+      {(p.deadline || (prio && prio.value)) && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <DeadlineChip datum={p.deadline} />
+          {prio && prio.value && (
+            <span
+              className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ${prio.tag}`}
+            >
+              {prio.label}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -566,16 +797,39 @@ function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
 
 // Kompakte Projekt-Zeile für die Listen-Ansicht (Ordneransicht).
 function ProjektZeile({ p, todos, onOeffnen, onRemove }) {
+  const m = projektMetrik(p, todos)
   return (
     <li
       onClick={() => onOeffnen(p.id)}
-      className="group flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50"
+      className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50"
     >
-      <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-        {p.name}
+      <StatusPunkt metrik={m} />
+      <div className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium text-gray-900">
+          {p.name}
+        </span>
+        {m.schritt && (
+          <span className="block truncate text-xs text-gray-400">
+            {m.schritt.text}
+          </span>
+        )}
+      </div>
+      <span className="w-10 shrink-0 text-right text-sm font-medium tabular-nums text-gray-500">
+        {m.gesamt > 0 ? `${m.prozent}%` : "–"}
       </span>
-      <div className="hidden w-32 shrink-0 sm:block">
-        <Fortschrittsbalken {...projektFortschrittWerte(p, todos)} />
+      <div className="hidden w-24 shrink-0 sm:block">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${
+              m.prozent === 100
+                ? "bg-emerald-500"
+                : m.ueberfaellig
+                  ? "bg-rose-500"
+                  : "bg-accent-500"
+            }`}
+            style={{ width: `${m.prozent}%` }}
+          />
+        </div>
       </div>
       {p.deadline && <DeadlineChip datum={p.deadline} />}
       {onRemove && (
@@ -821,7 +1075,20 @@ function AlleAnsicht({ projekte, todos, onOeffnen, onRemove }) {
         </label>
       </div>
 
-      {liste.length === 0 ? null : (
+      {liste.length === 0 ? (
+        <Leerzustand
+          titel={
+            projekte.length === 0
+              ? "Noch keine Projekte."
+              : "Kein Projekt passt zu diesem Filter."
+          }
+          text={
+            projekte.length === 0
+              ? "Sobald du ein Projekt anlegst, erscheint es hier – ordnerübergreifend, sortierbar nach Fälligkeit, Priorität und Status."
+              : "Setze Status oder Priorität zurück, um wieder alle Projekte zu sehen."
+          }
+        />
+      ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {liste.map((p) => (
             <ProjektKarte
@@ -1133,7 +1400,12 @@ function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
 
   return (
     <div className="mt-4">
-      {liste.length === 0 ? null : (
+      {liste.length === 0 ? (
+        <Leerzustand
+          titel="Nichts terminiert."
+          text="Hier sammeln sich Projekt-Deadlines, datierte Workflow-Schritte und Aufgaben mit Datum. Gib einem Schritt ein Datum, und er taucht auf."
+        />
+      ) : (
         <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
           {liste.map((e, i) => (
             <li
@@ -1175,7 +1447,12 @@ function ArchivAnsicht({ archivierte, projekte, setProjekte, onOeffnen }) {
 
   return (
     <div className="mt-4">
-      {archivierte.length === 0 ? null : (
+      {archivierte.length === 0 ? (
+        <Leerzustand
+          titel="Das Archiv ist leer."
+          text="Abgeschlossene Projekte legst du im Projekt unter „Archivieren“ ab. Sie bleiben gespeichert, verschwinden aber aus den übrigen Ansichten."
+        />
+      ) : (
         <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
           {archivierte.map((p) => (
             <li
