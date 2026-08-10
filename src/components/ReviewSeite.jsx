@@ -47,6 +47,9 @@ export default function ReviewSeite({ onNavigate }) {
   const [habits] = useStored("habits", [])
   const [deepwork] = useStored("deepwork", [])
   const [zyklen] = useStored("zyklen", [])
+  const [lernprotokoll] = useStored("lernprotokoll", {})
+  const [vitalitaet] = useStored("vitalitaet", [])
+  const [termine] = useStored("termine", [])
   const [berichte, setBerichte] = useStored("wochenberichte", [])
 
   function zuordnungsName(todo) {
@@ -85,6 +88,18 @@ export default function ReviewSeite({ onNavigate }) {
     .sort((a, b) => a.datum.localeCompare(b.datum))
   const projektName = (id) => projekte.find((p) => p.id === id)?.name ?? ""
 
+  // Alles, was in einen Wochenbericht einfließt – an einer Stelle gebündelt.
+  const quellen = {
+    todos,
+    deepwork,
+    habits,
+    zyklen,
+    lernprotokoll,
+    vitalitaet,
+    termine,
+    wochenZielErreicht,
+  }
+
   // Die Woche, die als nächstes abgeschlossen werden kann: die laufende
   // (ab Sonntag) bzw. jede frühere, für die es noch keinen Bericht gibt.
   const aktuelleWoche = wochenSchluessel(new Date())
@@ -103,7 +118,7 @@ export default function ReviewSeite({ onNavigate }) {
       // Weiter zurückliegende Wochen nur, wenn dort überhaupt etwas war –
       // sonst bietet der Rückblick eine leere Woche nach der anderen an.
       if (i > 1) {
-        const probe = baueBericht({ woche: key, todos, deepwork, habits, zyklen, wochenZielErreicht })
+        const probe = baueBericht({ woche: key, ...quellen })
         const leer =
           probe.todos.length === 0 &&
           probe.fokusMinuten === 0 &&
@@ -118,14 +133,7 @@ export default function ReviewSeite({ onNavigate }) {
   // Woche festhalten: Bericht schreiben und die erledigten Todos der Woche
   // aus der Liste nehmen – ihr Inhalt steckt ab jetzt im Bericht.
   function wocheAbschliessen(woche, todosLoeschen = true) {
-    const bericht = baueBericht({
-      woche,
-      todos,
-      deepwork,
-      habits,
-      zyklen,
-      wochenZielErreicht,
-    })
+    const bericht = baueBericht({ woche, ...quellen })
     setBerichte([...berichte.filter((b) => b.woche !== woche), bericht])
     if (todosLoeschen) {
       const weg = new Set(bericht.todos.map((t) => t.id))
@@ -143,16 +151,7 @@ export default function ReviewSeite({ onNavigate }) {
       <WochenAbschluss
         woche={offeneWoche}
         vorschau={
-          offeneWoche
-            ? baueBericht({
-                woche: offeneWoche,
-                todos,
-                deepwork,
-                habits,
-                zyklen,
-                wochenZielErreicht,
-              })
-            : null
+          offeneWoche ? baueBericht({ woche: offeneWoche, ...quellen }) : null
         }
         onAbschliessen={wocheAbschliessen}
       />
@@ -263,6 +262,7 @@ export default function ReviewSeite({ onNavigate }) {
       <Wochenstatistik
         berichte={berichte}
         projekte={projekte}
+        laufend={baueBericht({ woche: aktuelleWoche, ...quellen })}
         onNotiz={(woche, notiz) =>
           setBerichte(
             berichte.map((b) => (b.woche === woche ? { ...b, notiz } : b))
@@ -333,98 +333,194 @@ function WochenAbschluss({ woche, vorschau, onAbschliessen }) {
   )
 }
 
-// Rückschau über alle abgeschlossenen Wochen: je Woche eine Zeile mit den
-// Zahlen, aufklappbar mit den erledigten Aufgaben und Platz für eine Notiz.
-function Wochenstatistik({ berichte, projekte, onNotiz, onLoeschen }) {
+// Wochenstatistik: eine Tabelle, die Woche für Woche zeigt, was mengenmäßig
+// passiert ist – erledigte Aufgaben, Fokuszeit, Termine, gelernte Karten,
+// Habits, Wochenziel und der Schnitt aus den Vitalitäts-Check-ins. Die
+// laufende Woche steht als erste Zeile mit, damit die Tabelle nie leer ist
+// und man sieht, wo man gerade steht. Ältere Berichte kennen manche Spalte
+// noch nicht – dort steht ein Strich statt einer erfundenen Null.
+function Wochenstatistik({ berichte, projekte, laufend, onNotiz, onLoeschen }) {
   const [offen, setOffen] = useState(null)
-  if (berichte.length === 0) return null
+  const abgeschlossen = [...berichte].sort((a, b) => b.woche.localeCompare(a.woche))
+  if (abgeschlossen.length === 0 && !laufend) return null
 
-  const sortiert = [...berichte].sort((a, b) => b.woche.localeCompare(a.woche))
-  const schnitt = Math.round(
-    sortiert.reduce((s, b) => s + (b.fokusMinuten ?? 0), 0) / sortiert.length
-  )
+  const zeilen = [
+    ...(laufend && !berichte.some((b) => b.woche === laufend.woche)
+      ? [{ ...laufend, laufend: true }]
+      : []),
+    ...abgeschlossen,
+  ]
+
   const datum = (d) =>
     new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })
   const projektName = (id) => projekte.find((p) => p.id === id)?.name
+  const zahl = (n) => (n == null ? "–" : n)
+
+  // Mittelwerte nur über die abgeschlossenen Wochen – die laufende ist noch
+  // nicht vorbei und würde den Schnitt nach unten ziehen.
+  const schnitt = (fn) => {
+    const werte = abgeschlossen.map(fn).filter((n) => n != null)
+    if (werte.length === 0) return null
+    return werte.reduce((a, b) => a + b, 0) / werte.length
+  }
+  const schnittAufgaben = schnitt((b) => b.todos.length)
+  const schnittFokus = schnitt((b) => b.fokusMinuten)
+  const schnittKarten = schnitt((b) => b.karten)
+
+  const kopf = "px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-gray-500"
+  const zelle = "px-3 py-2 text-sm tabular-nums text-gray-700"
 
   return (
     <Abschnitt titel="Wochenstatistik">
-      <p className="mb-3 text-xs text-gray-400">
-        {sortiert.length} {sortiert.length === 1 ? "Woche" : "Wochen"}{" "}
-        festgehalten · im Schnitt {fokusText(schnitt)} Fokus pro Woche
-      </p>
-      <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-        {sortiert.map((b) => {
-          const auf = offen === b.woche
-          return (
-            <li key={b.woche}>
-              <div className="group flex items-center gap-3 px-4 py-3">
-                <button
-                  onClick={() => setOffen(auf ? null : b.woche)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                >
-                  <span className="w-16 shrink-0 text-sm font-medium text-gray-900">
-                    KW {kalenderwoche(b.woche)}
-                  </span>
-                  <span className="hidden w-24 shrink-0 text-xs text-gray-400 sm:block">
-                    {datum(b.von)}–{datum(b.bis)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-gray-500">
-                    {b.wochenziel?.text || "—"}
-                  </span>
-                </button>
-                <span className="shrink-0 text-xs tabular-nums text-gray-500">
-                  {b.todos.length} ✓
-                </span>
-                <span className="shrink-0 text-xs tabular-nums text-gray-500">
-                  {fokusText(b.fokusMinuten)}
-                </span>
-                {b.habits.gesamt > 0 && (
-                  <span className="hidden shrink-0 text-xs tabular-nums text-gray-400 sm:block">
-                    {b.habits.erreicht}/{b.habits.gesamt} Habits
-                  </span>
-                )}
-                <LoeschKnopf
-                  onLoeschen={() => onLoeschen(b.woche)}
-                  titel="Bericht löschen"
-                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
-                />
-              </div>
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <table className="w-full min-w-[46rem] border-collapse">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className={kopf}>Woche</th>
+              <th className={kopf}>Aufgaben</th>
+              <th className={kopf}>Fokus</th>
+              <th className={kopf}>Blöcke</th>
+              <th className={kopf}>Termine</th>
+              <th className={kopf}>Karten</th>
+              <th className={kopf}>Habits</th>
+              <th className={kopf}>Wochenziel</th>
+              <th className={kopf}>Energie</th>
+              <th className={kopf}>Schlaf</th>
+              <th className={kopf} />
+            </tr>
+          </thead>
+          <tbody>
+            {zeilen.map((b) => {
+              const auf = offen === b.woche
+              return (
+                <FragmentZeile key={b.woche}>
+                  <tr
+                    onClick={() => !b.laufend && setOffen(auf ? null : b.woche)}
+                    className={`group border-b border-gray-100 last:border-0 ${
+                      b.laufend
+                        ? "bg-gray-50/60"
+                        : "cursor-pointer transition-colors hover:bg-gray-50"
+                    }`}
+                  >
+                    <td className="whitespace-nowrap px-3 py-2">
+                      <span className="text-sm font-medium text-gray-900">
+                        KW {kalenderwoche(b.woche)}
+                      </span>
+                      <span className="ml-2 text-xs text-gray-400">
+                        {datum(b.von)}–{datum(b.bis)}
+                      </span>
+                      {b.laufend && (
+                        <span className="ml-2 rounded-sm bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                          läuft
+                        </span>
+                      )}
+                    </td>
+                    <td className={zelle}>{b.todos.length}</td>
+                    <td className={zelle}>{fokusText(b.fokusMinuten)}</td>
+                    <td className={zelle}>{b.fokusSessions}</td>
+                    <td className={zelle}>{zahl(b.termine)}</td>
+                    <td className={zelle}>{zahl(b.karten)}</td>
+                    <td className={zelle}>
+                      {b.habits.gesamt > 0
+                        ? `${b.habits.erreicht}/${b.habits.gesamt}`
+                        : "–"}
+                    </td>
+                    <td className={zelle}>
+                      {b.wochenziel
+                        ? `${b.wochenziel.erledigt}/${b.wochenziel.gesamt}`
+                        : "–"}
+                    </td>
+                    <td className={zelle}>{zahl(b.vitalitaet?.energie)}</td>
+                    <td className={zelle}>
+                      {b.vitalitaet?.schlaf == null ? "–" : `${b.vitalitaet.schlaf} h`}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {!b.laufend && (
+                        <LoeschKnopf
+                          onLoeschen={() => onLoeschen(b.woche)}
+                          titel="Bericht löschen"
+                          klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                        />
+                      )}
+                    </td>
+                  </tr>
 
-              {auf && (
-                <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-3">
-                  {b.todos.length > 0 ? (
-                    <ul className="space-y-1">
-                      {b.todos.map((t) => (
-                        <li key={t.id} className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="text-emerald-500">✓</span>
-                          <span className="min-w-0 flex-1 truncate">{t.text}</span>
-                          {projektName(t.projektId) && (
-                            <span className="shrink-0 text-xs text-gray-400">
-                              {projektName(t.projektId)}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-gray-400">
-                      Keine erledigten Aufgaben in dieser Woche.
-                    </p>
+                  {auf && (
+                    <tr className="border-b border-gray-100 bg-gray-50/50">
+                      <td colSpan={11} className="px-4 py-3">
+                        {b.wochenziel?.text && (
+                          <p className="mb-2 font-serif text-[15px] italic text-gray-500">
+                            „{b.wochenziel.text}"
+                          </p>
+                        )}
+                        {b.todos.length > 0 ? (
+                          <ul className="space-y-1">
+                            {b.todos.map((t) => (
+                              <li
+                                key={t.id}
+                                className="flex items-center gap-2 text-sm text-gray-600"
+                              >
+                                <span className="text-emerald-500">✓</span>
+                                <span className="min-w-0 flex-1 truncate">{t.text}</span>
+                                {projektName(t.projektId) && (
+                                  <span className="shrink-0 text-xs text-gray-400">
+                                    {projektName(t.projektId)}
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-gray-400">
+                            Keine erledigten Aufgaben in dieser Woche.
+                          </p>
+                        )}
+                        <textarea
+                          value={b.notiz ?? ""}
+                          onChange={(e) => onNotiz(b.woche, e.target.value)}
+                          rows={2}
+                          placeholder="Was lief gut, was nicht, was nimmst du mit?"
+                          className="mt-3 w-full resize-none rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-300 focus:border-gray-900"
+                        />
+                      </td>
+                    </tr>
                   )}
-                  <textarea
-                    value={b.notiz ?? ""}
-                    onChange={(e) => onNotiz(b.woche, e.target.value)}
-                    rows={2}
-                    placeholder="Was lief gut, was nicht, was nimmst du mit?"
-                    className="mt-3 w-full resize-none rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-300 focus:border-gray-900"
-                  />
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+                </FragmentZeile>
+              )
+            })}
+          </tbody>
+          {abgeschlossen.length > 1 && (
+            <tfoot>
+              <tr className="border-t border-gray-200 bg-gray-50/60">
+                <td className="px-3 py-2 text-xs font-medium text-gray-500">
+                  Schnitt über {abgeschlossen.length} Wochen
+                </td>
+                <td className={zelle}>
+                  {schnittAufgaben == null ? "–" : Math.round(schnittAufgaben)}
+                </td>
+                <td className={zelle}>
+                  {schnittFokus == null ? "–" : fokusText(Math.round(schnittFokus))}
+                </td>
+                <td colSpan={2} />
+                <td className={zelle}>
+                  {schnittKarten == null ? "–" : Math.round(schnittKarten)}
+                </td>
+                <td colSpan={5} />
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+      <p className="mt-2 text-xs text-gray-400">
+        Zeile antippen zeigt die erledigten Aufgaben der Woche und Platz für
+        eine Notiz.
+      </p>
     </Abschnitt>
   )
+}
+
+// Zwei <tr> unter einem Schlüssel – ohne zusätzliches DOM-Element, das die
+// Tabellenstruktur zerbrechen würde.
+function FragmentZeile({ children }) {
+  return <>{children}</>
 }
