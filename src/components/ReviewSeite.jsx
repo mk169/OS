@@ -50,6 +50,8 @@ export default function ReviewSeite({ onNavigate }) {
   const [zyklen] = useStored("zyklen", [])
   const [lernprotokoll] = useStored("lernprotokoll", {})
   const [vitalitaet] = useStored("vitalitaet", [])
+  const [routinen] = useStored("dailyops_routinen", [])
+  const [routineProtokoll] = useStored("dailyops_protokoll", {})
   const [termine] = useStored("termine", [])
   const [berichte, setBerichte] = useStored("wochenberichte", [])
 
@@ -98,6 +100,8 @@ export default function ReviewSeite({ onNavigate }) {
     lernprotokoll,
     vitalitaet,
     termine,
+    routinen,
+    routineProtokoll,
   }
 
   // Die Woche, die als nächstes abgeschlossen werden kann: die laufende
@@ -335,7 +339,8 @@ function WochenAbschluss({ woche, vorschau, onAbschliessen }) {
 
 // Wochenstatistik: eine Tabelle, die Woche für Woche zeigt, was mengenmäßig
 // passiert ist – erledigte Aufgaben, Fokuszeit, Termine, gelernte Karten,
-// Habits, Wochenziel und der Schnitt aus den Vitalitäts-Check-ins. Die
+// Habits, vollständige Routine-Tage, Wochenziel und der Schnitt aus den
+// Vitalitäts-Check-ins. Die
 // laufende Woche steht als erste Zeile mit, damit die Tabelle nie leer ist
 // und man sieht, wo man gerade steht. Ältere Berichte kennen manche Spalte
 // noch nicht – dort steht ein Strich statt einer erfundenen Null.
@@ -383,6 +388,7 @@ function Wochenstatistik({ berichte, projekte, laufend, onNotiz, onLoeschen }) {
               <th className={kopf}>Termine</th>
               <th className={kopf}>Karten</th>
               <th className={kopf}>Habits</th>
+              <th className={kopf}>Routinen</th>
               <th className={kopf}>Wochenziel</th>
               <th className={kopf}>Energie</th>
               <th className={kopf}>Schlaf</th>
@@ -426,6 +432,11 @@ function Wochenstatistik({ berichte, projekte, laufend, onNotiz, onLoeschen }) {
                         : "–"}
                     </td>
                     <td className={zelle}>
+                      {b.routinen?.tage
+                        ? `${b.routinen.vollstaendig}/${b.routinen.tage}`
+                        : "–"}
+                    </td>
+                    <td className={zelle}>
                       {b.wochenziel
                         ? `${b.wochenziel.erledigt}/${b.wochenziel.gesamt}`
                         : "–"}
@@ -447,7 +458,7 @@ function Wochenstatistik({ berichte, projekte, laufend, onNotiz, onLoeschen }) {
 
                   {auf && (
                     <tr className="border-b border-gray-100 bg-gray-50/50">
-                      <td colSpan={11} className="px-4 py-3">
+                      <td colSpan={12} className="px-4 py-3">
                         {b.wochenziel?.text && (
                           <p className="mb-2 font-serif text-[15px] italic text-gray-500">
                             „{b.wochenziel.text}"
@@ -505,7 +516,7 @@ function Wochenstatistik({ berichte, projekte, laufend, onNotiz, onLoeschen }) {
                 <td className={zelle}>
                   {schnittKarten == null ? "–" : Math.round(schnittKarten)}
                 </td>
-                <td colSpan={5} />
+                <td colSpan={6} />
               </tr>
             </tfoot>
           )}

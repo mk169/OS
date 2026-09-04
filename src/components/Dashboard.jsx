@@ -3,6 +3,12 @@ import { heute, tageBis, montagVon, datumLang } from "../lib/datum"
 import { istFaellig } from "../lib/spacedRepetition"
 import { alleLernplaene, lernplanSumme } from "../lib/lernplan"
 import { dashboardConfig } from "../lib/dashboard"
+import {
+  erledigteSchritte,
+  routineFortschritt,
+  routinenAmTag,
+  schrittUmschalten,
+} from "../lib/dailyops"
 import ZyklusWidget from "./ZyklusWidget"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
@@ -82,6 +88,82 @@ function LernBanner({ onNavigate, variant = "hell" }) {
         Lernen →
       </span>
     </button>
+  )
+}
+
+// Heutige Routinen aus Daily Operations: die Schritte, die heute anstehen,
+// direkt auf der Startseite abhakbar. Nutzt dieselbe Logik wie die
+// Daily-Operations-Seite. Steht heute nichts an, bleibt der Block weg.
+function RoutinenPanel({ onNavigate }) {
+  const [routinen] = useStored("dailyops_routinen", [])
+  const [protokoll, setProtokoll] = useStored("dailyops_protokoll", {})
+  const heuteKey = heute()
+  const anstehend = routinenAmTag(routinen, heuteKey)
+  if (anstehend.length === 0) return null
+
+  return (
+    <section className="mb-8">
+      <button
+        onClick={() => onNavigate("dailyops")}
+        className="group mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-900"
+      >
+        <span className="text-base">🔄</span> Routinen
+        <span className="text-gray-300 transition-colors group-hover:text-accent-600">
+          →
+        </span>
+      </button>
+      <ul className="space-y-2">
+        {anstehend.map((r) => {
+          const fortschritt = routineFortschritt(r, protokoll, heuteKey)
+          const erledigt = erledigteSchritte(protokoll, r.id, heuteKey)
+          return (
+            <li
+              key={r.id}
+              className="rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm shadow-gray-100"
+            >
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
+                  {r.name}
+                </span>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    fortschritt.fertig
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {fortschritt.erledigt}/{fortschritt.gesamt}
+                </span>
+              </div>
+              <ul className="mt-1.5 space-y-0.5">
+                {(r.schritte ?? []).map((s) => {
+                  const ab = erledigt.includes(s.id)
+                  return (
+                    <li key={s.id}>
+                      <label className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 text-sm transition-colors hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={ab}
+                          onChange={() =>
+                            setProtokoll(
+                              schrittUmschalten(protokoll, r.id, s.id, heuteKey)
+                            )
+                          }
+                          className="h-4 w-4 shrink-0 accent-gray-900"
+                        />
+                        <span className={ab ? "text-gray-400 line-through" : "text-gray-700"}>
+                          {s.text}
+                        </span>
+                      </label>
+                    </li>
+                  )
+                })}
+              </ul>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 
@@ -297,6 +379,7 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
       )}
 
       {dashboard.habits && <HabitsPanel onNavigate={onNavigate} />}
+      {dashboard.routinen && <RoutinenPanel onNavigate={onNavigate} />}
 
       <section>
         <div className="mb-3 flex items-center justify-between">
@@ -994,6 +1077,7 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard })
       </section>
 
       {dashboard.habits && <HabitsPanel onNavigate={onNavigate} />}
+      {dashboard.routinen && <RoutinenPanel onNavigate={onNavigate} />}
 
       {/* Kalender */}
       {dashboard.kalender && (
