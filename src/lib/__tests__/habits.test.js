@@ -128,6 +128,16 @@ describe("tagNummer", () => {
   it("ist ohne Habits Tag 1", () => {
     expect(tagNummer([])).toBe(1)
   })
+
+  it("ignoriert IDs, die keine Zeitstempel sind (z. B. aus Importen)", () => {
+    // Eine kleine Zähler-ID wäre als Datum 1970 – das ergäbe Tag 20701.
+    expect(tagNummer([habit({ id: 1 }), habit({ id: 2 })])).toBe(1)
+  })
+
+  it("nimmt bei gemischten IDs den ältesten plausiblen Zeitstempel", () => {
+    const start = new Date(2026, 8, 1).getTime()
+    expect(tagNummer([habit({ id: 3 }), habit({ id: start })])).toBe(4)
+  })
 })
 
 describe("Wochenziele", () => {

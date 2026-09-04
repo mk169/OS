@@ -1,3 +1,4 @@
+import { useState } from "react"
 import useStored from "../lib/useStored"
 import { tageBis } from "../lib/datum"
 import { FARBEN } from "../lib/farben"
@@ -46,6 +47,7 @@ export default function TodosSeite() {
   if (stil === "arcade") return <TodosArcade {...gemeinsam} />
   if (stil === "cleangirl") return <TodosCleanGirl {...gemeinsam} />
   if (stil === "notion") return <TodosNotion {...gemeinsam} />
+  if (stil === "lockedin") return <TodosLockedIn {...gemeinsam} />
   return <TodosTodo {...gemeinsam} />
 }
 
@@ -676,6 +678,145 @@ function TodosGamified({ todos, offene, erledigte, toggle, remove, zuordnungsNam
                 )
               })}
             </ul>
+          </section>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Stil „Locked In" – monochrom, keine Farben, keine Belohnung. Die
+ * Eisenhower-Einteilung bleibt die Ordnung, wird aber über Rang und Position
+ * gezeigt statt über Farbpunkte: Was oben steht, ist dran.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+function LockedZeile({ todo, onToggle, onRemove }) {
+  return (
+    <li className="group flex items-center gap-3 border-b border-white/10 py-3 last:border-0">
+      <button
+        onClick={() => onToggle(todo.id)}
+        title="Als erledigt markieren"
+        className="flex h-4 w-4 shrink-0 items-center justify-center border border-white/30 text-transparent transition-colors hover:border-white group-hover:text-white/60"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="h-2 w-2">
+          <path d="m5 12 5 5L20 7" />
+        </svg>
+      </button>
+      <span className="min-w-0 flex-1 truncate text-sm text-white/90">{todo.text}</span>
+      {todo.dauer && (
+        <span className="shrink-0 text-[10px] uppercase tracking-[0.2em] text-white/25">
+          {todo.dauer} min
+        </span>
+      )}
+      {todo.datum && (
+        <span className="shrink-0 text-[10px] uppercase tracking-[0.2em] text-white/40">
+          {tageBis(todo.datum)}
+        </span>
+      )}
+      <LoeschKnopf
+        onLoeschen={() => onRemove(todo.id)}
+        titel="Löschen"
+        klasse="text-white/20 opacity-0 group-hover:opacity-100 max-md:opacity-100"
+      />
+    </li>
+  )
+}
+
+function TodosLockedIn({ offene, erledigte, toggle, remove }) {
+  const [zeigeErledigte, setZeigeErledigte] = useState(false)
+  const gesamt = offene.length + erledigte.length
+  const anteil = gesamt === 0 ? 0 : Math.round((erledigte.length / gesamt) * 100)
+
+  return (
+    <div className="min-h-screen bg-black px-5 py-6 text-white sm:px-6">
+      <div className="mx-auto max-w-md">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold uppercase tracking-[0.4em]">Auftrag</span>
+          <TodoErstellen
+            knopfKlasse="rounded-md border border-white/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/70 transition-colors hover:border-white/50 hover:text-white"
+            knopfInhalt="+ Neu"
+          />
+        </div>
+
+        <div className="mt-6 grid grid-cols-3 divide-x divide-white/10 border-y border-white/10">
+          {[
+            { label: "Offen", wert: offene.length },
+            { label: "Erledigt", wert: erledigte.length },
+            { label: "Quote", wert: anteil, suffix: "%" },
+          ].map((k) => (
+            <div key={k.label} className="px-2 py-5 text-center">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-white/35">{k.label}</p>
+              <p className="mt-2 text-4xl font-light tabular-nums">
+                {k.wert}
+                {k.suffix && <span className="text-lg text-white/40">{k.suffix}</span>}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {offene.length === 0 ? (
+          <p className="mt-10 text-center text-sm uppercase tracking-[0.25em] text-white/30">
+            Nichts offen. Setz dir das Nächste.
+          </p>
+        ) : (
+          EINTEILUNGEN.map((e) => {
+            const gruppe = offene.filter((t) => e.passt(t))
+            if (gruppe.length === 0) return null
+            return (
+              <section key={e.key} className="mt-8">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/40">
+                    {e.label}
+                  </p>
+                  <span className="text-[11px] tabular-nums text-white/25">{gruppe.length}</span>
+                </div>
+                <ul className="mt-2">
+                  {gruppe.map((t) => (
+                    <LockedZeile key={t.id} todo={t} onToggle={toggle} onRemove={remove} />
+                  ))}
+                </ul>
+              </section>
+            )
+          })
+        )}
+
+        {erledigte.length > 0 && (
+          <section className="mt-10 border-t border-white/10 pt-4">
+            <button
+              onClick={() => setZeigeErledigte((z) => !z)}
+              className="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/30 transition-colors hover:text-white/60"
+            >
+              {zeigeErledigte ? "Erledigte ausblenden" : `Erledigte zeigen (${erledigte.length})`}
+            </button>
+            {zeigeErledigte && (
+              <ul className="mt-2">
+                {erledigte.map((t) => (
+                  <li
+                    key={t.id}
+                    className="group flex items-center gap-3 border-b border-white/5 py-2.5 last:border-0"
+                  >
+                    <button
+                      onClick={() => toggle(t.id)}
+                      title="Wieder öffnen"
+                      className="flex h-4 w-4 shrink-0 items-center justify-center border border-white/20 text-white/50"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="h-2 w-2">
+                        <path d="m5 12 5 5L20 7" />
+                      </svg>
+                    </button>
+                    <span className="min-w-0 flex-1 truncate text-sm text-white/30 line-through">
+                      {t.text}
+                    </span>
+                    <LoeschKnopf
+                      onLoeschen={() => remove(t.id)}
+                      titel="Löschen"
+                      klasse="text-white/20 opacity-0 group-hover:opacity-100 max-md:opacity-100"
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )}
       </div>

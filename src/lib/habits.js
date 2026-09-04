@@ -127,10 +127,16 @@ export function edgeScore(habits) {
 }
 
 // Tag-Nummer seit dem ältesten angelegten Habit (Onboarding-Gefühl „DAY N").
+// Die Habit-`id` ist der Erstell-Zeitstempel (Date.now). Aus Importen oder
+// von Hand angelegten Daten können aber auch kleine Zähler-IDs stammen –
+// die ergäben als Datum 1970 und damit eine absurde Tag-Nummer. Deshalb
+// zählen nur IDs, die als Zeitstempel überhaupt plausibel sind.
+const FRUEHESTER_ZEITSTEMPEL = Date.UTC(2015, 0, 1)
+
 export function tagNummer(habits) {
   const zeiten = habits
     .map((h) => (typeof h.id === "number" ? h.id : null))
-    .filter((z) => z != null)
+    .filter((z) => z != null && z >= FRUEHESTER_ZEITSTEMPEL)
   if (zeiten.length === 0) return 1
   const start = new Date(Math.min(...zeiten))
   start.setHours(0, 0, 0, 0)

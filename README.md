@@ -39,7 +39,7 @@ Cloud, Daten nur auf diesem Gerät.
 
 | Bereich | Inhalt |
 | --- | --- |
-| **Start** | Tagesüberblick in sechs wählbaren Stilen (Todo-Liste, Gamified, Terminal, Clean Girl, Notion, Locked In) |
+| **Start** | Tagesüberblick in sechs wählbaren Stilen (Todo-Liste, Gamified, Terminal, Clean Girl, Notion, Locked In) – der Stil prägt Start, Todos und Habits |
 | **Locked In** | Kompromissloser Fokus-Modus: ein Ziel, eine Phase, nur das Nötigste |
 | **Kalender** | Tages-, Wochen- und Monatsansicht, Tagesblöcke, ICS-Export |
 | **Todos** | Eisenhower-Matrix, Dauer, Deadlines, Projektzuordnung |
@@ -119,8 +119,9 @@ abgedeckt; sie hängt an denselben Funktionen.
 `npm run test:e2e` fährt zusätzlich den Produktions-Build hoch und klickt ihn
 mit Playwright durch: Einrichtung, alle Bereiche öffnen, Todo mit Datums-
 Erkennung anlegen, Routine abhaken (inklusive Startseite und Neuladen),
-Bewerbung durch die Pipeline schieben – und ein Durchlauf mit abgeschaltetem
-Netz, der prüft, dass die App offline startet.
+Bewerbung durch die Pipeline schieben, jeden der sechs Stile auf Start, Todos
+und Habits – und ein Durchlauf mit abgeschaltetem Netz, der prüft, dass die
+App offline startet.
 
 Der Workflow auf GitHub führt vor jedem Deployment `npm run lint`, `npm test`,
 `npm run test:e2e` und `npm run build` aus.

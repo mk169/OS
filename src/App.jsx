@@ -458,9 +458,12 @@ export default function App() {
   // den monochromen Look mit – auf der Locked-In-Kommandozentrale immer, auf der
   // Habits-Seite nur, wenn dort der Locked-In-Stil aktiv ist. So wird der
   // schwarze Screen nie von hellem Chrome mit farbigem Akzent umrahmt.
+  // Seiten, die im Locked-In-Stil eine eigene, monochrome Fassung haben.
+  const LOCKED_IN_SEITEN = ["dashboard", "todos", "habits"]
   const lockedInSeite =
     seite === "lockedin" ||
-    (normalisiereStil(einstellungen?.stil) === "lockedin" && seite === "habits")
+    (normalisiereStil(einstellungen?.stil) === "lockedin" &&
+      LOCKED_IN_SEITEN.includes(seite))
 
   return (
     <div
