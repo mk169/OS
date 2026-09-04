@@ -35,6 +35,16 @@ jobs:
       - name: Tests
         run: npm test
 
+      - name: Browser für die Oberflächen-Tests
+        run: npx playwright install --with-deps chromium
+
+      # Läuft bewusst VOR dem Deployment-Build: Playwright baut sich seine
+      # eigene Fassung ohne Supabase-Variablen und testet damit die App im
+      # lokalen Modus. Mit Cloud-Zugang stünde stattdessen der Login davor
+      # und die Tests kämen nie in die App.
+      - name: Oberflächen-Tests
+        run: npm run test:e2e
+
       - name: Build
         run: npm run build
         env:

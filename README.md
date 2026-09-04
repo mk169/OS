@@ -29,6 +29,7 @@ npm run build    # Produktions-Build nach dist/
 npm run preview  # gebauten Stand lokal ansehen
 npm run lint     # Oxlint
 npm test         # Vitest (Logik in src/lib)
+npm run test:e2e # Playwright (Oberfläche, gegen den Produktions-Build)
 ```
 
 Ohne weitere Einrichtung startet die App im lokalen Modus: kein Login, keine
@@ -99,6 +100,13 @@ Der Build nutzt `base: "./"`, läuft also auch unter einem Unterpfad
 (`username.github.io/OS/`). Als PWA lässt sich die Seite auf dem iPhone über
 *Teilen → Zum Home-Bildschirm* installieren.
 
+**Offline:** Ein Service Worker (`vite-plugin-pwa`) legt den gebauten Stand in
+den Cache – nach dem ersten Besuch startet die App auch ohne Netz, die Daten
+liegen ohnehin lokal. Eine neue Fassung wird im Hintergrund geholt und beim
+nächsten Öffnen aktiv; der Versions-Stempel unten in den Einstellungen zeigt,
+welcher Stand gerade läuft. Nicht im Cache liegen die dekorativen Schriften von
+Google Fonts – ohne Netz greifen dort die System-Schriften.
+
 ## Tests
 
 `npm test` prüft die Logik in `src/lib` mit Vitest – Datumsrechnung, Habit-
@@ -108,8 +116,14 @@ Rhythmus und -Serie, Bewerbungs-Pipeline, Tags und Wikilinks sowie die
 Einstellungs-Vorgaben. Die Oberfläche selbst ist nicht
 abgedeckt; sie hängt an denselben Funktionen.
 
-Der Workflow auf GitHub führt vor jedem Deployment `npm run lint`, `npm test`
-und `npm run build` aus.
+`npm run test:e2e` fährt zusätzlich den Produktions-Build hoch und klickt ihn
+mit Playwright durch: Einrichtung, alle Bereiche öffnen, Todo mit Datums-
+Erkennung anlegen, Routine abhaken (inklusive Startseite und Neuladen),
+Bewerbung durch die Pipeline schieben – und ein Durchlauf mit abgeschaltetem
+Netz, der prüft, dass die App offline startet.
+
+Der Workflow auf GitHub führt vor jedem Deployment `npm run lint`, `npm test`,
+`npm run test:e2e` und `npm run build` aus.
 
 ## Aufbau
 
@@ -119,6 +133,7 @@ src/
   components/      Seiten und Bausteine (eine Datei pro Bereich)
   lib/             Logik ohne Darstellung: Rechnungen, Speicher, Konstanten
   index.css        Tailwind + Akzentfarben als CSS-Variablen
+e2e/               Oberflächen-Tests (Playwright)
 supabase/          SQL-Schema für den Sync
 ```
 
