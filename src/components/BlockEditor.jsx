@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
-import {
-  projektFortschrittWerte,
-  Fortschrittsbalken,
-  DeadlineChip,
-} from "./OrdnerSeite"
+import { Fortschrittsbalken, DeadlineChip } from "./OrdnerSeite"
+import { projektFortschrittWerte } from "../lib/projekte"
 import LoeschKnopf from "./LoeschKnopf"
 import { WIKILINK_REGEX, findeZiel } from "../lib/wikilinks"
+import { neueBlockId as neueId } from "../lib/bloecke"
 
 // Block-Editor für Projekt-Seiten (Notion-artig): eine Seite ist eine
 // Liste von Blöcken. Blöcke: Text, Überschrift, Tabelle, Dashboard und
@@ -74,27 +72,6 @@ function optionenFuer(projekt, ausschluss = []) {
     })
   return [...BASIS_BLOECKE, ...bereiche]
 }
-
-// Liefert die Blockliste einer Quelle (Projekt oder eigener Bereich).
-// Migration: ein altes Freitext-Feld wird zu einem einzelnen Text-Block.
-export function bloeckeVon(quelle, textFeld = "uebersicht") {
-  if (Array.isArray(quelle?.bloecke)) return quelle.bloecke
-  const text = quelle?.[textFeld]
-  if (typeof text === "string" && text.trim()) {
-    return [{ id: 1, typ: "text", text }]
-  }
-  return []
-}
-
-let idZaehler = Date.now()
-function neueId() {
-  idZaehler += 1
-  return idZaehler
-}
-
-// Blöcke außerhalb des Editors erzeugen (z.B. beim Anlegen einer Seite aus
-// einer Vorlage) – dieselbe ID-Quelle, damit nichts kollidiert.
-export { neueId as neueBlockId }
 
 // Randlose, automatisch mitwachsende Schreibfläche.
 function AutoTextarea({

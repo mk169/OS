@@ -1,14 +1,31 @@
 // Hilfsfunktionen für Datumswerte im Format "JJJJ-MM-TT" (lokale Zeit).
 
-export function heute() {
-  const d = new Date()
+export const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+export const MONATE = [
+  "Januar", "Februar", "März", "April", "Mai", "Juni",
+  "Juli", "August", "September", "Oktober", "November", "Dezember",
+]
+
+// Tages-Schlüssel eines Date-Objekts ("JJJJ-MM-TT", lokale Zeit).
+// Bewusst nicht toISOString(): das rechnet in UTC und verschiebt den Tag.
+export function schluessel(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+export function heute() {
+  return schluessel(new Date())
 }
 
 export function inTagen(tage) {
   const d = new Date()
   d.setDate(d.getDate() + tage)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  return schluessel(d)
+}
+
+// Ausgeschriebenes Datum: "Mo, 4. September 2026".
+export function datumLang(key) {
+  const d = new Date(key)
+  return `${WOCHENTAGE[(d.getDay() + 6) % 7]}, ${d.getDate()}. ${MONATE[d.getMonth()]} ${d.getFullYear()}`
 }
 
 // Tage bis zum Datum als Zahl (negativ = vorbei). Basis für tageBis
@@ -39,6 +56,5 @@ export function montagVon(d) {
 // ("JJJJ-MM-TT"). Bewusst keine ISO-Wochennummer – vermeidet
 // Jahreswechsel-Randfälle bei Woche 1/53.
 export function wochenSchluessel(d) {
-  const m = montagVon(d)
-  return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-${String(m.getDate()).padStart(2, "0")}`
+  return schluessel(montagVon(d))
 }

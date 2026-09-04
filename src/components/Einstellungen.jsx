@@ -5,9 +5,10 @@ import { AKZENTE } from "../lib/akzent"
 import { STILE, STIL_STANDARD } from "../lib/stil"
 import { heute } from "../lib/datum"
 import { EINSTELLUNGEN_STANDARD } from "../lib/einstellungen"
+import { STANDARD_BEREICHE } from "../lib/habits"
 import { versionsStempel } from "../lib/version"
 import Seitenkopf from "./Seitenkopf"
-import { PROFILE } from "./Onboarding"
+import { PROFILE } from "../lib/profile"
 import ZyklenEinstellungen from "./ZyklenEinstellungen"
 import { DASHBOARD_BLOECKE, dashboardConfig } from "../lib/dashboard"
 import {
@@ -301,12 +302,7 @@ export default function Einstellungen() {
     ...EINSTELLUNGEN_STANDARD,
     onboardingAbgeschlossen: true,
   })
-  const [bereiche, setBereiche] = useStored("habitBereiche", [
-    { id: "koerper", name: "Körper", farbe: "emerald" },
-    { id: "bildung", name: "Bildung", farbe: "blue" },
-    { id: "arbeit", name: "Arbeit", farbe: "violet" },
-    { id: "achtsamkeit", name: "Achtsamkeit", farbe: "amber" },
-  ])
+  const [bereiche, setBereiche] = useStored("habitBereiche", STANDARD_BEREICHE)
 
   const [neuerName, setNeuerName] = useState("")
   const [neueFarbe, setNeueFarbe] = useState("emerald")

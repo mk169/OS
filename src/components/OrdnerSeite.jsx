@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react"
 import useStored from "../lib/useStored"
 import { tageBis, tageBisZahl } from "../lib/datum"
-import ProjektDetail, {
+import ProjektDetail from "./ProjektDetail"
+import {
   STATUS_OPTIONEN,
   PRIORITAETEN,
-} from "./ProjektDetail"
+  projektFortschrittWerte,
+  sammleTermine,
+} from "../lib/projekte"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
 import { PROJEKT_VORLAGEN, vorlageAnwenden } from "../lib/projektvorlagen"
 import { vorlageZuBloecken } from "../lib/wissen"
-import { neueBlockId } from "./BlockEditor"
+import { neueBlockId } from "../lib/bloecke"
 import { SortMenu, LayoutUmschalter } from "./ListenControls"
 
 const ORDNER_SORT = [
@@ -22,19 +25,6 @@ const ORDNER_SORT = [
 // Ordnersystem: Projekte liegen in beliebig verschachtelbaren Ordnern
 // (z.B. Uni → 4. Semester → Statistik). Jedes Projekt wird individuell
 // erstellt und bringt nur die Bereiche mit, die es braucht.
-
-// Fortschritt eines Projekts als Werte: erst der Workflow, sonst die
-// zugeordneten Todos. gesamt === 0 heißt „nichts zum Abhaken“.
-export function projektFortschrittWerte(projekt, todos) {
-  const schritte = projekt.workflow ?? []
-  if (schritte.length > 0) {
-    return { erledigt: schritte.filter((s) => s.erledigt).length, gesamt: schritte.length }
-  }
-  const eigene = todos.filter(
-    (t) => t.projektId === projekt.id || t.kursId === projekt.id
-  )
-  return { erledigt: eigene.filter((t) => t.erledigt).length, gesamt: eigene.length }
-}
 
 // Farbiger Deadline-Chip – Farbe nach Dringlichkeit, Text via tageBis.
 export function DeadlineChip({ datum }) {
@@ -1081,42 +1071,6 @@ function BoardAnsicht({ projekte, setProjekte, onOeffnen }) {
       })}
     </div>
   )
-}
-
-// Rohliste aller terminierten Einträge (Projekt-Deadlines, Workflow-
-// Schritte mit Datum, Todos mit Datum) – unsortiert, ungekürzt. Gemeinsam
-// genutzt von AnstehendAnsicht und dem Wochen-Review (ReviewSeite).
-export function sammleTermine(projekte, todos) {
-  const eintraege = []
-  for (const p of projekte) {
-    if (p.deadline)
-      eintraege.push({
-        datum: p.deadline,
-        label: `Deadline: ${p.name}`,
-        projektId: p.id,
-        typ: "Deadline",
-      })
-    for (const s of p.workflow ?? []) {
-      if (s.datum && !s.erledigt)
-        eintraege.push({
-          datum: s.datum,
-          label: s.text,
-          projektId: p.id,
-          typ: "Schritt",
-        })
-    }
-  }
-  for (const t of todos) {
-    const pid = t.projektId ?? t.kursId
-    if (t.datum && !t.erledigt && pid && projekte.some((p) => p.id === pid))
-      eintraege.push({
-        datum: t.datum,
-        label: t.text,
-        projektId: pid,
-        typ: "Todo",
-      })
-  }
-  return eintraege
 }
 
 // Projektübergreifend: nächste Deadlines, terminierte Schritte, Todos.

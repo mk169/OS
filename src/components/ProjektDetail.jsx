@@ -3,6 +3,12 @@ import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import { faelltAuf } from "../lib/wiederholung"
 import Kalender from "./Kalender"
+import {
+  STANDARD_MODULE,
+  PRIORITAETEN,
+  STATUS_OPTIONEN,
+  projektFortschrittWerte,
+} from "../lib/projekte"
 import TodoErstellen from "./TodoErstellen"
 import { TodoZeile } from "./TodosSeite"
 import ProjektInhalte from "./ProjektInhalte"
@@ -11,13 +17,10 @@ import ProjektArtikel from "./ProjektArtikel"
 import ProjektKarten from "./ProjektKarten"
 import ProjektLernen from "./ProjektLernen"
 import ProjektBoard from "./ProjektBoard"
-import BlockEditor, { bloeckeVon, neueBlockId } from "./BlockEditor"
+import BlockEditor from "./BlockEditor"
+import { bloeckeVon, neueBlockId } from "../lib/bloecke"
 import { VORLAGEN, vorlageZuBloecken } from "../lib/wissen"
-import {
-  DeadlineChip,
-  Fortschrittsbalken,
-  projektFortschrittWerte,
-} from "./OrdnerSeite"
+import { DeadlineChip, Fortschrittsbalken } from "./OrdnerSeite"
 import LoeschKnopf from "./LoeschKnopf"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
@@ -35,23 +38,6 @@ const MODULE = [
   { key: "artikel", label: "Artikel" },
   { key: "karten", label: "Karteikarten" },
   { key: "kalender", label: "Kalender" },
-]
-
-export const STANDARD_MODULE = ["ziel", "workflow", "todos", "lernen", "kalender"]
-
-// Auswahlwerte für die Eigenschaften Priorität und Status (Notion-artige
-// Tags). Farbe pro Wert; leerer Wert = dezentes „Keine“.
-export const PRIORITAETEN = [
-  { value: "", label: "Keine", tag: "bg-gray-100 text-gray-500" },
-  { value: "niedrig", label: "Niedrig", tag: "bg-gray-100 text-gray-600" },
-  { value: "mittel", label: "Mittel", tag: "bg-amber-50 text-amber-700" },
-  { value: "hoch", label: "Hoch", tag: "bg-red-50 text-red-600" },
-]
-
-export const STATUS_OPTIONEN = [
-  { value: "offen", label: "Nicht begonnen", tag: "bg-gray-100 text-gray-600" },
-  { value: "aktiv", label: "In Arbeit", tag: "bg-blue-50 text-blue-700" },
-  { value: "fertig", label: "Erledigt", tag: "bg-emerald-50 text-emerald-700" },
 ]
 
 // Kleines 16er-Linien-Icon.

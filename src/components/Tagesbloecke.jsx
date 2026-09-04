@@ -1,21 +1,7 @@
 import { useState } from "react"
-import useStored from "../lib/useStored"
 import { FARBEN } from "../lib/farben"
 
-// Tagesblöcke: wiederverwendbare Vorlagen für den Kalender-Tagesplan
-// (Name, Farbe, Standarddauer). Ein paar sind vorgegeben, eigene lassen
-// sich jederzeit ergänzen – gleiches Prinzip wie die Habit-Bereiche.
-
-const STANDARD_TAGESBLOECKE = [
-  { id: "deepwork", name: "Deep Work", farbe: "violet", dauer: 90 },
-  { id: "sport", name: "Sport", farbe: "emerald", dauer: 60 },
-  { id: "pause", name: "Pause", farbe: "amber", dauer: 15 },
-]
-
-export function useTagesblockVorlagen() {
-  const [bloecke, setBloecke] = useStored("tagesbloecke", STANDARD_TAGESBLOECKE)
-  return { bloecke, setBloecke }
-}
+// Auswahl-Oberfläche für die Tagesblock-Vorlagen aus lib/tagesbloecke.js.
 
 // Zeilen-Picker: vorgegebene + eigene Blöcke als Pillen, „+" öffnet ein
 // kleines Formular für einen neuen eigenen Block.

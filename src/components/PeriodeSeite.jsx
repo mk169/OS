@@ -22,7 +22,8 @@ import {
   verknuepfungen,
   wochenFortschritt,
 } from "../lib/zyklen"
-import { projektFortschrittWerte, Fortschrittsbalken } from "./OrdnerSeite"
+import { Fortschrittsbalken } from "./OrdnerSeite"
+import { projektFortschrittWerte } from "../lib/projekte"
 import PhasenZeitstrahl from "./PhasenZeitstrahl"
 import ZyklenEinstellungen from "./ZyklenEinstellungen"
 import Seitenkopf from "./Seitenkopf"

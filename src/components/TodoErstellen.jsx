@@ -1,45 +1,11 @@
 import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
 import { erkenneDatum, erkenneProjekt } from "../lib/erkennung"
+import { einteilungVon } from "../lib/todos"
 
 // Wiederverwendbarer Todo-Ersteller: ein Plus-Button, der ein Formular
 // öffnet. Wird im Dashboard, auf der Todo-Seite, in Kursen und in
 // Projekten benutzt. `fest` legt die Zuordnung fix fest (z.B. im Kurs).
-
-export const EINTEILUNGEN = [
-  {
-    key: "wichtig-dringend",
-    label: "Wichtig & dringend",
-    punkt: "bg-red-500",
-    text: "text-red-600",
-    passt: (t) => t.wichtig && t.dringend,
-  },
-  {
-    key: "wichtig",
-    label: "Wichtig, nicht dringend",
-    punkt: "bg-yellow-400",
-    text: "text-yellow-600",
-    passt: (t) => t.wichtig && !t.dringend,
-  },
-  {
-    key: "dringend",
-    label: "Dringend, nicht wichtig",
-    punkt: "bg-orange-500",
-    text: "text-orange-600",
-    passt: (t) => !t.wichtig && t.dringend,
-  },
-  {
-    key: "sonstige",
-    label: "Sonstige",
-    punkt: "bg-gray-400",
-    text: "text-gray-500",
-    passt: (t) => !t.wichtig && !t.dringend,
-  },
-]
-
-export function einteilungVon(todo) {
-  return EINTEILUNGEN.find((e) => e.passt(todo))
-}
 
 export default function TodoErstellen({
   fest = null,
