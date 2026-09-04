@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { schreibeStore, setzeCloudSession } from "./lib/useStored"
 import useStored from "./lib/useStored"
 import { supabase, cloudAktiv } from "./lib/supabase"
@@ -9,24 +9,30 @@ import { EINSTELLUNGEN_STANDARD } from "./lib/einstellungen"
 import { lockedInAktiv } from "./lib/lockedin"
 import Login from "./components/Login"
 import Dashboard from "./components/Dashboard"
+import Onboarding from "./components/Onboarding"
 import KalenderSeite from "./components/KalenderSeite"
 import TodosSeite from "./components/TodosSeite"
-import HabitsSeite from "./components/HabitsSeite"
-import LockedInSeite from "./components/LockedInSeite"
-import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
-import PeriodeSeite from "./components/PeriodeSeite"
-import FinanzenSeite from "./components/FinanzenSeite"
-import BerufSeite from "./components/BerufSeite"
-import LeisureSeite from "./components/LeisureSeite"
-import DailyOpsSeite from "./components/DailyOpsSeite"
-import VitalitaetSeite from "./components/VitalitaetSeite"
-import SammelnSeite from "./components/SammelnSeite"
-import ReviewSeite from "./components/ReviewSeite"
-import Suche from "./components/Suche"
-import Onboarding from "./components/Onboarding"
-import Einstellungen from "./components/Einstellungen"
 import { STANDARD_MODULE } from "./lib/projekte"
+
+// Seiten werden erst geladen, wenn sie geöffnet werden. Das hält den ersten
+// Start klein – gerade auf dem Handy, wo die App als PWA läuft. Fest im
+// Hauptbündel bleiben der Einstieg (Login, Einrichtung, Startseite) und die
+// drei Seiten, die andere Seiten ohnehin einbinden (Kalender, Todos,
+// Projekte) – dort brächte ein Nachladen nichts.
+const HabitsSeite = lazy(() => import("./components/HabitsSeite"))
+const LockedInSeite = lazy(() => import("./components/LockedInSeite"))
+const DeepWorkSeite = lazy(() => import("./components/DeepWorkSeite"))
+const PeriodeSeite = lazy(() => import("./components/PeriodeSeite"))
+const FinanzenSeite = lazy(() => import("./components/FinanzenSeite"))
+const BerufSeite = lazy(() => import("./components/BerufSeite"))
+const LeisureSeite = lazy(() => import("./components/LeisureSeite"))
+const DailyOpsSeite = lazy(() => import("./components/DailyOpsSeite"))
+const VitalitaetSeite = lazy(() => import("./components/VitalitaetSeite"))
+const SammelnSeite = lazy(() => import("./components/SammelnSeite"))
+const ReviewSeite = lazy(() => import("./components/ReviewSeite"))
+const Einstellungen = lazy(() => import("./components/Einstellungen"))
+const Suche = lazy(() => import("./components/Suche"))
 
 // Einmalige Migration: alte Kurse werden zu Projekten in einem
 // „Uni“-Ordner. Die IDs bleiben erhalten, damit Todos, Karten und
@@ -653,6 +659,7 @@ export default function App() {
             <NavIcon className="h-[18px] w-[18px]">{ZAHNRAD}</NavIcon>
           </button>
         )}
+        <Suspense fallback={<Ladehinweis dunkel={lockedInSeite} />}>
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
         {seite === "lockedin" && <LockedInSeite onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite />}
@@ -688,10 +695,13 @@ export default function App() {
         {seite === "vitalitaet" && <VitalitaetSeite />}
         {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
         {seite === "einstellungen" && <Einstellungen />}
+        </Suspense>
       </main>
 
       {sucheOffen && (
-        <Suche onNavigate={navigiere} onClose={() => setSucheOffen(false)} />
+        <Suspense fallback={null}>
+          <Suche onNavigate={navigiere} onClose={() => setSucheOffen(false)} />
+        </Suspense>
       )}
 
       {/* ── Mobiler Ansichts-Wechsler ───────────────────────────── */}
@@ -807,6 +817,21 @@ export default function App() {
           Mehr
         </button>
       </nav>
+    </div>
+  )
+}
+
+// Platzhalter, solange eine Seite nachgeladen wird. Bewusst schlicht und
+// ohne Sprung im Layout – meist ist sie so schnell da, dass man ihn nicht
+// sieht.
+function Ladehinweis({ dunkel }) {
+  return (
+    <div
+      className={`flex min-h-[60vh] items-center justify-center text-sm ${
+        dunkel ? "text-white/40" : "text-gray-400"
+      }`}
+    >
+      Lädt…
     </div>
   )
 }
