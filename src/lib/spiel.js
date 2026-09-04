@@ -2,7 +2,9 @@
 // Habits „Training"). Hält XP-/Level-Berechnung und Quest-Ränge an einem
 // Ort, damit beide Screens konsistent bleiben.
 
-// Eisenhower-Schlüssel (siehe EINTEILUNGEN in TodoErstellen.jsx) → Rang-Meta.
+import { einteilungVon } from "./todos"
+
+// Eisenhower-Schlüssel (siehe EINTEILUNGEN in lib/todos.js) → Rang-Meta.
 // `farbe` verweist auf lib/farben.js (FARBEN).
 export const QUEST_RANGE = {
   "wichtig-dringend": { label: "BOSS", emoji: "🐉", xp: 50, farbe: "rose" },
@@ -18,9 +20,8 @@ export function rangVon(key) {
   return QUEST_RANGE[key] ?? RANG_STANDARD
 }
 
-// XP aus erledigten Todos: Summe der Rang-Belohnungen. `einteilungVon` wird
-// übergeben, um keine zyklische Abhängigkeit zu TodoErstellen.jsx zu erzeugen.
-export function xpVonTodos(todos, einteilungVon) {
+// XP aus erledigten Todos: Summe der Rang-Belohnungen.
+export function xpVonTodos(todos) {
   return todos
     .filter((t) => t.erledigt)
     .reduce((summe, t) => summe + rangVon(einteilungVon(t)?.key).xp, 0)

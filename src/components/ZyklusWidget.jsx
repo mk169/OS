@@ -13,7 +13,8 @@ import {
   aktivePhase,
   phaseStatus,
 } from "../lib/zyklen"
-import { projektFortschrittWerte, Fortschrittsbalken } from "./OrdnerSeite"
+import { Fortschrittsbalken } from "./OrdnerSeite"
+import { projektFortschrittWerte } from "../lib/projekte"
 import PhasenZeitstrahl from "./PhasenZeitstrahl"
 
 // Dashboard-Karte(n) für die aktuell laufenden Fokus-Perioden: zeigt Ziel,

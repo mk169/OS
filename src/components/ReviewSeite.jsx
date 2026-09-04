@@ -10,8 +10,9 @@ import {
 import LoeschKnopf from "./LoeschKnopf"
 import Seitenkopf from "./Seitenkopf"
 import { TodoZeile } from "./TodosSeite"
-import { sammleTermine, DeadlineChip } from "./OrdnerSeite"
-import { wochenZielErreicht } from "./HabitsSeite"
+import { DeadlineChip } from "./OrdnerSeite"
+import { sammleTermine } from "../lib/projekte"
+import { wochenZielErreicht } from "../lib/habits"
 import MentorInhalt from "./MentorInhalt"
 
 // Wochen-Review: zeigt proaktiv, was liegen geblieben, überfällig oder
@@ -97,7 +98,6 @@ export default function ReviewSeite({ onNavigate }) {
     lernprotokoll,
     vitalitaet,
     termine,
-    wochenZielErreicht,
   }
 
   // Die Woche, die als nächstes abgeschlossen werden kann: die laufende

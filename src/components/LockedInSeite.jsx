@@ -1,13 +1,14 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
 import { heute, tageBis, tageBisZahl } from "../lib/datum"
-import { EINTEILUNGEN } from "./TodoErstellen"
+import { EINTEILUNGEN } from "../lib/todos"
+import { lockedInAktiv } from "../lib/lockedin"
 import TodoErstellen from "./TodoErstellen"
 import {
   useHabitDaten,
   nutzeHabitToggle,
   disziplinAmTag,
-} from "./HabitsSeite"
+} from "../lib/habits"
 
 // Locked In ist ein scharf geschalteter Fokus-Modus: Man definiert ein Ziel
 // mit Phase (wie ein Projekt) und den regelmäßigen Aufgaben dafür (Habits) und
@@ -31,16 +32,6 @@ const STANDARD_CONFIG = {
 }
 
 const FOKUS_OPTIONEN = [30, 60, 90, 120]
-
-// Läuft der Locked-In-Modus gerade? Scharf geschaltet ist er mit einem Ziel;
-// er endet, wenn man ihn beendet oder die Phase abgelaufen ist. Danach ist er
-// nur noch ein Bereich unter „Mehr" – die Tab-Leiste bleibt frei.
-export function lockedInAktiv(config) {
-  if (!config?.ziel?.trim()) return false
-  if (config.aktiv === false) return false
-  if (config.phaseEnde && config.phaseEnde < heute()) return false
-  return true
-}
 
 function istAuftrag(t) {
   return t.wichtig || t.dringend || (t.datum && t.datum <= heute())

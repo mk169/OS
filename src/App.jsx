@@ -1,30 +1,38 @@
-import { useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { schreibeStore, setzeCloudSession } from "./lib/useStored"
 import useStored from "./lib/useStored"
 import { supabase, cloudAktiv } from "./lib/supabase"
 import { wendeAkzentAn } from "./lib/akzent"
 import { normalisiereStil } from "./lib/stil"
 import { navConfig, navSektionen, sektionOffen } from "./lib/navigation"
+import { EINSTELLUNGEN_STANDARD } from "./lib/einstellungen"
+import { lockedInAktiv } from "./lib/lockedin"
 import Login from "./components/Login"
 import Dashboard from "./components/Dashboard"
+import Onboarding from "./components/Onboarding"
 import KalenderSeite from "./components/KalenderSeite"
 import TodosSeite from "./components/TodosSeite"
-import HabitsSeite from "./components/HabitsSeite"
-import LockedInSeite, { lockedInAktiv } from "./components/LockedInSeite"
-import DeepWorkSeite from "./components/DeepWorkSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
-import PeriodeSeite from "./components/PeriodeSeite"
-import FinanzenSeite from "./components/FinanzenSeite"
-import BerufSeite from "./components/BerufSeite"
-import LeisureSeite from "./components/LeisureSeite"
-import DailyOpsSeite from "./components/DailyOpsSeite"
-import VitalitaetSeite from "./components/VitalitaetSeite"
-import SammelnSeite from "./components/SammelnSeite"
-import ReviewSeite from "./components/ReviewSeite"
-import Suche from "./components/Suche"
-import Onboarding from "./components/Onboarding"
-import Einstellungen from "./components/Einstellungen"
-import { STANDARD_MODULE } from "./components/ProjektDetail"
+import { STANDARD_MODULE } from "./lib/projekte"
+
+// Seiten werden erst geladen, wenn sie geöffnet werden. Das hält den ersten
+// Start klein – gerade auf dem Handy, wo die App als PWA läuft. Fest im
+// Hauptbündel bleiben der Einstieg (Login, Einrichtung, Startseite) und die
+// drei Seiten, die andere Seiten ohnehin einbinden (Kalender, Todos,
+// Projekte) – dort brächte ein Nachladen nichts.
+const HabitsSeite = lazy(() => import("./components/HabitsSeite"))
+const LockedInSeite = lazy(() => import("./components/LockedInSeite"))
+const DeepWorkSeite = lazy(() => import("./components/DeepWorkSeite"))
+const PeriodeSeite = lazy(() => import("./components/PeriodeSeite"))
+const FinanzenSeite = lazy(() => import("./components/FinanzenSeite"))
+const BerufSeite = lazy(() => import("./components/BerufSeite"))
+const LeisureSeite = lazy(() => import("./components/LeisureSeite"))
+const DailyOpsSeite = lazy(() => import("./components/DailyOpsSeite"))
+const VitalitaetSeite = lazy(() => import("./components/VitalitaetSeite"))
+const SammelnSeite = lazy(() => import("./components/SammelnSeite"))
+const ReviewSeite = lazy(() => import("./components/ReviewSeite"))
+const Einstellungen = lazy(() => import("./components/Einstellungen"))
+const Suche = lazy(() => import("./components/Suche"))
 
 // Einmalige Migration: alte Kurse werden zu Projekten in einem
 // „Uni“-Ordner. Die IDs bleiben erhalten, damit Todos, Karten und
@@ -323,16 +331,6 @@ const NAV = [
   },
 ]
 
-const EINSTELLUNGEN_STANDARD = {
-  onboardingAbgeschlossen: false,
-  profil: "komplett",
-  sichtbareSeiten: ["dashboard", "lockedin", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "periode", "finanzen", "beruf", "leisure", "dailyops"],
-  appName: "OS",
-  startseite: "dashboard",
-  akzent: "indigo",
-  stil: "todo",
-}
-
 // Modul-Metadaten schnell per Schlüssel nachschlagen (für die Navigation
 // in der vom Nutzer gewählten Reihenfolge).
 const NAV_NACH_KEY = Object.fromEntries(NAV.map((n) => [n.key, n]))
@@ -444,10 +442,10 @@ export default function App() {
   const mobileKolonnen = primaereNav.length + 1
   // Gruppierung/Einklappen der Navigation (Einstellungen → Navigation).
   const navCfg = navConfig(einstellungen)
-  const sidebarSektionen = navSektionen(sichtbareNav, navCfg)
-  // Der Wechsler zeigt *alle* Ansichten, nicht nur die ohne eigenen Tab:
-  // So kommt man von jeder Seite aus mit zwei Tipps überall hin.
-  const sheetSektionen = navSektionen(sichtbareNav, navCfg)
+  // Sidebar und mobiler Wechsler zeigen dieselben Sektionen: Der Wechsler
+  // listet *alle* Ansichten, nicht nur die ohne eigenen Tab – so kommt man
+  // von jeder Seite aus mit zwei Tipps überall hin.
+  const sektionen = navSektionen(sichtbareNav, navCfg)
   // Titel der aktuellen Ansicht für den Wechsler in der Kopfzeile.
   const aktuelleAnsicht =
     NAV_NACH_KEY[seite]?.label ??
@@ -513,7 +511,7 @@ export default function App() {
 
         {/* Hauptnavigation – je nach Einstellung flach oder nach Gruppen */}
         <nav className="flex flex-1 flex-col overflow-y-auto">
-          {sidebarSektionen.map((sektion) => {
+          {sektionen.map((sektion) => {
             const offen = istOffen(sektion)
             return (
               <div key={sektion.key} className="mb-1.5 last:mb-0">
@@ -661,6 +659,7 @@ export default function App() {
             <NavIcon className="h-[18px] w-[18px]">{ZAHNRAD}</NavIcon>
           </button>
         )}
+        <Suspense fallback={<Ladehinweis dunkel={lockedInSeite} />}>
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
         {seite === "lockedin" && <LockedInSeite onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite />}
@@ -696,10 +695,13 @@ export default function App() {
         {seite === "vitalitaet" && <VitalitaetSeite />}
         {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
         {seite === "einstellungen" && <Einstellungen />}
+        </Suspense>
       </main>
 
       {sucheOffen && (
-        <Suche onNavigate={navigiere} onClose={() => setSucheOffen(false)} />
+        <Suspense fallback={null}>
+          <Suche onNavigate={navigiere} onClose={() => setSucheOffen(false)} />
+        </Suspense>
       )}
 
       {/* ── Mobiler Ansichts-Wechsler ───────────────────────────── */}
@@ -715,7 +717,7 @@ export default function App() {
             <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
               Ansicht wechseln
             </p>
-            {sheetSektionen.map((sektion) => {
+            {sektionen.map((sektion) => {
               const offen = istOffen(sektion)
               return (
                 <div key={sektion.key} className="mb-1 last:mb-0">
@@ -815,6 +817,21 @@ export default function App() {
           Mehr
         </button>
       </nav>
+    </div>
+  )
+}
+
+// Platzhalter, solange eine Seite nachgeladen wird. Bewusst schlicht und
+// ohne Sprung im Layout – meist ist sie so schnell da, dass man ihn nicht
+// sieht.
+function Ladehinweis({ dunkel }) {
+  return (
+    <div
+      className={`flex min-h-[60vh] items-center justify-center text-sm ${
+        dunkel ? "text-white/40" : "text-gray-400"
+      }`}
+    >
+      Lädt…
     </div>
   )
 }

@@ -1,21 +1,21 @@
 import useStored from "../lib/useStored"
-import { heute, tageBis, montagVon } from "../lib/datum"
+import { heute, tageBis, montagVon, datumLang } from "../lib/datum"
 import { istFaellig } from "../lib/spacedRepetition"
 import { alleLernplaene, lernplanSumme } from "../lib/lernplan"
 import { dashboardConfig } from "../lib/dashboard"
 import ZyklusWidget from "./ZyklusWidget"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
-import { datumLang } from "./Kalender"
 import { KalenderPanel } from "./KalenderSeite"
-import TodoErstellen, { EINTEILUNGEN, einteilungVon } from "./TodoErstellen"
+import TodoErstellen from "./TodoErstellen"
+import { EINTEILUNGEN, einteilungVon } from "../lib/todos"
 import MentorBanner from "./MentorBanner"
 import {
   useHabitDaten,
   nutzeHabitToggle,
   wochenStreakVon,
   wochenZielErreicht,
-} from "./HabitsSeite"
+} from "../lib/habits"
 
 function begruessung() {
   const stunde = new Date().getHours()

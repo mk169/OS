@@ -1,12 +1,13 @@
 import { useRef, useState } from "react"
 import useStored from "../lib/useStored"
-import { heute } from "../lib/datum"
+import { heute, datumLang } from "../lib/datum"
 import { faelltAuf, WIEDERHOLUNGEN } from "../lib/wiederholung"
 import { alsICS, parseICS } from "../lib/ics"
 import { zyklusPhasen } from "../lib/zyklen"
-import Kalender, { TagesAnsicht, datumLang } from "./Kalender"
+import Kalender, { TagesAnsicht } from "./Kalender"
 import Seitenkopf from "./Seitenkopf"
-import { useTagesblockVorlagen, TagesblockAuswahl } from "./Tagesbloecke"
+import { TagesblockAuswahl } from "./Tagesbloecke"
+import { useTagesblockVorlagen } from "../lib/tagesbloecke"
 
 // Kalender-Panel: vollständiger Kalender (Tag/Woche/Monat, Timestacking)
 // mit Termin-Erstellung. Wird im Dashboard eingebettet und auf der

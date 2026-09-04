@@ -130,7 +130,7 @@ export default function ProjektNotizen({
 // projektfreien Wissensbasis (SammelnSeite) gemeinsam genutzt. layout
 // wählt zwischen Karten-Raster (Default) und kompakter Zeilen-Liste.
 // leerText erlaubt kontextabhängige Leer-Hinweise.
-export function NotizenRaster({
+function NotizenRaster({
   notizen,
   onOeffnen,
   onRemove,

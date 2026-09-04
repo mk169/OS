@@ -4,7 +4,8 @@ import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { rangVon, xpVonTodos, levelVon } from "../lib/spiel"
 import Seitenkopf from "./Seitenkopf"
-import TodoErstellen, { EINTEILUNGEN, einteilungVon } from "./TodoErstellen"
+import TodoErstellen from "./TodoErstellen"
+import { EINTEILUNGEN, einteilungVon } from "../lib/todos"
 import LoeschKnopf from "./LoeschKnopf"
 
 const FONT_ARCADE = '"Press Start 2P", ui-monospace, monospace'
@@ -556,7 +557,7 @@ function QuestKarte({ todo, rang, zuordnung, onToggle, onRemove }) {
 }
 
 function TodosGamified({ todos, offene, erledigte, toggle, remove, zuordnungsName }) {
-  const xp = xpVonTodos(todos, einteilungVon)
+  const xp = xpVonTodos(todos)
   const { level, xpInLevel, xpProLevel, fortschritt } = levelVon(xp)
   const gold = erledigte.length * 10
 

@@ -1,15 +1,16 @@
 import { useState } from "react"
-import { heute, montagVon } from "../lib/datum"
+import {
+  heute,
+  montagVon,
+  schluessel,
+  datumLang,
+  WOCHENTAGE,
+  MONATE,
+} from "../lib/datum"
 import { FARBEN } from "../lib/farben"
 import LoeschKnopf from "./LoeschKnopf"
 
-const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
-const MONATE = [
-  "Januar", "Februar", "März", "April", "Mai", "Juni",
-  "Juli", "August", "September", "Oktober", "November", "Dezember",
-]
-
-export const EINTRAG_TYPEN = {
+const EINTRAG_TYPEN = {
   termin: { chip: "bg-blue-50 text-blue-700", punkt: "bg-blue-500", name: "Termin" },
   fokus: { chip: "bg-violet-50 text-violet-700", punkt: "bg-violet-500", name: "Fokus" },
   pruefung: { chip: "bg-red-50 text-red-600", punkt: "bg-red-500", name: "Prüfung" },
@@ -18,15 +19,6 @@ export const EINTRAG_TYPEN = {
   schritt: { chip: "bg-gray-100 text-gray-600", punkt: "bg-gray-400", name: "Schritt" },
   geburtstag: { chip: "bg-rose-50 text-rose-700", punkt: "bg-rose-500", name: "Geburtstag" },
   phase: { chip: "bg-indigo-50 text-indigo-700", punkt: "bg-indigo-500", name: "Phase" },
-}
-
-export function schluessel(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-}
-
-export function datumLang(key) {
-  const d = new Date(key)
-  return `${WOCHENTAGE[(d.getDay() + 6) % 7]}, ${d.getDate()}. ${MONATE[d.getMonth()]} ${d.getFullYear()}`
 }
 
 // Farbe eines Eintrags: Tagesblock-Farbe hat Vorrang vor der Typ-Farbe.

@@ -7,7 +7,7 @@ import LoeschKnopf from "./LoeschKnopf"
 // Datenstruktur, unabhängig vom linearen Workflow-Bereich (Schritte mit
 // Datum) – beide Bereiche können nebeneinander existieren.
 
-export const BOARD_SPALTEN = [
+const BOARD_SPALTEN = [
   { value: "inbox", label: "Inbox" },
   { value: "arbeit", label: "In Arbeit" },
   { value: "fertig", label: "Fertig" },

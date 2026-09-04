@@ -1,5 +1,6 @@
 import { montagVon, wochenSchluessel } from "./datum"
 import { faelltAuf } from "./wiederholung"
+import { wochenZielErreicht } from "./habits"
 
 // Wochenabschluss: Am Ende einer Woche wird festgehalten, was sie enthielt –
 // erledigte Aufgaben, Fokuszeit, Habits und das Wochenziel der Periode. Die
@@ -64,7 +65,6 @@ export function baueBericht({
   lernprotokoll = {},
   vitalitaet = [],
   termine = [],
-  wochenZielErreicht,
 }) {
   const von = woche
   const bis = wochenEndeVon(woche)
@@ -83,7 +83,7 @@ export function baueBericht({
   )
 
   const habitBilanz =
-    typeof wochenZielErreicht === "function" && habits.length > 0
+    habits.length > 0
       ? {
           erreicht: habits.filter((h) => wochenZielErreicht(h, new Date(von)))
             .length,
