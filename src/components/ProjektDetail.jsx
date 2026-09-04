@@ -24,7 +24,7 @@ import LoeschKnopf from "./LoeschKnopf"
 // jederzeit über „Bereiche anpassen“) wählbar – so wird aus demselben
 // System ein Uni-Kurs, ein Lernprojekt oder ein privates Vorhaben.
 
-export const MODULE = [
+const MODULE = [
   { key: "ziel", label: "Ziel" },
   { key: "workflow", label: "Workflow" },
   { key: "board", label: "Board" },
@@ -211,10 +211,6 @@ export default function ProjektDetail({
   useEffect(() => {
     if (startModul != null) setAktiv(startModul)
   }, [startModul])
-
-  const verfuegbar = [...MODULE, ...eigene].filter(
-    (m) => !module.includes(m.key)
-  )
 
   const workflow = projekt.workflow ?? []
   const erledigt = workflow.filter((s) => s.erledigt).length

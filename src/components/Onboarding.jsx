@@ -2,6 +2,7 @@ import { useState } from "react"
 import { schreibeStore } from "../lib/useStored"
 import { FARBEN } from "../lib/farben"
 import { STIL_STANDARD } from "../lib/stil"
+import { STANDARD_SEITEN } from "../lib/einstellungen"
 import LoeschKnopf from "./LoeschKnopf"
 
 // App-Profile: vordefinierte Konfigurationen für verschiedene Nutzungsszenarien
@@ -16,7 +17,6 @@ export const PROFILE = [
         <path d="m8 12 3 3 5-6" />
       </>
     ),
-    farbe: "indigo",
     seiten: ["dashboard", "lockedin", "kalender", "todos", "deepwork", "projekte"],
   },
   {
@@ -26,7 +26,6 @@ export const PROFILE = [
     icon: (
       <path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1 .4-1.8.8-2.4.3 1 .9 1.6 1.7 1.6-.8-2 .5-5 1-7.2Z" />
     ),
-    farbe: "emerald",
     seiten: ["dashboard", "habits", "vitalitaet", "todos", "kalender", "review"],
   },
   {
@@ -39,7 +38,6 @@ export const PROFILE = [
         <path d="M9 9c.5-1.5 2-2 3-1.5M12 15v2M8.5 14.5c.5 1 2 2 3.5 2s3-.9 3.5-2" />
       </>
     ),
-    farbe: "violet",
     seiten: ["dashboard", "sammeln", "projekte", "todos", "review"],
   },
   {
@@ -52,8 +50,9 @@ export const PROFILE = [
         <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" />
       </>
     ),
-    farbe: "gray",
-    seiten: ["dashboard", "lockedin", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "finanzen", "beruf", "leisure", "dailyops"],
+    // „Komplett" heisst wirklich komplett: dieselbe Liste wie der
+    // App-Standard, damit kein Bereich versehentlich fehlt.
+    seiten: STANDARD_SEITEN,
   },
   {
     id: "lockedin",
@@ -65,7 +64,6 @@ export const PROFILE = [
         <path d="M8 11V8a4 4 0 0 1 8 0v3" />
       </>
     ),
-    farbe: "gray",
     seiten: ["lockedin", "habits", "todos", "deepwork", "projekte", "review"],
     stil: "lockedin",
     startseite: "lockedin",
@@ -149,7 +147,8 @@ export default function Onboarding({ onFertig }) {
   }
 
   function abschliessen() {
-    const profil = gewaehltesProfil ?? PROFILE[3]
+    const profil =
+      gewaehltesProfil ?? PROFILE.find((p) => p.id === "komplett") ?? PROFILE[0]
     // Einstellungen speichern. Ein Profil kann Startseite und Darstellungs-Stil
     // vorgeben (z. B. „Locked In" → Habits im monochromen Disziplin-Modus).
     schreibeStore("einstellungen", {}, {

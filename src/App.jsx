@@ -5,6 +5,7 @@ import { supabase, cloudAktiv } from "./lib/supabase"
 import { wendeAkzentAn } from "./lib/akzent"
 import { normalisiereStil } from "./lib/stil"
 import { navConfig, navSektionen, sektionOffen } from "./lib/navigation"
+import { EINSTELLUNGEN_STANDARD } from "./lib/einstellungen"
 import Login from "./components/Login"
 import Dashboard from "./components/Dashboard"
 import KalenderSeite from "./components/KalenderSeite"
@@ -323,16 +324,6 @@ const NAV = [
   },
 ]
 
-const EINSTELLUNGEN_STANDARD = {
-  onboardingAbgeschlossen: false,
-  profil: "komplett",
-  sichtbareSeiten: ["dashboard", "lockedin", "kalender", "todos", "sammeln", "habits", "vitalitaet", "deepwork", "projekte", "periode", "finanzen", "beruf", "leisure", "dailyops"],
-  appName: "OS",
-  startseite: "dashboard",
-  akzent: "indigo",
-  stil: "todo",
-}
-
 // Modul-Metadaten schnell per Schlüssel nachschlagen (für die Navigation
 // in der vom Nutzer gewählten Reihenfolge).
 const NAV_NACH_KEY = Object.fromEntries(NAV.map((n) => [n.key, n]))
@@ -444,10 +435,10 @@ export default function App() {
   const mobileKolonnen = primaereNav.length + 1
   // Gruppierung/Einklappen der Navigation (Einstellungen → Navigation).
   const navCfg = navConfig(einstellungen)
-  const sidebarSektionen = navSektionen(sichtbareNav, navCfg)
-  // Der Wechsler zeigt *alle* Ansichten, nicht nur die ohne eigenen Tab:
-  // So kommt man von jeder Seite aus mit zwei Tipps überall hin.
-  const sheetSektionen = navSektionen(sichtbareNav, navCfg)
+  // Sidebar und mobiler Wechsler zeigen dieselben Sektionen: Der Wechsler
+  // listet *alle* Ansichten, nicht nur die ohne eigenen Tab – so kommt man
+  // von jeder Seite aus mit zwei Tipps überall hin.
+  const sektionen = navSektionen(sichtbareNav, navCfg)
   // Titel der aktuellen Ansicht für den Wechsler in der Kopfzeile.
   const aktuelleAnsicht =
     NAV_NACH_KEY[seite]?.label ??
@@ -513,7 +504,7 @@ export default function App() {
 
         {/* Hauptnavigation – je nach Einstellung flach oder nach Gruppen */}
         <nav className="flex flex-1 flex-col overflow-y-auto">
-          {sidebarSektionen.map((sektion) => {
+          {sektionen.map((sektion) => {
             const offen = istOffen(sektion)
             return (
               <div key={sektion.key} className="mb-1.5 last:mb-0">
@@ -715,7 +706,7 @@ export default function App() {
             <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
               Ansicht wechseln
             </p>
-            {sheetSektionen.map((sektion) => {
+            {sektionen.map((sektion) => {
               const offen = istOffen(sektion)
               return (
                 <div key={sektion.key} className="mb-1 last:mb-0">

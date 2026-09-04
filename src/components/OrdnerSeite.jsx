@@ -36,11 +36,6 @@ export function projektFortschrittWerte(projekt, todos) {
   return { erledigt: eigene.filter((t) => t.erledigt).length, gesamt: eigene.length }
 }
 
-export function projektFortschritt(projekt, todos) {
-  const { erledigt, gesamt } = projektFortschrittWerte(projekt, todos)
-  return gesamt > 0 ? `${erledigt}/${gesamt}` : "–"
-}
-
 // Farbiger Deadline-Chip – Farbe nach Dringlichkeit, Text via tageBis.
 export function DeadlineChip({ datum }) {
   if (!datum) return null

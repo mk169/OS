@@ -9,7 +9,7 @@ const MONATE = [
   "Juli", "August", "September", "Oktober", "November", "Dezember",
 ]
 
-export const EINTRAG_TYPEN = {
+const EINTRAG_TYPEN = {
   termin: { chip: "bg-blue-50 text-blue-700", punkt: "bg-blue-500", name: "Termin" },
   fokus: { chip: "bg-violet-50 text-violet-700", punkt: "bg-violet-500", name: "Fokus" },
   pruefung: { chip: "bg-red-50 text-red-600", punkt: "bg-red-500", name: "Prüfung" },

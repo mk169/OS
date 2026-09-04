@@ -30,7 +30,7 @@ export function useHabitDaten() {
   return { habits, setHabits, bereiche, setBereiche }
 }
 
-export function bereichVon(habit, bereiche) {
+function bereichVon(habit, bereiche) {
   return (
     bereiche.find((b) => b.id === habit.bereichId) ?? {
       name: "Allgemein",
@@ -39,7 +39,7 @@ export function bereichVon(habit, bereiche) {
   )
 }
 
-export function alsKettenListe(habits) {
+function alsKettenListe(habits) {
   const ketten = []
   const kinderVon = (id) => habits.filter((h) => h.stackNachId === id)
 
@@ -98,7 +98,7 @@ export function disziplinAmTag(habits, datum) {
 // Tages-Streak: Anzahl aufeinanderfolgender vollständiger (oder eingefrorener)
 // Tage bis heute. Der laufende Tag bricht die Serie nicht – er zählt erst,
 // wenn er vollständig ist (Reset erst um Mitternacht).
-export function disziplinStreak(habits, gefroren = new Set()) {
+function disziplinStreak(habits, gefroren = new Set()) {
   let zaehler = 0
   const cursor = new Date()
   cursor.setHours(12, 0, 0, 0)
@@ -117,7 +117,7 @@ export function disziplinStreak(habits, gefroren = new Set()) {
 }
 
 // Edge Score: Durchschnittliche Disziplin der letzten 7 Tage mit Habits.
-export function edgeScore(habits) {
+function edgeScore(habits) {
   let summe = 0
   let tage = 0
   const cursor = new Date()
@@ -134,7 +134,7 @@ export function edgeScore(habits) {
 }
 
 // Tag-Nummer seit dem ältesten angelegten Habit (Onboarding-Gefühl „DAY N").
-export function tagNummer(habits) {
+function tagNummer(habits) {
   const zeiten = habits
     .map((h) => (typeof h.id === "number" ? h.id : null))
     .filter((z) => z != null)
@@ -156,11 +156,11 @@ function wochenSpalten(n) {
   return spalten
 }
 
-export function wochenZielVon(habit) {
+function wochenZielVon(habit) {
   return habit.wochenZiel ?? STANDARD_WOCHENZIEL
 }
 
-export function erledigtInWoche(habit, wocheMontag) {
+function erledigtInWoche(habit, wocheMontag) {
   const zielSchluessel = schluessel(wocheMontag)
   return habit.erledigtAn.filter(
     (tag) => wochenSchluessel(new Date(tag)) === zielSchluessel
@@ -201,7 +201,7 @@ export function nutzeHabitToggle(habits, setHabits) {
   }
 }
 
-export function WochenZielAuswahl({ wert, onChange }) {
+function WochenZielAuswahl({ wert, onChange }) {
   return (
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5, 6, 7].map((n) => (
@@ -223,7 +223,7 @@ export function WochenZielAuswahl({ wert, onChange }) {
   )
 }
 
-export function HabitKarten({
+function HabitKarten({
   habits,
   bereiche,
   onToggleHeute,

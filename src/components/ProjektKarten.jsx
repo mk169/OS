@@ -611,6 +611,13 @@ export function LernModus({ faellig, onBewerte, onEnde }) {
     anzeigeSeit.current = Date.now()
   }
 
+  // Der Tastatur-Handler unten hängt am jeweils aktuellen Stand (Karte,
+  // onBewerte). Statt ihn in die Abhängigkeiten zu nehmen und die Listener
+  // bei jedem Render neu zu setzen, zeigt eine Ref immer auf die frische
+  // Fassung.
+  const bewerten = useRef(antwortUndWeiter)
+  bewerten.current = antwortUndWeiter
+
   // Tastatursteuerung: Leertaste/Enter deckt auf, 1–4 bewerten.
   useEffect(() => {
     function taste(e) {
@@ -625,7 +632,7 @@ export function LernModus({ faellig, onBewerte, onEnde }) {
       const stufe = STUFEN.find((s) => s.taste === e.key)
       if (stufe) {
         e.preventDefault()
-        antwortUndWeiter(stufe.key)
+        bewerten.current(stufe.key)
       }
     }
     window.addEventListener("keydown", taste)

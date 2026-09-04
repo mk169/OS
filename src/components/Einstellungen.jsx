@@ -4,6 +4,8 @@ import { FARBEN } from "../lib/farben"
 import { AKZENTE } from "../lib/akzent"
 import { STILE, STIL_STANDARD } from "../lib/stil"
 import { heute } from "../lib/datum"
+import { EINSTELLUNGEN_STANDARD } from "../lib/einstellungen"
+import { versionsStempel } from "../lib/version"
 import Seitenkopf from "./Seitenkopf"
 import { PROFILE } from "./Onboarding"
 import ZyklenEinstellungen from "./ZyklenEinstellungen"
@@ -296,13 +298,8 @@ function Zeile({ titel, beschreibung, children }) {
 
 export default function Einstellungen() {
   const [einstellungen, setEinstellungen] = useStored("einstellungen", {
+    ...EINSTELLUNGEN_STANDARD,
     onboardingAbgeschlossen: true,
-    profil: "komplett",
-    sichtbareSeiten: ["dashboard", "kalender", "todos", "sammeln", "habits", "deepwork", "projekte"],
-    appName: "OS",
-    startseite: "dashboard",
-    akzent: "indigo",
-    stil: STIL_STANDARD,
   })
   const [bereiche, setBereiche] = useStored("habitBereiche", [
     { id: "koerper", name: "Körper", farbe: "emerald" },
@@ -381,8 +378,25 @@ export default function Einstellungen() {
   }
 
   // ── Profil & Darstellung ───────────────────────────────────────────────────
+  // Ein Profil bringt nicht nur seine Bereiche mit, sondern kann auch
+  // Darstellungs-Stil und Startseite vorgeben (z. B. „Locked In" →
+  // monochrom). Genau wie im Einrichtungsassistenten wird beides
+  // übernommen; was das Profil offenlässt, bleibt wie gewählt – nur eine
+  // Startseite, die es nicht mehr gibt, fällt auf „Start" zurück.
   function profilWaehlen(profil) {
-    setEinstellungen((e) => ({ ...e, profil: profil.id, sichtbareSeiten: profil.seiten }))
+    setEinstellungen((e) => {
+      const startseite = profil.startseite ?? e.startseite ?? "dashboard"
+      return {
+        ...e,
+        profil: profil.id,
+        sichtbareSeiten: profil.seiten,
+        stil: profil.stil ?? e.stil ?? STIL_STANDARD,
+        startseite:
+          startseite === "dashboard" || profil.seiten.includes(startseite)
+            ? startseite
+            : "dashboard",
+      }
+    })
     zeigeSpeichert()
   }
 
@@ -1272,9 +1286,10 @@ export default function Einstellungen() {
       </Abschnitt>
 
       {/* Sichtbarer Versions-Stempel: hilft zu erkennen, ob die neueste
-          Bereitstellung wirklich geladen ist. */}
+          Bereitstellung wirklich geladen ist. Version und Datum kommen aus
+          dem Build (siehe lib/version.js) und veralten daher nie. */}
       <p className="mt-10 mb-2 text-center text-[11px] font-medium tracking-wide text-gray-300">
-        OS · Build 8 · Import-Fix (05.08.2026)
+        {versionsStempel()}
       </p>
     </div>
   )

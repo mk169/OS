@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
+import { erkenneDatum, erkenneProjekt } from "../lib/erkennung"
 
 // Wiederverwendbarer Todo-Ersteller: ein Plus-Button, der ein Formular
 // öffnet. Wird im Dashboard, auf der Todo-Seite, in Kursen und in
@@ -56,6 +57,22 @@ export default function TodoErstellen({
   const [deadline, setDeadline] = useState("")
   const [wichtig, setWichtig] = useState(false)
   const [dringend, setDringend] = useState(false)
+
+  // Sekretär-Prinzip: Aus dem eingetippten Namen werden Deadline („morgen",
+  // „in 2 Wochen") und ein bestehendes Projekt erkannt – aber nur als
+  // Vorschlag angeboten. Übernommen wird erst auf Klick, und nur für Felder,
+  // die noch leer sind.
+  const vorschlag = useMemo(() => {
+    const datum = deadline ? null : erkenneDatum(name)
+    const projekt = fest || zuordnung ? null : erkenneProjekt(name, projekte)
+    return datum || projekt ? { datum, projekt } : null
+  }, [name, deadline, zuordnung, fest, projekte])
+
+  function vorschlagUebernehmen() {
+    if (!vorschlag) return
+    if (vorschlag.datum) setDeadline(vorschlag.datum)
+    if (vorschlag.projekt) setZuordnung(String(vorschlag.projekt.id))
+  }
 
   function speichern(e) {
     e.preventDefault()
@@ -159,6 +176,25 @@ export default function TodoErstellen({
           />
         </label>
       </div>
+
+      {vorschlag && (
+        <button
+          type="button"
+          onClick={vorschlagUebernehmen}
+          className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-dashed border-gray-200 px-2.5 py-1.5 text-xs text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900"
+        >
+          <span className="text-gray-400">Erkannt:</span>
+          {vorschlag.datum && (
+            <span className="font-medium">
+              {new Date(vorschlag.datum).toLocaleDateString("de-DE")}
+            </span>
+          )}
+          {vorschlag.projekt && (
+            <span className="font-medium">{vorschlag.projekt.name}</span>
+          )}
+          <span className="text-gray-400">— übernehmen</span>
+        </button>
+      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm text-gray-700">
