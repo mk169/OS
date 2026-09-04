@@ -25,6 +25,11 @@ export const DASHBOARD_BLOECKE = [
     beschreibung: "Heutige Gewohnheiten zum Abhaken",
   },
   {
+    key: "routinen",
+    label: "Routinen",
+    beschreibung: "Heutige Abläufe aus Daily Operations zum Abhaken",
+  },
+  {
     key: "kennzahlen",
     label: "Kennzahlen",
     beschreibung: "Zahlen-Kacheln (offen, erledigt, …)",
@@ -41,6 +46,7 @@ const STANDARD = {
   fokusPeriode: true,
   lernen: true,
   habits: true,
+  routinen: true,
   kennzahlen: true,
   kalender: true,
 }

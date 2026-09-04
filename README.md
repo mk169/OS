@@ -49,7 +49,9 @@ Cloud, Daten nur auf diesem Gerät.
 | **Lernen** | Lernpläne und Karteikarten mit Spaced Repetition |
 | **Periode** | Fokus-Perioden (14/30/90 Tage, Halbjahr, Jahr) mit Wochenzielen |
 | **Finanzen** | Konten, Budgets, Ausgaben, Sparziele, CSV-Import |
-| **Beruf, Leisure, Daily Ops, Vitalität** | Karriere, Medienbibliothek, Routinen, Tages-Check-in |
+| **Beruf & Karriere** | Bewerbungs-Pipeline mit Fristen, Karriereziele, Weiterbildung |
+| **Daily Operations** | Routinen als Checklisten mit Rhythmus, Tagesbilanz und Serie |
+| **Leisure & Vitalität** | Medienbibliothek (Filme, Bücher …) und täglicher Körper-Check-in |
 | **Wochenrückblick** | Wochenabschluss mit Statistik und Mentor-Hinweisen |
 
 Welche Bereiche erscheinen, legt der Einrichtungsassistent über ein Profil
@@ -101,8 +103,9 @@ Der Build nutzt `base: "./"`, läuft also auch unter einem Unterpfad
 
 `npm test` prüft die Logik in `src/lib` mit Vitest – Datumsrechnung, Habit-
 Streaks und Disziplin, Spaced Repetition, Wochenbericht, Finanz-Auswertungen,
-Projekt-Fortschritt, Eisenhower-Einteilung, Termin-Wiederholungen, Tags und
-Wikilinks sowie die Einstellungs-Vorgaben. Die Oberfläche selbst ist nicht
+Projekt-Fortschritt, Eisenhower-Einteilung, Termin-Wiederholungen, Routinen-
+Rhythmus und -Serie, Bewerbungs-Pipeline, Tags und Wikilinks sowie die
+Einstellungs-Vorgaben. Die Oberfläche selbst ist nicht
 abgedeckt; sie hängt an denselben Funktionen.
 
 Der Workflow auf GitHub führt vor jedem Deployment `npm run lint`, `npm test`

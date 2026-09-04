@@ -1,6 +1,7 @@
 import { montagVon, wochenSchluessel } from "./datum"
 import { faelltAuf } from "./wiederholung"
 import { wochenZielErreicht } from "./habits"
+import { tagesBilanz } from "./dailyops"
 
 // Wochenabschluss: Am Ende einer Woche wird festgehalten, was sie enthielt –
 // erledigte Aufgaben, Fokuszeit, Habits und das Wochenziel der Periode. Die
@@ -12,6 +13,7 @@ import { wochenZielErreicht } from "./habits"
 //   { woche: "JJJJ-MM-TT" (Montag), von, bis, erstelltAm,
 //     todos: [{ text, projekt, datum }], fokusMinuten, fokusSessions,
 //     karten, termine, habits: { erreicht, gesamt },
+//     routinen: { vollstaendig, tage },
 //     vitalitaet: { energie, schlaf, tage },
 //     wochenziel: { text, erledigt, gesamt }, notiz }
 // Ältere Berichte kennen die späteren Felder nicht – die Tabelle zeigt dort
@@ -65,6 +67,8 @@ export function baueBericht({
   lernprotokoll = {},
   vitalitaet = [],
   termine = [],
+  routinen = [],
+  routineProtokoll = {},
 }) {
   const von = woche
   const bis = wochenEndeVon(woche)
@@ -123,6 +127,21 @@ export function baueBericht({
     terminAnzahl += termine.filter((t) => faelltAuf(t, tag)).length
   }
 
+  // Routinen: an wie vielen Tagen der Woche war der Betrieb komplett?
+  // Gezählt werden nur Tage, an denen überhaupt eine Routine anstand.
+  let routineTage = 0
+  let routineVollstaendig = 0
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(von)
+    d.setDate(d.getDate() + i)
+    const tag = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    if (tag > bis) break
+    const bilanz = tagesBilanz(routinen, routineProtokoll, tag)
+    if (bilanz.gesamt === 0) continue
+    routineTage++
+    if (bilanz.erledigt === bilanz.gesamt) routineVollstaendig++
+  }
+
   // Vitalität: Durchschnitt der ausgefüllten Tage dieser Woche.
   const checkins = vitalitaet.filter((e) => imZeitraum(e.datum, von, bis))
   const schnitt = (feld) => {
@@ -147,6 +166,7 @@ export function baueBericht({
     karten,
     termine: terminAnzahl,
     habits: habitBilanz,
+    routinen: { vollstaendig: routineVollstaendig, tage: routineTage },
     vitalitaet: {
       energie: schnitt("energie"),
       schlaf: schnitt("schlaf"),

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
+import { rhythmusLabel } from "../lib/dailyops"
+import { bewerbungStatusVon } from "../lib/beruf"
 
-// Globale Suche als Overlay (Ctrl/Cmd+K): durchsucht Projekte, Todos,
-// Notizen, Inhalte, Karteikarten, Termine und Habits. Klick auf einen
-// Treffer navigiert direkt zum Ziel.
+// Globale Suche als Overlay (Ctrl/Cmd+K): durchsucht alles, was einen Titel
+// hat – Projekte, Todos, Notizen, Inhalte, Karteikarten, Termine, Habits,
+// Wissen, Routinen, Bewerbungen, Karriereziele, Weiterbildung und die
+// Medienbibliothek. Klick auf einen Treffer navigiert direkt zum Ziel.
 
 const MAX_JE_GRUPPE = 8
 
@@ -17,6 +20,11 @@ export default function Suche({ onNavigate, onClose }) {
   const [habits] = useStored("habits", [])
   const [inbox] = useStored("inbox", [])
   const [wissen] = useStored("wissen", [])
+  const [routinen] = useStored("dailyops_routinen", [])
+  const [bewerbungen] = useStored("beruf_bewerbungen", [])
+  const [karriereziele] = useStored("beruf_ziele", [])
+  const [weiterbildung] = useStored("beruf_weiterbildung", [])
+  const [medien] = useStored("medien", [])
 
   const [frage, setFrage] = useState("")
   const feld = useRef(null)
@@ -122,6 +130,47 @@ export default function Suche({ onNavigate, onClose }) {
             .filter((w) => passt(w.titel, w.inhalt))
             .map((w) => ({ label: w.titel, detail: "", ziel: ["sammeln", null] })),
         },
+        {
+          typ: "Routinen",
+          treffer: routinen
+            .filter((r) => passt(r.name, ...(r.schritte ?? []).map((s) => s.text)))
+            .map((r) => ({
+              label: r.name,
+              detail: rhythmusLabel(r),
+              ziel: ["dailyops", null],
+            })),
+        },
+        {
+          typ: "Bewerbungen",
+          treffer: bewerbungen
+            .filter((b) => passt(b.firma, b.rolle, b.notiz))
+            .map((b) => ({
+              label: [b.firma, b.rolle].filter(Boolean).join(" · "),
+              detail: bewerbungStatusVon(b.status).kurz,
+              ziel: ["beruf", null],
+            })),
+        },
+        {
+          typ: "Karriere",
+          treffer: [
+            ...karriereziele
+              .filter((z) => passt(z.titel, ...(z.schritte ?? []).map((s) => s.text)))
+              .map((z) => ({ label: z.titel, detail: "Ziel", ziel: ["beruf", null] })),
+            ...weiterbildung
+              .filter((w) => passt(w.titel, w.anbieter))
+              .map((w) => ({
+                label: w.titel,
+                detail: w.anbieter || "Weiterbildung",
+                ziel: ["beruf", null],
+              })),
+          ],
+        },
+        {
+          typ: "Medien",
+          treffer: medien
+            .filter((m) => passt(m.titel))
+            .map((m) => ({ label: m.titel, detail: "", ziel: ["leisure", null] })),
+        },
       ]
         .map((g) => ({ ...g, treffer: g.treffer.slice(0, MAX_JE_GRUPPE) }))
         .filter((g) => g.treffer.length > 0)
@@ -158,7 +207,7 @@ export default function Suche({ onNavigate, onClose }) {
             ref={feld}
             value={frage}
             onChange={(e) => setFrage(e.target.value)}
-            placeholder="Suchen … (Projekte, Todos, Notizen, Karten, Termine, Habits, Inbox, Wissen)"
+            placeholder="Suchen … (Projekte, Todos, Notizen, Karten, Termine, Habits, Wissen, Routinen, Beruf, Medien)"
             className="w-full border-none bg-transparent py-3.5 text-sm text-gray-900 outline-none placeholder:text-gray-300"
           />
           <button

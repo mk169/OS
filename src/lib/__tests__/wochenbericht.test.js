@@ -65,6 +65,34 @@ describe("baueBericht", () => {
     expect(bericht.termine).toBe(7)
   })
 
+  it("zählt die Tage, an denen der Betrieb komplett war", () => {
+    const routine = {
+      id: 1,
+      rhythmus: "werktags",
+      schritte: [{ id: 11, text: "Aufräumen" }],
+    }
+    const bericht = baueBericht({
+      woche: WOCHE,
+      routinen: [routine],
+      routineProtokoll: {
+        1: {
+          "2026-08-31": [11], // Mo – vollständig
+          "2026-09-01": [11], // Di – vollständig
+          "2026-09-05": [11], // Sa – Routine steht nicht an, zählt nicht
+        },
+      },
+    })
+    // Mo–Fr stehen an (5 Tage), zwei davon vollständig.
+    expect(bericht.routinen).toEqual({ vollstaendig: 2, tage: 5 })
+  })
+
+  it("lässt die Routinen-Bilanz leer, wenn keine Routine anstand", () => {
+    expect(baueBericht({ woche: WOCHE }).routinen).toEqual({
+      vollstaendig: 0,
+      tage: 0,
+    })
+  })
+
   it("mittelt die Vitalitäts-Check-ins der Woche", () => {
     const bericht = baueBericht({
       woche: WOCHE,
