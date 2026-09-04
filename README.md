@@ -10,6 +10,14 @@ Server; alle Daten liegen im Browser. Wer will, schaltet zusätzlich einen
 Login mit Cloud-Sync frei (Supabase) und hat denselben Stand auf allen
 Geräten.
 
+![Startseite](docs/screenshots/start.png)
+
+| Habits | Projekte | Unterwegs |
+| --- | --- | --- |
+| ![Habits](docs/screenshots/habits.png) | ![Projekte](docs/screenshots/projekte.png) | ![Mobil](docs/screenshots/mobil.png) |
+
+*(Screenshots mit Beispieldaten)*
+
 ---
 
 ## Schnellstart
@@ -20,6 +28,7 @@ npm run dev      # Entwicklung, http://localhost:5173
 npm run build    # Produktions-Build nach dist/
 npm run preview  # gebauten Stand lokal ansehen
 npm run lint     # Oxlint
+npm test         # Vitest (Logik in src/lib)
 ```
 
 Ohne weitere Einrichtung startet die App im lokalen Modus: kein Login, keine
@@ -87,6 +96,17 @@ umgekehrt. Ohne Supabase-Werte läuft die App weiter im lokalen Modus.
 Der Build nutzt `base: "./"`, läuft also auch unter einem Unterpfad
 (`username.github.io/OS/`). Als PWA lässt sich die Seite auf dem iPhone über
 *Teilen → Zum Home-Bildschirm* installieren.
+
+## Tests
+
+`npm test` prüft die Logik in `src/lib` mit Vitest – Datumsrechnung, Habit-
+Streaks und Disziplin, Spaced Repetition, Wochenbericht, Finanz-Auswertungen,
+Projekt-Fortschritt, Eisenhower-Einteilung, Termin-Wiederholungen, Tags und
+Wikilinks sowie die Einstellungs-Vorgaben. Die Oberfläche selbst ist nicht
+abgedeckt; sie hängt an denselben Funktionen.
+
+Der Workflow auf GitHub führt vor jedem Deployment `npm run lint`, `npm test`
+und `npm run build` aus.
 
 ## Aufbau
 

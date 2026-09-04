@@ -5,15 +5,22 @@ import { inTagen } from "./datum"
 // Cloud – nur ein begrenztes Set gängiger deutscher Zeitphrasen und ein
 // einfacher Teilstring-Abgleich gegen bestehende Projektnamen.
 
+// Wortgrenzen mit Unicode-Klassen statt "\b": Das eingebaute "\b" kennt nur
+// ASCII-Wortzeichen, vor einem "ü" sieht es deshalb keine Grenze – "\bübermorgen"
+// hätte nie getroffen. Reihenfolge zählt: "übermorgen" steht vor "morgen".
+const VOR = "(?<![\\p{L}\\p{N}])"
+const NACH = "(?![\\p{L}\\p{N}])"
+const wort = (muster) => new RegExp(`${VOR}(?:${muster})${NACH}`, "iu")
+
 const ZEITPHRASEN = [
-  { muster: /\bheute\b/i, tage: 0 },
-  { muster: /\bübermorgen\b/i, tage: 2 },
-  { muster: /\bmorgen\b/i, tage: 1 },
-  { muster: /\bnächste woche\b|\bin einer woche\b/i, tage: 7 },
-  { muster: /\bin (\d+) wochen\b/i, tage: (m) => Number(m[1]) * 7 },
-  { muster: /\bin (\d+) tagen\b/i, tage: (m) => Number(m[1]) },
-  { muster: /\bnächsten monat\b|\bin einem monat\b/i, tage: 30 },
-  { muster: /\bin (\d+) monaten\b/i, tage: (m) => Number(m[1]) * 30 },
+  { muster: wort("heute"), tage: 0 },
+  { muster: wort("übermorgen"), tage: 2 },
+  { muster: wort("morgen"), tage: 1 },
+  { muster: wort("nächste woche|in einer woche"), tage: 7 },
+  { muster: wort("in (\\d+) wochen"), tage: (m) => Number(m[1]) * 7 },
+  { muster: wort("in (\\d+) tagen"), tage: (m) => Number(m[1]) },
+  { muster: wort("nächsten monat|in einem monat"), tage: 30 },
+  { muster: wort("in (\\d+) monaten"), tage: (m) => Number(m[1]) * 30 },
 ]
 
 // Erkennt eine der obigen Zeitphrasen im Text und gibt das entsprechende

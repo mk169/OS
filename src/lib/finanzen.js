@@ -141,7 +141,10 @@ export function aktuellesJahr() {
 export function monatLabel(schluessel) {
   const [jahr, monat] = (schluessel ?? "").split("-")
   const idx = Number(monat) - 1
-  if (!jahr || idx < 0 || idx > 11) return schluessel ?? ""
+  // Number.isInteger fängt auch NaN ab – sonst rutscht ein unvollständiger
+  // Schlüssel wie "2026" durch den Bereichsvergleich und ergibt "undefined 2026".
+  if (!jahr || !Number.isInteger(idx) || idx < 0 || idx > 11)
+    return schluessel ?? ""
   return `${MONATSNAMEN[idx]} ${jahr}`
 }
 

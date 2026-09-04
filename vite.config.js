@@ -18,4 +18,9 @@ export default defineConfig({
     __BUILD_DATUM__: JSON.stringify(new Date().toISOString().slice(0, 10)),
   },
   plugins: [react(), tailwindcss()],
+  // Tests laufen gegen die reine Logik in src/lib (Node-Umgebung, kein DOM).
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.js"],
+  },
 })
