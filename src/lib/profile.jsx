@@ -6,6 +6,9 @@
 
 import { STANDARD_SEITEN } from "./einstellungen"
 
+// `seiten` listet nur die Module der Hauptnavigation. Start und Wochen-
+// rückblick sind immer erreichbar und stehen deshalb in keiner Liste.
+
 export const PROFILE = [
   {
     id: "produktivitaet",
@@ -26,7 +29,7 @@ export const PROFILE = [
     icon: (
       <path d="M12 3c.5 3 3.5 4 3.5 8a3.5 3.5 0 0 1-7 0c0-1 .4-1.8.8-2.4.3 1 .9 1.6 1.7 1.6-.8-2 .5-5 1-7.2Z" />
     ),
-    seiten: ["dashboard", "habits", "vitalitaet", "todos", "kalender", "review"],
+    seiten: ["dashboard", "habits", "vitalitaet", "todos", "kalender"],
   },
   {
     id: "second-brain",
@@ -38,7 +41,7 @@ export const PROFILE = [
         <path d="M9 9c.5-1.5 2-2 3-1.5M12 15v2M8.5 14.5c.5 1 2 2 3.5 2s3-.9 3.5-2" />
       </>
     ),
-    seiten: ["dashboard", "sammeln", "projekte", "todos", "review"],
+    seiten: ["dashboard", "sammeln", "projekte", "todos"],
   },
   {
     id: "komplett",
@@ -64,7 +67,7 @@ export const PROFILE = [
         <path d="M8 11V8a4 4 0 0 1 8 0v3" />
       </>
     ),
-    seiten: ["lockedin", "habits", "todos", "deepwork", "projekte", "review"],
+    seiten: ["lockedin", "habits", "todos", "deepwork", "projekte"],
     stil: "lockedin",
     startseite: "lockedin",
   },
