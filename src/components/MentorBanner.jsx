@@ -44,44 +44,71 @@ export default function MentorBanner({ onNavigate, variant = "hell" }) {
   // Nichts anzeigen, wenn es weder Momentum noch einen Befund gibt.
   if (!zeigeMomentum && !topBefund) return null
 
-  const dunkel = variant === "dunkel"
+  const dunkel = variant === "dunkel" || variant === "mono"
+  // Der Locked-In-Stil verträgt keine Akzentfarbe: dort trägt der Banner
+  // dieselbe Schwarz-Weiß-Sprache wie der Rest des Screens.
+  const mono = variant === "mono"
 
   return (
     <button
       onClick={() => onNavigate("review")}
-      className={`mb-6 flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
-        dunkel
-          ? "border-accent-500/40 bg-accent-500/15 hover:bg-accent-500/25"
-          : "border-accent-200 bg-accent-50 hover:bg-accent-100"
+      className={`mb-6 flex w-full items-center gap-3 border px-4 py-3 text-left transition-colors ${
+        mono
+          ? "border-white/15 bg-white/5 hover:bg-white/10"
+          : dunkel
+            ? "rounded-2xl border-accent-500/40 bg-accent-500/15 hover:bg-accent-500/25"
+            : "rounded-2xl border-accent-200 bg-accent-50 hover:bg-accent-100"
       }`}
     >
       {zeigeMomentum ? (
         <span
-          className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl text-white ${farbeFuer(ergebnis.gesamt)}`}
+          className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl text-white ${
+            mono ? "border border-white/20" : farbeFuer(ergebnis.gesamt)
+          }`}
         >
           <span className="text-sm font-bold leading-none">{ergebnis.gesamt}</span>
           <span className="text-[8px] uppercase tracking-wide opacity-80">%</span>
         </span>
       ) : (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-500 text-lg">
+        <span
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg ${
+            mono ? "border border-white/20" : "bg-accent-500"
+          }`}
+        >
           {topBefund?.emoji ?? "✨"}
         </span>
       )}
 
       <span className="min-w-0 flex-1">
-        <span className={`block truncate text-sm font-semibold ${dunkel ? "text-accent-200" : "text-accent-700"}`}>
+        <span
+          className={`block truncate text-sm font-semibold ${
+            mono ? "text-white" : dunkel ? "text-accent-200" : "text-accent-700"
+          }`}
+        >
           {zeigeMomentum
             ? ergebnis.nordstern?.trim()
               ? ergebnis.nordstern
               : `Momentum ${momentumLabel(ergebnis.gesamt)}`
             : topBefund.titel}
         </span>
-        <span className={`block truncate text-xs ${dunkel ? "text-accent-200/70" : "text-accent-600/70"}`}>
+        <span
+          className={`block truncate text-xs ${
+            mono ? "text-white/50" : dunkel ? "text-accent-200/70" : "text-accent-600/70"
+          }`}
+        >
           {zeigeMomentum && topBefund ? topBefund.titel : topBefund?.text ?? ""}
         </span>
       </span>
 
-      <span className={`shrink-0 text-sm font-medium ${dunkel ? "text-accent-300" : "text-accent-600"}`}>
+      <span
+        className={`shrink-0 text-sm font-medium ${
+          mono
+            ? "text-[11px] uppercase tracking-[0.2em] text-white/50"
+            : dunkel
+              ? "text-accent-300"
+              : "text-accent-600"
+        }`}
+      >
         Rückblick →
       </span>
     </button>

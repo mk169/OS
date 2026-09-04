@@ -3,6 +3,7 @@ import { heute, tageBis, montagVon, datumLang } from "../lib/datum"
 import { istFaellig } from "../lib/spacedRepetition"
 import { alleLernplaene, lernplanSumme } from "../lib/lernplan"
 import { dashboardConfig } from "../lib/dashboard"
+import { faelltAuf } from "../lib/wiederholung"
 import {
   erledigteSchritte,
   routineFortschritt,
@@ -21,6 +22,7 @@ import {
   nutzeHabitToggle,
   wochenStreakVon,
   wochenZielErreicht,
+  disziplinAmTag,
 } from "../lib/habits"
 
 function begruessung() {
@@ -292,6 +294,7 @@ export default function Dashboard({ onNavigate }) {
   if (stil === "arcade") return <DashboardArcade {...gemeinsam} />
   if (stil === "cleangirl") return <DashboardCleanGirl {...gemeinsam} />
   if (stil === "notion") return <DashboardNotion {...gemeinsam} />
+  if (stil === "lockedin") return <DashboardLockedIn {...gemeinsam} />
   return <DashboardTodo {...gemeinsam} />
 }
 
@@ -1093,6 +1096,252 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard })
           <KalenderPanel nurHeute />
         </section>
       )}
+    </div>
+  )
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Stil „Locked In" – monochrom und knapp. Keine Farbe, keine Belohnung,
+ * keine Begrüßung: nur der Auftrag für heute und die Zahlen, die zeigen, ob
+ * er läuft. Die Kommandozentrale (Bereich „Locked In") ist einen Klick weit.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+function LockedKennzahl({ label, wert, suffix }) {
+  return (
+    <div className="px-2 py-5 text-center">
+      <p className="text-[10px] uppercase tracking-[0.25em] text-white/35">{label}</p>
+      <p className="mt-2 text-4xl font-light tabular-nums text-white">
+        {wert}
+        {suffix && <span className="text-lg text-white/40">{suffix}</span>}
+      </p>
+    </div>
+  )
+}
+
+function LockedBalken({ anteil }) {
+  return (
+    <div className="mt-2 h-1.5 w-full overflow-hidden bg-white/10">
+      <div
+        className="h-full bg-white transition-all duration-500"
+        style={{ width: `${Math.max(0, Math.min(100, anteil))}%` }}
+      />
+    </div>
+  )
+}
+
+function DashboardLockedIn({ todos, offene, toggle, onNavigate, dashboard }) {
+  const { habits } = useHabitDaten()
+  const [routinen] = useStored("dailyops_routinen", [])
+  const [protokoll, setProtokoll] = useStored("dailyops_protokoll", {})
+  const [deepwork] = useStored("deepwork", [])
+  const [termine] = useStored("termine", [])
+  const heuteKey = heute()
+
+  const heuteFaellig = offene.filter((t) => t.datum && t.datum <= heuteKey)
+  const erledigt = todos.filter((t) => t.erledigt).length
+  const fokusHeute = deepwork
+    .filter((s) => s.datum === heuteKey)
+    .reduce((summe, s) => summe + (Number(s.minuten) || 0), 0)
+
+  const disziplin = disziplinAmTag(habits, new Date())
+  const anstehendeRoutinen = routinenAmTag(routinen, heuteKey)
+  const termineHeute = termine
+    .filter((t) => faelltAuf(t, heuteKey))
+    .sort((a, b) => (a.zeit || "99:99").localeCompare(b.zeit || "99:99"))
+
+  // Der Auftrag: überfällig und heute zuerst, dann nach Eisenhower-Rang.
+  const rang = (t) => EINTEILUNGEN.findIndex((e) => e.passt(t))
+  const auftrag = [...offene]
+    .sort(
+      (a, b) =>
+        (a.datum || "9999").localeCompare(b.datum || "9999") || rang(a) - rang(b)
+    )
+    .slice(0, 6)
+
+  return (
+    <div className="min-h-screen bg-black px-5 py-6 text-white sm:px-6">
+      <div className="mx-auto max-w-md">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold uppercase tracking-[0.4em]">Heute</span>
+          <span className="text-[11px] uppercase tracking-[0.3em] text-white/40">
+            {datumLang(heuteKey)}
+          </span>
+        </div>
+
+        {dashboard.mentor && (
+          <div className="mt-5">
+            <MentorBanner onNavigate={onNavigate} variant="mono" />
+          </div>
+        )}
+        {dashboard.lernen && <LernBanner onNavigate={onNavigate} variant="dunkel" />}
+
+        {dashboard.kennzahlen && (
+          <div className="mt-6 grid grid-cols-3 divide-x divide-white/10 border-y border-white/10">
+            <LockedKennzahl label="Offen" wert={offene.length} />
+            <LockedKennzahl label="Heute" wert={heuteFaellig.length} />
+            <LockedKennzahl label="Fokus" wert={fokusHeute} suffix="m" />
+          </div>
+        )}
+
+        {dashboard.habits && habits.length > 0 && (
+          <button
+            onClick={() => onNavigate("habits")}
+            className="mt-6 block w-full text-left"
+          >
+            <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.25em] text-white/40">
+              <span>Disziplin</span>
+              <span className="tabular-nums">
+                {disziplin.erledigt}/{disziplin.gesamt}
+              </span>
+            </div>
+            <LockedBalken anteil={disziplin.prozent} />
+          </button>
+        )}
+
+        {dashboard.routinen && anstehendeRoutinen.length > 0 && (
+          <section className="mt-8">
+            <button
+              onClick={() => onNavigate("dailyops")}
+              className="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/40 transition-colors hover:text-white"
+            >
+              Betrieb
+            </button>
+            {anstehendeRoutinen.map((r) => {
+              const erledigteIds = erledigteSchritte(protokoll, r.id, heuteKey)
+              return (
+                <div key={r.id} className="mt-3">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/30">
+                    {r.name}
+                  </p>
+                  <ul className="mt-1">
+                    {(r.schritte ?? []).map((schritt) => {
+                      const ab = erledigteIds.includes(schritt.id)
+                      return (
+                        <li key={schritt.id}>
+                          <button
+                            onClick={() =>
+                              setProtokoll(
+                                schrittUmschalten(protokoll, r.id, schritt.id, heuteKey)
+                              )
+                            }
+                            className="flex w-full items-center gap-3 border-b border-white/10 py-2.5 text-left last:border-0"
+                          >
+                            <span
+                              className={`flex h-4 w-4 shrink-0 items-center justify-center border ${
+                                ab ? "border-white bg-white" : "border-white/30"
+                              }`}
+                            >
+                              {ab && (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="4" strokeLinecap="round" className="h-2 w-2">
+                                  <path d="m5 12 5 5L20 7" />
+                                </svg>
+                              )}
+                            </span>
+                            <span className={`min-w-0 flex-1 truncate text-sm ${ab ? "text-white/30 line-through" : "text-white/90"}`}>
+                              {schritt.text}
+                            </span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )
+            })}
+          </section>
+        )}
+
+        <section className="mt-8">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => onNavigate("todos")}
+              className="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/40 transition-colors hover:text-white"
+            >
+              Auftrag
+            </button>
+            <TodoErstellen
+              knopfKlasse="rounded-md border border-white/20 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/70 transition-colors hover:border-white/50 hover:text-white"
+              knopfInhalt="+ Neu"
+            />
+          </div>
+
+          {auftrag.length === 0 ? (
+            <p className="mt-6 text-center text-sm uppercase tracking-[0.25em] text-white/30">
+              Nichts offen. Setz dir das Nächste.
+            </p>
+          ) : (
+            <ul className="mt-3">
+              {auftrag.map((t) => (
+                <li key={t.id} className="group flex items-center gap-3 border-b border-white/10 py-3 last:border-0">
+                  <button
+                    onClick={() => toggle(t.id)}
+                    title="Als erledigt markieren"
+                    className="flex h-4 w-4 shrink-0 items-center justify-center border border-white/30 text-transparent transition-colors hover:border-white group-hover:text-white/60"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="h-2 w-2">
+                      <path d="m5 12 5 5L20 7" />
+                    </svg>
+                  </button>
+                  <span className="min-w-0 flex-1 truncate text-sm text-white/90">{t.text}</span>
+                  {t.datum && (
+                    <span className="shrink-0 text-[10px] uppercase tracking-[0.2em] text-white/40">
+                      {tageBis(t.datum)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {erledigt > 0 && (
+            <p className="mt-3 text-[10px] uppercase tracking-[0.25em] text-white/25">
+              {erledigt} erledigt
+            </p>
+          )}
+        </section>
+
+        {dashboard.kalender && (
+          <section className="mt-10">
+            <button
+              onClick={() => onNavigate("kalender")}
+              className="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/40 transition-colors hover:text-white"
+            >
+              Termine
+            </button>
+            {/* Bewusst nicht das gemeinsame Kalender-Panel: Es ist durch und
+                durch hell und risse ein weißes Loch in den schwarzen Screen.
+                Hier reicht die nackte Liste dessen, was heute ansteht. */}
+            {termineHeute.length === 0 ? (
+              <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-white/25">
+                Keine Termine
+              </p>
+            ) : (
+              <ul className="mt-3">
+                {termineHeute.map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex items-center gap-3 border-b border-white/10 py-2.5 last:border-0"
+                  >
+                    <span className="w-12 shrink-0 text-[11px] tabular-nums text-white/40">
+                      {t.zeit || "—"}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-white/90">
+                      {t.titel || t.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
+        <button
+          onClick={() => onNavigate("lockedin")}
+          className="mt-10 w-full border border-white/20 py-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-white/70 transition-colors hover:border-white/50 hover:text-white"
+        >
+          Kommandozentrale →
+        </button>
+      </div>
     </div>
   )
 }

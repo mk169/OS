@@ -186,3 +186,82 @@ test("läuft nach dem ersten Besuch auch ohne Netz", async ({ page, context }) =
 
   await context.setOffline(false)
 })
+
+// Jeder Stil muss auf jeder Seite, die ihn kennt, auch wirklich greifen.
+// Genau hier klaffte eine Lücke: „Locked In" fiel auf Start und Todos auf
+// den Standard-Look zurück, obwohl der Stil monochrom sein soll.
+const STILE = [
+  { id: "todo", start: /Guten/, todos: /Todos/, habits: /Habits/ },
+  { id: "gamified", start: /Level|XP/i, todos: /Quest/i, habits: /Training|Attribut/i },
+  { id: "arcade", start: /\/\/|guten/i, todos: /QUESTS|READY/i, habits: /HABIT|READY/i },
+  { id: "cleangirl", start: /guten/i, todos: /to-do/i, habits: /rituals/i },
+  { id: "notion", start: /Guten|Heute/i, todos: /Todos|Aufgaben/i, habits: /Habits/i },
+  { id: "lockedin", start: /HEUTE|AUFTRAG/i, todos: /AUFTRAG/i, habits: /LOCKED/i },
+]
+
+for (const stil of STILE) {
+  test(`Stil „${stil.id}" greift auf Start, Todos und Habits`, async ({ page }) => {
+    const fehler = fehlerWaechter(page)
+    await page.addInitScript((stil) => {
+      localStorage.setItem(
+        "einstellungen",
+        JSON.stringify({
+          onboardingAbgeschlossen: true,
+          profil: "komplett",
+          sichtbareSeiten: ["dashboard", "todos", "habits"],
+          appName: "OS",
+          startseite: "dashboard",
+          akzent: "indigo",
+          stil,
+        })
+      )
+      localStorage.setItem(
+        "todos",
+        JSON.stringify([
+          { id: 1, text: "Kapitel 3 überarbeiten", wichtig: true, dringend: true, erledigt: false },
+          { id: 2, text: "Erledigtes", wichtig: false, dringend: false, erledigt: true },
+        ])
+      )
+      localStorage.setItem(
+        "habits",
+        JSON.stringify([{ id: Date.now(), name: "Laufen", wochenZiel: 3, erledigtAn: [] }])
+      )
+    }, stil.id)
+    await page.goto("/")
+
+    await expect(page.locator("main")).toContainText(stil.start)
+    await page.getByRole("button", { name: "Todos", exact: true }).first().click()
+    await expect(page.locator("main")).toContainText(stil.todos)
+    await page.getByRole("button", { name: "Habits", exact: true }).first().click()
+    await expect(page.locator("main")).toContainText(stil.habits)
+    expect(fehler).toEqual([])
+  })
+}
+
+test("der Locked-In-Stil bleibt monochrom", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "einstellungen",
+      JSON.stringify({
+        onboardingAbgeschlossen: true,
+        profil: "komplett",
+        sichtbareSeiten: ["dashboard", "todos", "habits"],
+        appName: "OS",
+        startseite: "dashboard",
+        akzent: "indigo",
+        stil: "lockedin",
+      })
+    )
+  })
+  await page.goto("/")
+
+  // Schwarzer Grund auf Start und Todos – nicht nur auf der Habits-Seite.
+  for (const seite of ["Start", "Todos"]) {
+    await page.getByRole("button", { name: seite, exact: true }).first().click()
+    const grund = await page
+      .locator("main > div")
+      .first()
+      .evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(grund).toBe("rgb(0, 0, 0)")
+  }
+})
