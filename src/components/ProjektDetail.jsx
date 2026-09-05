@@ -4,6 +4,9 @@ import { heute } from "../lib/datum"
 import { faelltAuf } from "../lib/wiederholung"
 import Kalender from "./Kalender"
 import {
+  MODULE,
+  MODUL_GRUPPEN,
+  moduleDerGruppe,
   STANDARD_MODULE,
   PRIORITAETEN,
   STATUS_OPTIONEN,
@@ -26,19 +29,6 @@ import LoeschKnopf from "./LoeschKnopf"
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
 // jederzeit über „Bereiche anpassen“) wählbar – so wird aus demselben
 // System ein Uni-Kurs, ein Lernprojekt oder ein privates Vorhaben.
-
-const MODULE = [
-  { key: "ziel", label: "Ziel" },
-  { key: "workflow", label: "Workflow" },
-  { key: "board", label: "Board" },
-  { key: "todos", label: "Todos" },
-  { key: "inhalte", label: "Inhalte" },
-  { key: "lernen", label: "Lernen" },
-  { key: "notizen", label: "Notizen" },
-  { key: "artikel", label: "Artikel" },
-  { key: "karten", label: "Karteikarten" },
-  { key: "kalender", label: "Kalender" },
-]
 
 // Kleines 16er-Linien-Icon.
 function PropIcon({ children }) {
@@ -728,18 +718,43 @@ export default function ProjektDetail({
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
                   Verfügbar – klicken zum Einblenden
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {[...MODULE, ...eigene]
-                    .filter((m) => !module.includes(m.key))
-                    .map((m) => (
-                      <button
-                        key={m.key}
-                        onClick={() => toggleModul(m.key)}
-                        className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-400 hover:text-gray-900"
-                      >
-                        {m.label}
-                      </button>
-                    ))}
+                {/* Nach Zweck gebündelt und mit einem Satz erklärt: „Inhalte",
+                    „Lernen" und „Karteikarten" sind als blanke Namen kaum
+                    auseinanderzuhalten. */}
+                <div className="mt-2 space-y-3">
+                  {MODUL_GRUPPEN.map((gruppe) => {
+                    const offen = moduleDerGruppe(gruppe.key, eigene).filter(
+                      (m) => !module.includes(m.key)
+                    )
+                    if (offen.length === 0) return null
+                    return (
+                      <div key={gruppe.key}>
+                        <p className="text-[10px] font-medium uppercase tracking-widest text-gray-300">
+                          {gruppe.label}
+                        </p>
+                        <div className="mt-1 grid gap-1 sm:grid-cols-2">
+                          {offen.map((m) => (
+                            <button
+                              key={m.key}
+                              onClick={() => toggleModul(m.key)}
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-gray-400"
+                            >
+                              <span className="block text-xs font-medium text-gray-900">
+                                {m.label}
+                              </span>
+                              {m.beschreibung && (
+                                <span className="mt-0.5 block text-[11px] leading-snug text-gray-400">
+                                  {m.beschreibung}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <form onSubmit={addEigenerBereich} className="flex gap-1.5">
                     <input
                       value={neuerBereichName}

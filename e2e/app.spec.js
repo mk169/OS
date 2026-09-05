@@ -435,3 +435,29 @@ test("Bewerbungsfrist taucht im Kalender auf", async ({ page }) => {
   // Abgeschlossene Vorgänge stehen nicht mehr im Weg.
   await expect(page.locator("main")).not.toContainText("Abgesagt GmbH")
 })
+
+test("Bereiche eines Projekts sind gebündelt und erklärt", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Projekte", exact: true }).first().click()
+
+  // Neues Projekt: startet mit dem Alltagsfall statt mit gar nichts.
+  await page.locator("main button").filter({ hasText: /^\+ ?Projekt/ }).first().click()
+  await page.locator("main input").first().fill("Bachelorarbeit")
+  await page.locator("main button").filter({ hasText: /Projekt anlegen/ }).first().click()
+  await page.locator("main").getByText("Bachelorarbeit").first().click()
+
+  for (const bereich of ["Ziel", "Todos", "Notizen"]) {
+    await expect(page.locator("main")).toContainText(bereich)
+  }
+
+  // Die verfügbaren Bereiche sind nach Zweck gruppiert und erklärt.
+  // Der Eigenschaften-Kopf ist standardmäßig zugeklappt („Details").
+  await page.getByRole("button", { name: "Details", exact: true }).first().click()
+  await page.getByRole("button", { name: /Bereiche anpassen/ }).click()
+  await expect(page.locator("main")).toContainText("Lernen")
+  await expect(page.locator("main")).toContainText("Karteikarten")
+  await expect(page.locator("main")).toContainText(/Spaced Repetition/)
+  await expect(page.locator("main")).toContainText(/Kapitel, Skripte/)
+  expect(fehler).toEqual([])
+})

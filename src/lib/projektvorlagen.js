@@ -6,12 +6,14 @@
 // `seiten` nennt nur Titel und den Vorlagentext (wie in Sammeln), die Blöcke
 // entstehen daraus beim Anlegen.
 
+import { NEUES_PROJEKT_MODULE } from "./projekte"
+
 export const PROJEKT_VORLAGEN = [
   {
     key: "leer",
-    label: "Leer",
-    beschreibung: "Nur Name – alles Weitere kommt später.",
-    module: [],
+    label: "Standard",
+    beschreibung: "Ziel, Todos und Notizen – der Alltagsfall.",
+    module: NEUES_PROJEKT_MODULE,
     workflow: [],
     seiten: [],
   },
