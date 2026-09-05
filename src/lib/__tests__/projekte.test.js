@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { projektFortschrittWerte, sammleTermine } from "../projekte"
+import {
+  MODULE,
+  MODUL_GRUPPEN,
+  NEUES_PROJEKT_MODULE,
+  moduleDerGruppe,
+  projektFortschrittWerte,
+  sammleTermine,
+} from "../projekte"
 
 describe("projektFortschrittWerte", () => {
   it("zählt den Workflow, wenn es einen gibt", () => {
@@ -63,5 +70,44 @@ describe("sammleTermine", () => {
     expect(todoEintraege).toEqual([
       { datum: "2026-09-08", label: "Kapitel 1", projektId: 1, typ: "Todo" },
     ])
+  })
+})
+
+describe("Bereiche eines Projekts", () => {
+  it("haben eindeutige Schlüssel", () => {
+    const keys = MODULE.map((m) => m.key)
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it("gehören alle zu einer bekannten Gruppe", () => {
+    const gruppen = MODUL_GRUPPEN.map((g) => g.key)
+    for (const m of MODULE) expect(gruppen).toContain(m.gruppe)
+  })
+
+  it("erklären sich in einem Satz", () => {
+    for (const m of MODULE) {
+      expect(m.beschreibung.length).toBeGreaterThan(20)
+      expect(m.beschreibung.endsWith(".")).toBe(true)
+    }
+  })
+
+  it("verteilen sich lückenlos auf die Gruppen", () => {
+    const summe = MODUL_GRUPPEN.reduce(
+      (n, g) => n + moduleDerGruppe(g.key).length,
+      0
+    )
+    expect(summe).toBe(MODULE.length)
+  })
+
+  it('hängen eigene Bereiche bei Arbeiten an', () => {
+    const eigen = { key: "eigen-1", label: "Recherche" }
+    expect(moduleDerGruppe("arbeiten", [eigen]).at(-1)).toBe(eigen)
+    expect(moduleDerGruppe("lernen", [eigen])).not.toContain(eigen)
+  })
+
+  it("startet ein neues Projekt mit bekannten Bereichen", () => {
+    for (const key of NEUES_PROJEKT_MODULE) {
+      expect(MODULE.some((m) => m.key === key)).toBe(true)
+    }
   })
 })
