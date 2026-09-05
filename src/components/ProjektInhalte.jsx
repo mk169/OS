@@ -304,7 +304,7 @@ export default function ProjektInhalte({ projekt, onModulWechsel }) {
               <LoeschKnopf
                 onLoeschen={() => removeEintrag(eintrag.id)}
                 titel="Eintrag löschen"
-                klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
               />
             </li>
           ))}

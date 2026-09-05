@@ -81,14 +81,22 @@ export default function Suche({ onNavigate, onClose }) {
               .map((n) => ({
                 label: n.titel,
                 detail: projektName(n.projektId ?? n.kursId),
-                ziel: ["projekte", n.projektId ?? n.kursId],
+                // Direkt die Notiz öffnen, nicht nur das Projekt (App.jsx
+                // reicht `notizId` an die Projektseite durch).
+                ziel: [
+                  "projekte",
+                  { projektId: n.projektId ?? n.kursId, notizId: n.id },
+                ],
               })),
             ...ablage
               .filter((a) => passt(a.titel))
               .map((a) => ({
                 label: a.titel,
                 detail: projektName(a.projektId ?? a.kursId),
-                ziel: ["projekte", a.projektId ?? a.kursId],
+                ziel: [
+                  "projekte",
+                  { projektId: a.projektId ?? a.kursId, modul: "inhalte" },
+                ],
               })),
           ],
         },
@@ -99,7 +107,10 @@ export default function Suche({ onNavigate, onClose }) {
             .map((k) => ({
               label: k.vorne || k.text || "Bildkarte",
               detail: projektName(k.projektId ?? k.kursId),
-              ziel: ["projekte", k.projektId ?? k.kursId],
+              ziel: [
+                "projekte",
+                { projektId: k.projektId ?? k.kursId, modul: "karten" },
+              ],
             })),
         },
         {
@@ -128,7 +139,11 @@ export default function Suche({ onNavigate, onClose }) {
           typ: "Wissen",
           treffer: wissen
             .filter((w) => passt(w.titel, w.inhalt))
-            .map((w) => ({ label: w.titel, detail: "", ziel: ["sammeln", null] })),
+            .map((w) => ({
+              label: w.titel,
+              detail: "",
+              ziel: ["sammeln", { wissenId: w.id }],
+            })),
         },
         {
           typ: "Routinen",

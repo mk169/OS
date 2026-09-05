@@ -13,7 +13,7 @@ import { durchschnitt, istAusgefuellt } from "./vitalitaet"
 
 // Die Bereiche der Gleichung = dieselben Sensoren wie im Mentor.
 export const GLEICHUNG_BEREICHE = [
-  { key: "vitalitaet", label: "Vitalität", emoji: "❤️", seite: "vitalitaet" },
+  { key: "vitalitaet", label: "Vitalität", emoji: "❤️", seite: "dailyops" },
   { key: "habits", label: "Habits", emoji: "🔁", seite: "habits" },
   { key: "fokus", label: "Fokus", emoji: "🎯", seite: "deepwork" },
   { key: "aufgaben", label: "Aufgaben", emoji: "✅", seite: "todos" },

@@ -26,7 +26,7 @@ export const STANDARD_GRUPPEN = [
     // Bereiche, die man eher wöchentlich als täglich öffnet.
     id: "leben",
     label: "Leben",
-    keys: ["vitalitaet", "finanzen", "leisure"],
+    keys: ["finanzen", "leisure"],
     sekundaer: true,
   },
 ]

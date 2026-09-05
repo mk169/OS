@@ -12,17 +12,26 @@ export default function TodoErstellen({
   beschriftung = "Todo",
   knopfKlasse = null,
   knopfInhalt = null,
+  todo = null,
+  onFertig = null,
 }) {
   const [todos, setTodos] = useStored("todos", [])
   const [projekte] = useStored("projekte", [])
 
-  const [offen, setOffen] = useState(false)
-  const [name, setName] = useState("")
-  const [zuordnung, setZuordnung] = useState("")
-  const [dauer, setDauer] = useState("")
-  const [deadline, setDeadline] = useState("")
-  const [wichtig, setWichtig] = useState(false)
-  const [dringend, setDringend] = useState(false)
+  // Mit `todo` arbeitet dasselbe Formular im Bearbeiten-Modus: Felder sind
+  // vorbelegt, Speichern ändert den Eintrag statt einen neuen anzulegen, und
+  // es gibt keinen Plus-Knopf – die Zeile öffnet das Formular selbst.
+  const bearbeiten = Boolean(todo)
+
+  const [offen, setOffen] = useState(bearbeiten)
+  const [name, setName] = useState(todo?.text ?? "")
+  const [zuordnung, setZuordnung] = useState(
+    todo?.projektId ?? todo?.kursId ? String(todo.projektId ?? todo.kursId) : ""
+  )
+  const [dauer, setDauer] = useState(todo?.dauer ? String(todo.dauer) : "")
+  const [deadline, setDeadline] = useState(todo?.datum ?? "")
+  const [wichtig, setWichtig] = useState(Boolean(todo?.wichtig))
+  const [dringend, setDringend] = useState(Boolean(todo?.dringend))
 
   // Sekretär-Prinzip: Aus dem eingetippten Namen werden Deadline („morgen",
   // „in 2 Wochen") und ein bestehendes Projekt erkannt – aber nur als
@@ -47,19 +56,29 @@ export default function TodoErstellen({
     let projektId = fest?.projektId ?? fest?.kursId ?? null
     if (!fest && zuordnung) projektId = Number(zuordnung)
 
-    setTodos([
-      ...todos,
-      {
-        id: Date.now(),
-        text: name.trim(),
-        projektId,
-        dauer: dauer ? Number(dauer) : null,
-        datum: deadline,
-        wichtig,
-        dringend,
-        erledigt: false,
-      },
-    ])
+    const felder = {
+      text: name.trim(),
+      projektId,
+      dauer: dauer ? Number(dauer) : null,
+      datum: deadline,
+      wichtig,
+      dringend,
+    }
+
+    if (bearbeiten) {
+      // `kursId` ist der alte Schlüssel aus der Kurs-Zeit. Wird die Zuordnung
+      // geändert, muss er weichen – sonst zöge das Todo weiter am alten
+      // Projekt (gehoertZu prüft beide Felder).
+      setTodos(
+        todos.map((t) =>
+          t.id === todo.id ? { ...t, ...felder, kursId: undefined } : t
+        )
+      )
+      schliessen()
+      return
+    }
+
+    setTodos([...todos, { id: Date.now(), ...felder, erledigt: false }])
     setName("")
     setZuordnung("")
     setDauer("")
@@ -69,7 +88,12 @@ export default function TodoErstellen({
     setOffen(false)
   }
 
-  if (!offen) {
+  function schliessen() {
+    setOffen(false)
+    onFertig?.()
+  }
+
+  if (!offen && !bearbeiten) {
     return (
       <button
         onClick={() => setOffen(true)}
@@ -192,7 +216,7 @@ export default function TodoErstellen({
         <div className="ml-auto flex gap-2">
           <button
             type="button"
-            onClick={() => setOffen(false)}
+            onClick={schliessen}
             className="px-2 py-1.5 text-sm text-gray-400 hover:text-gray-900"
           >
             Abbrechen
@@ -201,7 +225,7 @@ export default function TodoErstellen({
             type="submit"
             className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
           >
-            Erstellen
+            {bearbeiten ? "Speichern" : "Erstellen"}
           </button>
         </div>
       </div>

@@ -157,7 +157,7 @@ function NotizenRaster({
             <LoeschKnopf
               onLoeschen={() => onRemove(notiz.id)}
               titel="Notiz löschen"
-              klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+              klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
             />
           </li>
         ))}
@@ -184,7 +184,7 @@ function NotizenRaster({
             <LoeschKnopf
               onLoeschen={() => onRemove(notiz.id)}
               titel="Notiz löschen"
-              klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+              klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
             />
           </span>
         </div>

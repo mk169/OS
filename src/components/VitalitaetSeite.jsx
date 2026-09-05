@@ -115,7 +115,10 @@ function EnergieKurve({ vitalitaet }) {
   )
 }
 
-export default function VitalitaetSeite() {
+// `eingebettet`: Als Reiter im Bereich „Alltag" trägt die Seite weder einen
+// eigenen Kopf noch den äußeren Seitenrahmen – beides kommt dort von der
+// umgebenden Seite. Eigenständig aufgerufen bleibt sie, wie sie war.
+export default function VitalitaetSeite({ eingebettet = false }) {
   const [vitalitaet, setVitalitaet] = useStored("vitalitaet", [])
   const heuteKey = heute()
   const heuteEintrag = eintragVon(vitalitaet, heuteKey)
@@ -156,12 +159,14 @@ export default function VitalitaetSeite() {
   )
 
   return (
-    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
-      <Seitenkopf
-        eyebrow="Körper"
-        titel="Vitalität"
-        unterzeile="Ein ehrlicher Check-in am Tag – Rohstoff für den Mentor."
-      />
+    <div className={eingebettet ? "" : "mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10"}>
+      {!eingebettet && (
+        <Seitenkopf
+          eyebrow="Körper"
+          titel="Vitalität"
+          unterzeile="Ein ehrlicher Check-in am Tag – Rohstoff für den Mentor."
+        />
+      )}
 
       {/* Heutiger Check-in */}
       <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm shadow-gray-100 sm:p-6">

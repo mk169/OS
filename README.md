@@ -51,8 +51,8 @@ Cloud, Daten nur auf diesem Gerät.
 | **Periode** | Fokus-Perioden (14/30/90 Tage, Halbjahr, Jahr) mit Wochenzielen |
 | **Finanzen** | Konten, Budgets, Ausgaben, Sparziele, CSV-Import |
 | **Beruf & Karriere** | Bewerbungs-Pipeline mit Fristen, Karriereziele, Weiterbildung |
-| **Daily Operations** | Routinen als Checklisten mit Rhythmus, Tagesbilanz und Serie |
-| **Leisure & Vitalität** | Medienbibliothek (Filme, Bücher …) und täglicher Körper-Check-in |
+| **Alltag** | Routinen als Checklisten mit Rhythmus, Tagesbilanz und Serie – dazu der tägliche Körper-Check-in |
+| **Leisure & Kultur** | Medienbibliothek: Filme, Serien, Bücher & mehr |
 | **Wochenrückblick** | Wochenabschluss mit Statistik und Mentor-Hinweisen |
 
 Welche Bereiche erscheinen, legt der Einrichtungsassistent über ein Profil

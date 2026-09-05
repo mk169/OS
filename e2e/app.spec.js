@@ -63,12 +63,11 @@ test("jeder Bereich lässt sich öffnen", async ({ page }) => {
     ["Todos", /offene Aufgaben/],
     ["Sammeln", /Ordner/],
     ["Habits", /Habits/],
-    ["Daily Operations", /Daily Operations/],
+    ["Alltag", /Alltag/],
     ["Fokus", /Deep Work/],
     ["Projekte", /Projekte/],
     ["Periode", /Periode/],
     ["Beruf & Karriere", /Beruf & Karriere/],
-    ["Vitalität", /Vitalität/],
     ["Finanzen", /Finanzen/],
     ["Leisure & Kultur", /Leisure & Kultur/],
     ["Wochenrückblick", /Wochenrückblick/],
@@ -107,7 +106,7 @@ test("Todo anlegen, erkennen lassen und wiederfinden", async ({ page }) => {
 test("Routine anlegen, abhaken und auf der Startseite wiedersehen", async ({ page }) => {
   const fehler = fehlerWaechter(page)
   await appMitAllenBereichen(page)
-  await page.getByRole("button", { name: "Daily Operations", exact: true }).first().click()
+  await page.getByRole("button", { name: "Alltag", exact: true }).first().click()
 
   await page.getByRole("button", { name: "Routinen verwalten" }).click()
   await page.getByPlaceholder(/Routine, z.B./).fill("Morgenroutine")
@@ -124,7 +123,7 @@ test("Routine anlegen, abhaken und auf der Startseite wiedersehen", async ({ pag
 
   // Der Stand überlebt das Neuladen …
   await page.reload()
-  await page.getByRole("button", { name: "Daily Operations", exact: true }).first().click()
+  await page.getByRole("button", { name: "Alltag", exact: true }).first().click()
   await expect(page.locator("main")).toContainText("1/1")
 
   // … und die Startseite zeigt dieselbe Routine.
@@ -335,4 +334,104 @@ test("Modus beenden stellt das helle Layout wieder her", async ({ page }) => {
   await page.getByRole("button", { name: /Modus beenden|Beenden/ }).first().click()
   await page.waitForTimeout(400)
   expect(await grundfarbe(page)).toBe("rgb(250, 250, 250)")
+})
+
+test("Vitalitäts-Check-in ist ein Reiter im Alltag", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Alltag", exact: true }).first().click()
+
+  await expect(page.locator("main")).toContainText("Routinen")
+  await page.getByRole("button", { name: /Check-in/ }).click()
+  await expect(page.locator("main")).toContainText("Energie")
+  // Kein zweiter Seitenkopf im Reiter.
+  expect(await page.locator("main h1").count()).toBe(1)
+  expect(fehler).toEqual([])
+})
+
+test("Todo lässt sich nachträglich ändern", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Todos", exact: true }).first().click()
+
+  await page.getByTitle(/Todo erstellen/).first().click()
+  await page.getByPlaceholder(/benennen/).fill("Kapitel 3 überabreiten")
+  await page.getByRole("button", { name: "Erstellen" }).click()
+  await expect(page.locator("main")).toContainText("Kapitel 3 überabreiten")
+
+  // Tippfehler und fehlendes Datum nachziehen – ohne Löschen und Neuanlegen.
+  await page.getByRole("button", { name: "Kapitel 3 überabreiten" }).click()
+  const feld = page.getByPlaceholder(/benennen/)
+  await feld.fill("Kapitel 3 überarbeiten")
+  await page.locator('main input[type="date"]').fill("2026-12-24")
+  await page.getByRole("button", { name: "Speichern" }).click()
+
+  await expect(page.locator("main")).toContainText("Kapitel 3 überarbeiten")
+  await expect(page.locator("main")).not.toContainText("überabreiten")
+
+  // Und der Stand überlebt das Neuladen.
+  await page.reload()
+  await page.getByRole("button", { name: "Todos", exact: true }).first().click()
+  await expect(page.locator("main")).toContainText("Kapitel 3 überarbeiten")
+  expect(fehler).toEqual([])
+})
+
+test("Überfälliges steht oben und ist rot", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "einstellungen",
+      JSON.stringify({
+        onboardingAbgeschlossen: true,
+        profil: "komplett",
+        sichtbareSeiten: ["dashboard", "todos"],
+        appName: "OS",
+        startseite: "todos",
+        akzent: "indigo",
+        stil: "todo",
+      })
+    )
+    localStorage.setItem(
+      "todos",
+      JSON.stringify([
+        { id: 1, text: "Längst fällig", datum: "2020-01-01", erledigt: false },
+        { id: 2, text: "Irgendwann", erledigt: false },
+      ])
+    )
+  })
+  await page.goto("/")
+
+  await expect(page.locator("main")).toContainText("Überfällig (1)")
+  const chip = page.locator("main", { hasText: "Längst fällig" }).locator(".text-red-600").first()
+  await expect(chip).toBeVisible()
+})
+
+test("Bewerbungsfrist taucht im Kalender auf", async ({ page }) => {
+  const heute = new Date()
+  const iso = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`
+  await page.addInitScript((frist) => {
+    localStorage.setItem(
+      "einstellungen",
+      JSON.stringify({
+        onboardingAbgeschlossen: true,
+        profil: "komplett",
+        sichtbareSeiten: ["dashboard", "kalender", "beruf"],
+        appName: "OS",
+        startseite: "kalender",
+        akzent: "indigo",
+        stil: "todo",
+      })
+    )
+    localStorage.setItem(
+      "beruf_bewerbungen",
+      JSON.stringify([
+        { id: 1, firma: "Institut für Statistik", rolle: "Werkstudent", status: "beworben", frist },
+        { id: 2, firma: "Abgesagt GmbH", status: "abgesagt", frist },
+      ])
+    )
+  }, iso)
+  await page.goto("/")
+
+  await expect(page.locator("main")).toContainText("Frist: Institut für Statistik")
+  // Abgeschlossene Vorgänge stehen nicht mehr im Weg.
+  await expect(page.locator("main")).not.toContainText("Abgesagt GmbH")
 })

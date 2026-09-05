@@ -37,9 +37,24 @@ export function tageBisZahl(datum) {
   return Math.round((ziel - start) / (1000 * 60 * 60 * 24))
 }
 
-export function tageBis(datum) {
+// Dringlichkeit einer Frist als Ton: "vorbei" | "heute" | "bald" | "fern".
+// Damit färben Listen ihre Fristen einheitlich, ohne die Schwellen jedes Mal
+// neu zu erfinden. Ohne Datum: null.
+export function fristTon(datum) {
+  if (!datum) return null
   const tage = tageBisZahl(datum)
   if (tage < 0) return "vorbei"
+  if (tage === 0) return "heute"
+  if (tage <= 3) return "bald"
+  return "fern"
+}
+
+export function tageBis(datum) {
+  const tage = tageBisZahl(datum)
+  // Überfälliges sagt, wie lange es schon liegt: „vorbei" verriet das nicht
+  // und klang zudem wie „erledigt".
+  if (tage === -1) return "seit gestern"
+  if (tage < 0) return `seit ${-tage} Tagen`
   if (tage === 0) return "heute!"
   if (tage === 1) return "morgen"
   return `in ${tage} Tagen`

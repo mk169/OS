@@ -1,3 +1,4 @@
+import { useState } from "react"
 import useStored from "../lib/useStored"
 import { heute, tageBis, montagVon, datumLang } from "../lib/datum"
 import { istFaellig } from "../lib/spacedRepetition"
@@ -15,6 +16,7 @@ import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { KalenderPanel } from "./KalenderSeite"
 import TodoErstellen from "./TodoErstellen"
+import { FristChip } from "./TodosSeite"
 import { EINTEILUNGEN, einteilungVon } from "../lib/todos"
 import MentorBanner from "./MentorBanner"
 import {
@@ -304,6 +306,18 @@ export default function Dashboard({ onNavigate }) {
 
 function TodoRow({ todo, onToggle }) {
   const einteilung = einteilungVon(todo)
+  const [bearbeiten, setBearbeiten] = useState(false)
+
+  // Wie auf der Todo-Seite: Klick auf den Text öffnet das vorbelegte
+  // Formular, statt Löschen und Neuanlegen zu erzwingen.
+  if (bearbeiten) {
+    return (
+      <li>
+        <TodoErstellen todo={todo} onFertig={() => setBearbeiten(false)} />
+      </li>
+    )
+  }
+
   return (
     <li className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm shadow-gray-100 transition-colors hover:border-gray-300">
       <button
@@ -315,14 +329,14 @@ function TodoRow({ todo, onToggle }) {
           <path d="m5 12 5 5L20 7" />
         </svg>
       </button>
-      <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
+      <button
+        onClick={() => setBearbeiten(true)}
+        title="Bearbeiten"
+        className="min-w-0 flex-1 truncate text-left text-sm text-gray-800"
+      >
         {todo.text}
-      </span>
-      {todo.datum && (
-        <span className="shrink-0 text-xs font-medium text-gray-400">
-          {tageBis(todo.datum)}
-        </span>
-      )}
+      </button>
+      <FristChip datum={todo.datum} gedaempft={todo.erledigt} />
     </li>
   )
 }
@@ -403,7 +417,11 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
           />
         </div>
 
-        {gruppen.length === 0 && ohneGruppe.length === 0 ? null : (
+        {gruppen.length === 0 && ohneGruppe.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-gray-200 px-6 py-8 text-center text-sm text-gray-400">
+            Nichts offen. Setz dir das Nächste – über „+ Aufgabe".
+          </p>
+        ) : (
           <div className="space-y-6">
             {gruppen.map(({ projekt, todos: projektTodos }) => (
               <div key={projekt.id}>

@@ -450,7 +450,7 @@ function Wochenstatistik({ berichte, projekte, laufend, onNotiz, onLoeschen }) {
                         <LoeschKnopf
                           onLoeschen={() => onLoeschen(b.woche)}
                           titel="Bericht löschen"
-                          klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                          klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                         />
                       )}
                     </td>

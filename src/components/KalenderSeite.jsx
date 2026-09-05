@@ -4,6 +4,7 @@ import { heute, datumLang } from "../lib/datum"
 import { faelltAuf, WIEDERHOLUNGEN } from "../lib/wiederholung"
 import { alsICS, parseICS } from "../lib/ics"
 import { zyklusPhasen } from "../lib/zyklen"
+import { istOffen } from "../lib/beruf"
 import Kalender, { TagesAnsicht } from "./Kalender"
 import Seitenkopf from "./Seitenkopf"
 import { TagesblockAuswahl } from "./Tagesbloecke"
@@ -18,6 +19,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
   const [todos] = useStored("todos", [])
   const [projekte] = useStored("projekte", [])
   const [zyklen] = useStored("zyklen", [])
+  const [bewerbungen] = useStored("beruf_bewerbungen", [])
 
   const [formOffen, setFormOffen] = useState(false)
   const [formTitel, setFormTitel] = useState("")
@@ -59,6 +61,14 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
 
   function eintraegeAm(key) {
     return [
+      // Fristen offener Bewerbungen: Sie standen bisher nur im Bereich
+      // „Beruf & Karriere" – wer den nicht öffnet, sieht sie nie kommen.
+      ...bewerbungen
+        .filter((b) => b.frist === key && istOffen(b))
+        .map((b) => ({
+          typ: "frist",
+          label: `Frist: ${b.firma}${b.rolle ? ` · ${b.rolle}` : ""}`,
+        })),
       ...termine
         .filter((t) => faelltAuf(t, key))
         .map((t) => ({
