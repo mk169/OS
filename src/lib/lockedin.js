@@ -15,3 +15,26 @@ export function lockedInAktiv(config) {
   if (config.phaseEnde && config.phaseEnde < heute()) return false
   return true
 }
+
+// Den laufenden Modus als `data-modus="lockedin"` an <html> schreiben.
+// Startseite, Todos und Habits haben je nach Stil eine eigene Fassung; alle
+// übrigen Bereiche sind für ein helles Layout geschrieben. Solange der Modus
+// scharf ist, hängt index.css an diesem Attribut die gesamte Farbpalette auf
+// Schwarzweiß um – der Fokus-Modus färbt also die ganze App, nicht nur drei
+// Seiten. Endet der Modus, ist alles wieder wie vorher.
+export function wendeModusAn(aktiv) {
+  const wurzel = document.documentElement
+  if (aktiv) wurzel.dataset.modus = "lockedin"
+  else delete wurzel.dataset.modus
+}
+
+// Läuft der Modus? Direkt aus localStorage gelesen, für den synchronen
+// Aufruf beim App-Start (noch vor dem ersten Rendern).
+export function gespeicherterLockedInModus() {
+  try {
+    const roh = localStorage.getItem("lockedInConfig")
+    return lockedInAktiv(roh ? JSON.parse(roh) : null)
+  } catch {
+    return false
+  }
+}
