@@ -955,7 +955,7 @@ function AreaProjekte({ area, projekte, setProjekte, onOeffnen }) {
                   onLoeschen={() => loeseZuordnung(p.id)}
                   titel="Aus dieser Area lösen (Projekt bleibt bestehen)"
                   frageText="Aus Area lösen?"
-                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                 />
               </li>
             )
@@ -1241,7 +1241,7 @@ function WorkflowModul({ projekt, onUpdate }) {
               <LoeschKnopf
                 onLoeschen={() => remove(s.id)}
                 titel="Schritt löschen"
-                klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
               />
             </li>
           ))}
@@ -1349,7 +1349,7 @@ function WorkflowTimeline({ workflow, onToggle, onRemove }) {
                     <LoeschKnopf
                       onLoeschen={() => onRemove(s.id)}
                       titel="Schritt löschen"
-                      klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                      klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                     />
                   </div>
                 </div>
@@ -1386,7 +1386,7 @@ function WorkflowTimeline({ workflow, onToggle, onRemove }) {
                 <LoeschKnopf
                   onLoeschen={() => onRemove(s.id)}
                   titel="Schritt löschen"
-                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                 />
               </li>
             ))}

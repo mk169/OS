@@ -17,7 +17,6 @@ export const STANDARD_SEITEN = [
   "todos",
   "sammeln",
   "habits",
-  "vitalitaet",
   "deepwork",
   "projekte",
   "periode",

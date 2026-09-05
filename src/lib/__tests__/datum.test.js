@@ -1,5 +1,6 @@
 import { describe, expect, it, afterEach, beforeEach, vi } from "vitest"
 import {
+  fristTon,
   schluessel,
   heute,
   inTagen,
@@ -62,7 +63,22 @@ describe("tageBisZahl / tageBis", () => {
     expect(tageBis("2026-09-04")).toBe("heute!")
     expect(tageBis("2026-09-05")).toBe("morgen")
     expect(tageBis("2026-09-07")).toBe("in 3 Tagen")
-    expect(tageBis("2026-09-03")).toBe("vorbei")
+    expect(tageBis("2026-09-03")).toBe("seit gestern")
+    expect(tageBis("2026-08-30")).toBe("seit 5 Tagen")
+  })
+})
+
+describe("fristTon", () => {
+  it("unterscheidet vorbei, heute, bald und fern", () => {
+    expect(fristTon("2026-09-03")).toBe("vorbei")
+    expect(fristTon("2026-09-04")).toBe("heute")
+    expect(fristTon("2026-09-07")).toBe("bald")
+    expect(fristTon("2026-09-08")).toBe("fern")
+  })
+
+  it("liefert ohne Datum null", () => {
+    expect(fristTon(null)).toBeNull()
+    expect(fristTon("")).toBeNull()
   })
 })
 

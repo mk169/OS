@@ -120,7 +120,7 @@ export default function ProjektArtikel({ projekt }) {
                   <LoeschKnopf
                     onLoeschen={() => removeArtikel(a.id)}
                     titel="Artikel löschen"
-                    klasse="absolute right-3 top-3 text-gray-300 opacity-0 group-hover:opacity-100"
+                    klasse="absolute right-3 top-3 text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                   />
                 </li>
               )

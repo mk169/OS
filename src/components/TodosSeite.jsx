@@ -1,6 +1,6 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
-import { tageBis } from "../lib/datum"
+import { fristTon, tageBis } from "../lib/datum"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { rangVon, xpVonTodos, levelVon } from "../lib/spiel"
@@ -55,8 +55,44 @@ export default function TodosSeite() {
  * Stil „Todo-Liste" – klare Karten, farbige Punkte (Todoist)
  * ════════════════════════════════════════════════════════════════════════ */
 
+// Frist mit Dringlichkeits-Ton: Überfälliges soll nicht als graues „vorbei"
+// zwischen den übrigen Zeilen untergehen.
+const FRIST_TON = {
+  vorbei: "bg-red-50 text-red-600",
+  heute: "bg-amber-50 text-amber-700",
+  bald: "bg-gray-100 text-gray-600",
+  fern: "text-gray-400",
+}
+
+export function FristChip({ datum, gedaempft = false }) {
+  const ton = fristTon(datum)
+  if (!ton) return null
+  return (
+    <span
+      className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${
+        gedaempft ? "text-gray-400" : FRIST_TON[ton]
+      }`}
+    >
+      {tageBis(datum)}
+    </span>
+  )
+}
+
 function TodoRow({ todo, onToggle, onRemove, zuordnungsName }) {
   const einteilung = einteilungVon(todo)
+  const [bearbeiten, setBearbeiten] = useState(false)
+
+  // Klick auf den Text öffnet dasselbe Formular wie beim Anlegen, nur
+  // vorbelegt – ein Tippfehler oder ein verschobenes Datum soll kein Löschen
+  // und Neuanlegen erzwingen.
+  if (bearbeiten) {
+    return (
+      <li>
+        <TodoErstellen todo={todo} onFertig={() => setBearbeiten(false)} />
+      </li>
+    )
+  }
+
   return (
     <li className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm shadow-gray-100 transition-colors hover:border-gray-300">
       <button
@@ -68,9 +104,13 @@ function TodoRow({ todo, onToggle, onRemove, zuordnungsName }) {
           <path d="m5 12 5 5L20 7" />
         </svg>
       </button>
-      <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
+      <button
+        onClick={() => setBearbeiten(true)}
+        title="Bearbeiten"
+        className="min-w-0 flex-1 truncate text-left text-sm text-gray-800"
+      >
         {todo.text}
-      </span>
+      </button>
       {zuordnungsName && (
         <span className="rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
           {zuordnungsName}
@@ -79,31 +119,33 @@ function TodoRow({ todo, onToggle, onRemove, zuordnungsName }) {
       {todo.dauer && (
         <span className="text-xs text-gray-400">{todo.dauer} Min.</span>
       )}
-      {todo.datum && (
-        <span className="text-xs text-gray-400">{tageBis(todo.datum)}</span>
-      )}
+      <FristChip datum={todo.datum} gedaempft={todo.erledigt} />
       <LoeschKnopf
         onLoeschen={() => onRemove(todo.id)}
         titel="Todo löschen"
-        klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+        klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
       />
     </li>
   )
 }
 
-function StatKachel({ wert, label, akzent }) {
+function StatKachel({ wert, label, akzent, ton }) {
+  const farbe =
+    ton === "warnung" ? "text-red-600" : akzent ? "text-accent-600" : "text-gray-900"
   return (
     <div className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm shadow-gray-100">
-      <p className={`text-2xl font-bold tracking-tight ${akzent ? "text-accent-600" : "text-gray-900"}`}>
-        {wert}
-      </p>
+      <p className={`text-2xl font-bold tracking-tight ${farbe}`}>{wert}</p>
       <p className="mt-0.5 text-xs font-medium text-gray-400">{label}</p>
     </div>
   )
 }
 
 function TodosTodo({ _todos, offene, erledigte, toggle, remove, zuordnungsName }) {
-  const heuteFaellig = offene.filter((t) => t.datum && t.datum <= new Date().toISOString().split("T")[0]).length
+  const heuteFaellig = offene.filter((t) => fristTon(t.datum) === "heute").length
+  const ueberfaellig = offene
+    .filter((t) => fristTon(t.datum) === "vorbei")
+    .sort((a, b) => a.datum.localeCompare(b.datum))
+  const uebrige = offene.filter((t) => fristTon(t.datum) !== "vorbei")
   const erledigt = erledigte.length
 
   return (
@@ -113,12 +155,44 @@ function TodosTodo({ _todos, offene, erledigte, toggle, remove, zuordnungsName }
       <div className="mb-8 mt-8 flex gap-3">
         <StatKachel wert={offene.length} label="offene Aufgaben" akzent />
         <StatKachel wert={heuteFaellig} label="heute fällig" />
-        <StatKachel wert={erledigt} label="erledigt" />
+        {ueberfaellig.length > 0 ? (
+          <StatKachel wert={ueberfaellig.length} label="überfällig" ton="warnung" />
+        ) : (
+          <StatKachel wert={erledigt} label="erledigt" />
+        )}
       </div>
 
       <div className="space-y-8">
+        {/* Überfälliges zuoberst und mit eigener Überschrift – sonst geht es
+            zwischen den Eisenhower-Gruppen unter. */}
+        {ueberfaellig.length > 0 && (
+          <section>
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-red-600">
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+              Überfällig ({ueberfaellig.length})
+            </h2>
+            <ul className="mt-2 space-y-2">
+              {ueberfaellig.map((t) => (
+                <TodoRow key={t.id} todo={t} onToggle={toggle} onRemove={remove} zuordnungsName={zuordnungsName(t)} />
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {offene.length === 0 && erledigte.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-gray-200 px-6 py-10 text-center text-sm text-gray-400">
+            Nichts offen. Leg mit „+" die erste Aufgabe an.
+          </p>
+        )}
+
+        {offene.length === 0 && erledigte.length > 0 && (
+          <p className="rounded-2xl border border-dashed border-gray-200 px-6 py-8 text-center text-sm text-gray-400">
+            Alles abgehakt. Setz dir das Nächste.
+          </p>
+        )}
+
         {EINTEILUNGEN.map((gruppe) => {
-          const eintraege = offene
+          const eintraege = uebrige
             .filter((t) => gruppe.passt(t))
             .sort((a, b) => (a.datum || "9999").localeCompare(b.datum || "9999"))
           if (eintraege.length === 0) return null
@@ -552,7 +626,7 @@ function QuestKarte({ todo, rang, zuordnung, onToggle, onRemove }) {
       <LoeschKnopf
         onLoeschen={() => onRemove(todo.id)}
         titel="Quest aufgeben"
-        klasse="text-white/20 opacity-0 group-hover:opacity-100"
+        klasse="text-white/20 opacity-0 group-hover:opacity-100 max-md:opacity-100"
       />
     </li>
   )
@@ -672,7 +746,7 @@ function TodosGamified({ todos, offene, erledigte, toggle, remove, zuordnungsNam
                     <LoeschKnopf
                       onLoeschen={() => remove(t.id)}
                       titel="Löschen"
-                      klasse="text-white/20 opacity-0 group-hover:opacity-100"
+                      klasse="text-white/20 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                     />
                   </li>
                 )

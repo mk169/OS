@@ -741,7 +741,7 @@ function Unterziele({ woche, onChange, wochenStart, wochenEnde }) {
               <LoeschKnopf
                 onLoeschen={() => onChange(liste.filter((x) => x.id !== u.id))}
                 titel="Unterziel löschen"
-                klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
               />
             </li>
           ))}
@@ -887,7 +887,7 @@ function Verknuepfungen({ periode, woche, onChange, onNavigate }) {
                   }
                   titel="Verknüpfung entfernen"
                   frageText="Entfernen?"
-                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                 />
               </li>
             )

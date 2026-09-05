@@ -17,6 +17,7 @@ import {
   verlauf,
 } from "../lib/dailyops"
 import Seitenkopf from "./Seitenkopf"
+import VitalitaetSeite from "./VitalitaetSeite"
 import LoeschKnopf from "./LoeschKnopf"
 
 // Lebensbereich „Daily Operations": der tägliche Betrieb als Checklisten.
@@ -27,6 +28,7 @@ import LoeschKnopf from "./LoeschKnopf"
 const FARB_OPTIONEN = ["violet", "emerald", "blue", "amber", "rose", "cyan"]
 
 export default function DailyOpsSeite() {
+  const [tab, setTab] = useState("routinen") // routinen | checkin
   const [routinen, setRoutinen] = useStored("dailyops_routinen", [])
   const [protokoll, setProtokoll] = useStored("dailyops_protokoll", {})
   const [tag, setTag] = useState(heute())
@@ -46,19 +48,45 @@ export default function DailyOpsSeite() {
     <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
       <Seitenkopf
         eyebrow="Betrieb"
-        titel="Daily Operations"
-        unterzeile="Der tägliche Betrieb – Routinen und wiederkehrende Abläufe."
+        titel="Alltag"
+        unterzeile="Der tägliche Betrieb – Routinen und der Check-in."
         aktion={
-          <button
-            onClick={() => setVerwalten((v) => !v)}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-900"
-          >
-            {verwalten ? "Fertig" : "Routinen verwalten"}
-          </button>
+          tab === "routinen" ? (
+            <button
+              onClick={() => setVerwalten((v) => !v)}
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-900"
+            >
+              {verwalten ? "Fertig" : "Routinen verwalten"}
+            </button>
+          ) : null
         }
       />
 
-      {verwalten ? (
+      {/* Routinen und Check-in gehören zusammen: beides ist tägliches
+          Abhaken, beides füttert Mentor und Wochenbericht. */}
+      <div className="mb-6 flex gap-1.5">
+        {[
+          { key: "routinen", label: "Routinen", emoji: "🔄" },
+          { key: "checkin", label: "Check-in", emoji: "❤️" },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+              tab === t.key
+                ? "bg-gray-900 text-white"
+                : "border border-gray-200 text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            <span className="mr-1">{t.emoji}</span>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "checkin" ? (
+        <VitalitaetSeite eingebettet />
+      ) : verwalten ? (
         <Verwaltung routinen={routinen} setRoutinen={setRoutinen} />
       ) : (
         <div className="space-y-5">

@@ -132,21 +132,13 @@ const ALLE_SEITEN = [
   },
   {
     key: "dailyops",
-    label: "Daily Operations",
-    beschreibung: "Tägliche Abläufe & Routinen",
+    label: "Alltag",
+    beschreibung: "Routinen & täglicher Check-in",
     icon: (
       <>
         <path d="M4 12a8 8 0 0 1 13.7-5.7M20 12a8 8 0 0 1-13.7 5.7" />
         <path d="M17 3.5V7h-3.5M7 20.5V17h3.5" />
       </>
-    ),
-  },
-  {
-    key: "vitalitaet",
-    label: "Vitalität",
-    beschreibung: "Täglicher Körper-Check-in",
-    icon: (
-      <path d="M20.8 6.6a5 5 0 0 0-7.1 0L12 8.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 22l8.8-8.3a5 5 0 0 0 0-7.1Z" />
     ),
   },
 ]

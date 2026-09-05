@@ -28,7 +28,6 @@ const FinanzenSeite = lazy(() => import("./components/FinanzenSeite"))
 const BerufSeite = lazy(() => import("./components/BerufSeite"))
 const LeisureSeite = lazy(() => import("./components/LeisureSeite"))
 const DailyOpsSeite = lazy(() => import("./components/DailyOpsSeite"))
-const VitalitaetSeite = lazy(() => import("./components/VitalitaetSeite"))
 const SammelnSeite = lazy(() => import("./components/SammelnSeite"))
 const ReviewSeite = lazy(() => import("./components/ReviewSeite"))
 const Einstellungen = lazy(() => import("./components/Einstellungen"))
@@ -69,7 +68,7 @@ function migriereAlteKurse() {
 // Neu eingeführte Bereiche, die bestehenden Nutzern einmalig zur Navigation
 // hinzugefügt werden. Pro Schlüssel nur einmal (Merker `bereicheErgaenzt`),
 // damit ein späteres bewusstes Ausblenden erhalten bleibt.
-const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops", "lockedin", "vitalitaet"]
+const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops", "lockedin"]
 
 // Der Mentor ist keine eigene Seite mehr – er steckt jetzt im
 // Wochenrückblick. Bei bestehenden Nutzern den alten Eintrag aus der
@@ -139,6 +138,29 @@ function migriereLernbereich() {
       })
     )
     schreibeStore("einstellungen", {}, { ...e, lernbereichErgaenzt: true })
+  } catch {
+    /* defektes JSON – ignorieren */
+  }
+}
+
+// „Vitalität" ist keine eigene Seite mehr – der Check-in sitzt jetzt als
+// Reiter im Bereich „Alltag" (vormals Daily Operations). Bei bestehenden
+// Nutzern den alten Eintrag aus der Navigation nehmen und eine darauf
+// zeigende Startseite umbiegen. Die Daten (Store `vitalitaet`) bleiben.
+function migriereVitalitaet() {
+  const roh = localStorage.getItem("einstellungen")
+  if (!roh) return
+  try {
+    const e = JSON.parse(roh)
+    const seiten = e.sichtbareSeiten ?? []
+    if (!seiten.includes("vitalitaet") && e.startseite !== "vitalitaet") return
+    const ohne = seiten.filter((k) => k !== "vitalitaet")
+    schreibeStore("einstellungen", {}, {
+      ...e,
+      // „Alltag" sichtbar lassen, damit der Check-in erreichbar bleibt.
+      sichtbareSeiten: ohne.includes("dailyops") ? ohne : [...ohne, "dailyops"],
+      startseite: e.startseite === "vitalitaet" ? "dailyops" : e.startseite,
+    })
   } catch {
     /* defektes JSON – ignorieren */
   }
@@ -314,19 +336,12 @@ const NAV = [
   },
   {
     key: "dailyops",
-    label: "Daily Operations",
+    label: "Alltag",
     icon: (
       <>
         <path d="M4 12a8 8 0 0 1 13.7-5.7M20 12a8 8 0 0 1-13.7 5.7" />
         <path d="M17 3.5V7h-3.5M7 20.5V17h3.5" />
       </>
-    ),
-  },
-  {
-    key: "vitalitaet",
-    label: "Vitalität",
-    icon: (
-      <path d="M20.8 6.6a5 5 0 0 0-7.1 0L12 8.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 22l8.8-8.3a5 5 0 0 0 0-7.1Z" />
     ),
   },
 ]
@@ -358,6 +373,7 @@ export default function App() {
     migriereBereiche()
     migriereMentor()
     migriereLernbereich()
+    migriereVitalitaet()
   }, [])
 
   // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den
@@ -715,7 +731,6 @@ export default function App() {
         {seite === "beruf" && <BerufSeite />}
         {seite === "leisure" && <LeisureSeite />}
         {seite === "dailyops" && <DailyOpsSeite />}
-        {seite === "vitalitaet" && <VitalitaetSeite />}
         {seite === "review" && <ReviewSeite onNavigate={navigiere} />}
         {seite === "einstellungen" && <Einstellungen />}
         </Suspense>

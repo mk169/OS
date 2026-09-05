@@ -395,7 +395,7 @@ export default function OrdnerSeite({
                       <LoeschKnopf
                         onLoeschen={() => removeOrdner(o.id)}
                         titel="Leeren Ordner löschen"
-                        klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                        klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                       />
                     )}
                   </li>
@@ -425,7 +425,7 @@ export default function OrdnerSeite({
                       <LoeschKnopf
                         onLoeschen={() => removeOrdner(o.id)}
                         titel="Leeren Ordner löschen"
-                        klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                        klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                       />
                     )}
                   </div>

@@ -19,6 +19,7 @@ const EINTRAG_TYPEN = {
   schritt: { chip: "bg-gray-100 text-gray-600", punkt: "bg-gray-400", name: "Schritt" },
   geburtstag: { chip: "bg-rose-50 text-rose-700", punkt: "bg-rose-500", name: "Geburtstag" },
   phase: { chip: "bg-indigo-50 text-indigo-700", punkt: "bg-indigo-500", name: "Phase" },
+  frist: { chip: "bg-amber-50 text-amber-700", punkt: "bg-amber-500", name: "Frist" },
 }
 
 // Farbe eines Eintrags: Tagesblock-Farbe hat Vorrang vor der Typ-Farbe.
@@ -467,7 +468,7 @@ export function TagesAnsicht({ cursor, eintraegeAm, onNeu, onNeuZeit }) {
                 <LoeschKnopf
                   onLoeschen={e.onRemove}
                   titel="Eintrag löschen"
-                  klasse="text-gray-300 opacity-0 group-hover:opacity-100"
+                  klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
                 />
               )}
             </li>
