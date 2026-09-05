@@ -265,3 +265,74 @@ test("der Locked-In-Stil bleibt monochrom", async ({ page }) => {
     expect(grund).toBe("rgb(0, 0, 0)")
   }
 })
+
+// Der laufende Locked-In-Modus färbt die ganze App – nicht nur die drei
+// Seiten mit eigener Fassung. Beendet man ihn, ist alles wieder hell.
+async function appMitModus(page, modusAn) {
+  await page.addInitScript((an) => {
+    localStorage.setItem(
+      "einstellungen",
+      JSON.stringify({
+        onboardingAbgeschlossen: true,
+        profil: "komplett",
+        sichtbareSeiten: ["dashboard", "lockedin", "projekte", "todos"],
+        appName: "OS",
+        startseite: "dashboard",
+        akzent: "indigo",
+        stil: "todo",
+      })
+    )
+    if (an) {
+      localStorage.setItem(
+        "lockedInConfig",
+        JSON.stringify({ ziel: "Bachelorarbeit abgeben", aktiv: true, fokusZiel: 90 })
+      )
+    }
+  }, modusAn)
+  await page.goto("/")
+}
+
+const grundfarbe = (page) =>
+  page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+
+test("ohne laufenden Modus bleibt die App hell", async ({ page }) => {
+  await appMitModus(page, false)
+  expect(await grundfarbe(page)).toBe("rgb(250, 250, 250)")
+  await page.getByRole("button", { name: "Projekte", exact: true }).first().click()
+  await expect(page.locator("main")).toContainText("Projekte")
+  expect(await grundfarbe(page)).toBe("rgb(250, 250, 250)")
+})
+
+test("läuft der Modus, wird die ganze App monochrom", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitModus(page, true)
+  expect(await grundfarbe(page)).toBe("rgb(0, 0, 0)")
+
+  // Auch ein Bereich ohne eigene Locked-In-Fassung.
+  await page.getByRole("button", { name: "Projekte", exact: true }).first().click()
+  await expect(page.locator("main")).toContainText("Projekte")
+  expect(await grundfarbe(page)).toBe("rgb(0, 0, 0)")
+
+  // Karten sind dunkel statt weiß …
+  const karte = page.locator("main .bg-white").first()
+  if (await karte.count()) {
+    const flaeche = await karte.evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(flaeche).not.toBe("rgb(255, 255, 255)")
+  }
+  // … und die Akzentfarbe weicht Grauwerten.
+  const akzent = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue("--color-accent-500").trim()
+  )
+  expect(akzent).toBe("#52525b")
+  expect(fehler).toEqual([])
+})
+
+test("Modus beenden stellt das helle Layout wieder her", async ({ page }) => {
+  await appMitModus(page, true)
+  expect(await grundfarbe(page)).toBe("rgb(0, 0, 0)")
+
+  await page.getByRole("button", { name: "Locked In", exact: true }).first().click()
+  await page.getByRole("button", { name: /Modus beenden|Beenden/ }).first().click()
+  await page.waitForTimeout(400)
+  expect(await grundfarbe(page)).toBe("rgb(250, 250, 250)")
+})

@@ -20,12 +20,28 @@ export const AKZENTE = {
 
 export const AKZENT_STANDARD = "indigo"
 
+// Der Locked-In-Stil verträgt keine Akzentfarbe. Statt die Auswahl zu
+// sperren, wird sie dort schlicht durch Grauwerte ersetzt – wählt jemand
+// später einen anderen Stil, ist seine Farbe unverändert da.
+const MONOCHROM = {
+  name: "Monochrom",
+  50: "#18181b",
+  200: "#3f3f46",
+  300: "#a1a1aa",
+  400: "#d4d4d8",
+  500: "#52525b",
+  600: "#71717a",
+}
+
 const STUFEN = [50, 200, 300, 400, 500, 600]
 
 // Setzt die --color-accent-*-Variablen passend zur gewählten Farbe.
-// Unbekannte Werte fallen auf den Standard zurück.
-export function wendeAkzentAn(schluessel) {
-  const palette = AKZENTE[schluessel] ?? AKZENTE[AKZENT_STANDARD]
+// Unbekannte Werte fallen auf den Standard zurück; `monochrom` überstimmt
+// die Wahl (Locked-In-Stil).
+export function wendeAkzentAn(schluessel, monochrom = false) {
+  const palette = monochrom
+    ? MONOCHROM
+    : (AKZENTE[schluessel] ?? AKZENTE[AKZENT_STANDARD])
   const wurzel = document.documentElement
   for (const stufe of STUFEN) {
     wurzel.style.setProperty(`--color-accent-${stufe}`, palette[stufe])

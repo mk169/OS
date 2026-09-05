@@ -6,7 +6,7 @@ import { wendeAkzentAn } from "./lib/akzent"
 import { normalisiereStil } from "./lib/stil"
 import { navConfig, navSektionen, sektionOffen } from "./lib/navigation"
 import { EINSTELLUNGEN_STANDARD } from "./lib/einstellungen"
-import { lockedInAktiv } from "./lib/lockedin"
+import { lockedInAktiv, wendeModusAn } from "./lib/lockedin"
 import Login from "./components/Login"
 import Dashboard from "./components/Dashboard"
 import Onboarding from "./components/Onboarding"
@@ -360,10 +360,18 @@ export default function App() {
     migriereLernbereich()
   }, [])
 
-  // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den Einstellungen).
+  // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den
+  // Einstellungen). Läuft der Locked-In-Modus, weicht sie Grauwerten – die
+  // Wahl selbst bleibt gespeichert und kommt danach unverändert zurück.
   useEffect(() => {
-    wendeAkzentAn(einstellungen?.akzent)
-  }, [einstellungen?.akzent])
+    wendeAkzentAn(einstellungen?.akzent, lockedInAktiv(lockedInConfig))
+  }, [einstellungen?.akzent, lockedInConfig])
+
+  // Solange der Modus scharf ist, trägt die ganze App den monochromen Look
+  // (siehe `wendeModusAn` und den Skin in index.css).
+  useEffect(() => {
+    wendeModusAn(lockedInAktiv(lockedInConfig))
+  }, [lockedInConfig])
 
   useEffect(() => {
     if (!cloudAktiv) return
@@ -458,10 +466,16 @@ export default function App() {
   // den monochromen Look mit – auf der Locked-In-Kommandozentrale immer, auf der
   // Habits-Seite nur, wenn dort der Locked-In-Stil aktiv ist. So wird der
   // schwarze Screen nie von hellem Chrome mit farbigem Akzent umrahmt.
-  // Seiten, die im Locked-In-Stil eine eigene, monochrome Fassung haben.
+  // Wann trägt die Hülle (Kopfzeile, Tab-Leiste, Grund) den monochromen Look?
+  //   • auf der Locked-In-Kommandozentrale selbst – immer,
+  //   • solange der Modus scharf geschaltet ist – app-weit, passend zum
+  //     Palette-Skin in index.css,
+  //   • im Locked-In-Stil auf den drei Seiten, die eine eigene schwarze
+  //     Fassung haben.
   const LOCKED_IN_SEITEN = ["dashboard", "todos", "habits"]
   const lockedInSeite =
     seite === "lockedin" ||
+    lockedInLaeuft ||
     (normalisiereStil(einstellungen?.stil) === "lockedin" &&
       LOCKED_IN_SEITEN.includes(seite))
 
@@ -472,7 +486,13 @@ export default function App() {
       }`}
     >
       {/* ── Desktop-Sidebar ─────────────────────────────────────── */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-800 bg-gray-900 px-3 py-5 md:flex">
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r px-3 py-5 md:flex ${
+          lockedInSeite
+            ? "border-white/10 bg-black"
+            : "border-gray-800 bg-gray-900"
+        }`}
+      >
         {/* Logo / App-Name */}
         <button
           onClick={() => navigiere("dashboard")}

@@ -190,3 +190,170 @@ button, a, input, select, textarea {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Locked-In-Modus – app-weit, solange er läuft
+ *
+ * Nicht der eingestellte Stil schaltet das um, sondern der scharf geschaltete
+ * Modus: Wer ein Ziel gesetzt hat, arbeitet in Schwarzweiß – überall, nicht
+ * nur auf den drei Seiten mit eigener Fassung. Endet der Modus, ist die App
+ * wieder wie vorher.
+ *
+ * Alle übrigen Bereiche (Kalender, Projekte, Finanzen, Sammeln …) sind in
+ * Tailwind-Utilities für ein helles Layout geschrieben. Statt fünfzehn Seiten
+ * doppelt zu pflegen, wird hier die Palette umgehängt: Tailwind 4 gibt Farben
+ * als CSS-Variablen aus, und die wenigen Utilities, die Flächen und Text
+ * tragen, lassen sich gezielt umdefinieren.
+ *
+ * Bewusst NICHT global umgedreht werden `--color-white` und `--color-black`:
+ * `text-white` steht überall auf dunklen Flächen und muss weiß bleiben.
+ * Deshalb greifen die Regeln an den Utilities an, nicht an den Variablen.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+:root[data-modus="lockedin"] {
+  color-scheme: dark;
+}
+
+:root[data-modus="lockedin"] body {
+  background: #000;
+  color: #fafafa;
+}
+
+/* ── Flächen ─────────────────────────────────────────────────────────────── */
+:root[data-modus="lockedin"] .bg-white,
+:root[data-modus="lockedin"] .bg-gray-50 {
+  background-color: #0b0b0d;
+}
+:root[data-modus="lockedin"] .bg-gray-100 {
+  background-color: #16161a;
+}
+:root[data-modus="lockedin"] .bg-gray-200 {
+  background-color: #232329;
+}
+/* Primäre Knöpfe (bg-gray-900 + text-white) würden auf Schwarz verschwinden –
+ * sie bekommen eine hellere Fläche und eine feine Kante. */
+:root[data-modus="lockedin"] .bg-gray-900 {
+  background-color: #2a2a30;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+:root[data-modus="lockedin"] .bg-gray-800 {
+  background-color: #35353c;
+}
+:root[data-modus="lockedin"] .hover\:bg-gray-700:hover,
+:root[data-modus="lockedin"] .hover\:bg-gray-200:hover,
+:root[data-modus="lockedin"] .hover\:bg-gray-100:hover,
+:root[data-modus="lockedin"] .hover\:bg-gray-50:hover {
+  background-color: #26262c;
+}
+
+/* ── Text ────────────────────────────────────────────────────────────────── */
+:root[data-modus="lockedin"] .text-gray-900,
+:root[data-modus="lockedin"] .text-gray-800 {
+  color: #fafafa;
+}
+:root[data-modus="lockedin"] .text-gray-700,
+:root[data-modus="lockedin"] .text-gray-600 {
+  color: #d4d4d8;
+}
+:root[data-modus="lockedin"] .text-gray-500 {
+  color: #a1a1aa;
+}
+:root[data-modus="lockedin"] .text-gray-400 {
+  color: #8b8b93;
+}
+:root[data-modus="lockedin"] .text-gray-300 {
+  color: #5c5c65;
+}
+:root[data-modus="lockedin"] .hover\:text-gray-900:hover {
+  color: #fff;
+}
+:root[data-modus="lockedin"] .placeholder-gray-400::placeholder {
+  color: #6b6b73;
+}
+
+/* ── Kanten und Trenner ──────────────────────────────────────────────────── */
+:root[data-modus="lockedin"] .border-gray-100,
+:root[data-modus="lockedin"] .divide-gray-100 > * + * {
+  border-color: rgb(255 255 255 / 0.08);
+}
+:root[data-modus="lockedin"] .border-gray-200,
+:root[data-modus="lockedin"] .divide-gray-200 > * + * {
+  border-color: rgb(255 255 255 / 0.14);
+}
+:root[data-modus="lockedin"] .border-gray-300 {
+  border-color: rgb(255 255 255 / 0.22);
+}
+:root[data-modus="lockedin"] .hover\:border-gray-300:hover,
+:root[data-modus="lockedin"] .hover\:border-gray-400:hover,
+:root[data-modus="lockedin"] .focus\:border-gray-900:focus {
+  border-color: rgb(255 255 255 / 0.4);
+}
+
+/* Schatten wirken auf Schwarz wie Schmutz – weg damit. */
+:root[data-modus="lockedin"] [class*="shadow-"] {
+  box-shadow: none;
+}
+:root[data-modus="lockedin"] .bg-gray-900[class*="shadow-"] {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+
+/* Häkchen, Regler & Co. */
+:root[data-modus="lockedin"] .accent-gray-900 {
+  accent-color: #fafafa;
+}
+
+/* ── Farbige Chips und Kennzeichnungen ───────────────────────────────────────
+ * Rot bleibt Frist, Grün bleibt erledigt – die Bedeutung geht nicht verloren.
+ * Nur die hellen Tönungen werden zu dunklen, damit sie auf Schwarz nicht
+ * leuchten, und die Schriftfarben hellen auf, damit sie lesbar bleiben. */
+:root[data-modus="lockedin"] .bg-red-50 { background-color: #2a1315; }
+:root[data-modus="lockedin"] .bg-rose-50 { background-color: #2b1219; }
+:root[data-modus="lockedin"] .bg-amber-50,
+:root[data-modus="lockedin"] .bg-yellow-50 { background-color: #2a2011; }
+:root[data-modus="lockedin"] .bg-orange-50 { background-color: #2b1a10; }
+:root[data-modus="lockedin"] .bg-emerald-50,
+:root[data-modus="lockedin"] .bg-green-50 { background-color: #0e2119; }
+:root[data-modus="lockedin"] .bg-blue-50 { background-color: #101c2e; }
+:root[data-modus="lockedin"] .bg-indigo-50,
+:root[data-modus="lockedin"] .bg-violet-50,
+:root[data-modus="lockedin"] .bg-purple-50 { background-color: #1a1430; }
+:root[data-modus="lockedin"] .bg-cyan-50,
+:root[data-modus="lockedin"] .bg-sky-50 { background-color: #0c2126; }
+:root[data-modus="lockedin"] .bg-pink-50 { background-color: #2b1220; }
+
+:root[data-modus="lockedin"] .text-red-600,
+:root[data-modus="lockedin"] .text-red-700 { color: #f87171; }
+:root[data-modus="lockedin"] .text-rose-600,
+:root[data-modus="lockedin"] .text-rose-700 { color: #fb7185; }
+:root[data-modus="lockedin"] .text-amber-600,
+:root[data-modus="lockedin"] .text-amber-700,
+:root[data-modus="lockedin"] .text-yellow-600,
+:root[data-modus="lockedin"] .text-yellow-700 { color: #fbbf24; }
+:root[data-modus="lockedin"] .text-orange-600,
+:root[data-modus="lockedin"] .text-orange-700 { color: #fb923c; }
+:root[data-modus="lockedin"] .text-emerald-600,
+:root[data-modus="lockedin"] .text-emerald-700,
+:root[data-modus="lockedin"] .text-green-600,
+:root[data-modus="lockedin"] .text-green-700 { color: #34d399; }
+:root[data-modus="lockedin"] .text-blue-600,
+:root[data-modus="lockedin"] .text-blue-700 { color: #60a5fa; }
+:root[data-modus="lockedin"] .text-indigo-600,
+:root[data-modus="lockedin"] .text-indigo-700,
+:root[data-modus="lockedin"] .text-violet-600,
+:root[data-modus="lockedin"] .text-violet-700,
+:root[data-modus="lockedin"] .text-purple-600,
+:root[data-modus="lockedin"] .text-purple-700 { color: #a78bfa; }
+:root[data-modus="lockedin"] .text-cyan-600,
+:root[data-modus="lockedin"] .text-cyan-700,
+:root[data-modus="lockedin"] .text-sky-600,
+:root[data-modus="lockedin"] .text-sky-700 { color: #22d3ee; }
+:root[data-modus="lockedin"] .text-pink-600,
+:root[data-modus="lockedin"] .text-pink-700 { color: #f472b6; }
+
+/* Scrollbar und Auswahl folgen mit. */
+:root[data-modus="lockedin"] *::-webkit-scrollbar-thumb {
+  background-color: rgb(255 255 255 / 0.18);
+}
+:root[data-modus="lockedin"] ::selection {
+  background: rgb(255 255 255 / 0.22);
+}

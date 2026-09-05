@@ -40,7 +40,7 @@ Cloud, Daten nur auf diesem Gerät.
 | Bereich | Inhalt |
 | --- | --- |
 | **Start** | Tagesüberblick in sechs wählbaren Stilen (Todo-Liste, Gamified, Terminal, Clean Girl, Notion, Locked In) – der Stil prägt Start, Todos und Habits |
-| **Locked In** | Kompromissloser Fokus-Modus: ein Ziel, eine Phase, nur das Nötigste |
+| **Locked In** | Kompromissloser Fokus-Modus: ein Ziel, eine Phase, nur das Nötigste – solange er läuft, ist die ganze App monochrom |
 | **Kalender** | Tages-, Wochen- und Monatsansicht, Tagesblöcke, ICS-Export |
 | **Todos** | Eisenhower-Matrix, Dauer, Deadlines, Projektzuordnung |
 | **Sammeln** | Notizen in Ordnern, Tags, `[[Wikilinks]]` und Graph-Ansicht |
