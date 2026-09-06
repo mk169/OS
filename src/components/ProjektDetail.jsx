@@ -10,7 +10,6 @@ import {
   STANDARD_MODULE,
   PRIORITAETEN,
   STATUS_OPTIONEN,
-  projektFortschrittWerte,
 } from "../lib/projekte"
 import TodoErstellen from "./TodoErstellen"
 import { TodoZeile } from "./TodosSeite"
@@ -23,7 +22,7 @@ import ProjektBoard from "./ProjektBoard"
 import BlockEditor from "./BlockEditor"
 import { bloeckeVon, neueBlockId } from "../lib/bloecke"
 import { VORLAGEN, vorlageZuBloecken } from "../lib/wissen"
-import { DeadlineChip, Fortschrittsbalken } from "./Bausteine"
+import { PROJEKT_VORLAGEN, vorlageAnwenden } from "../lib/projektvorlagen"
 import LoeschKnopf from "./LoeschKnopf"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
@@ -89,15 +88,10 @@ export default function ProjektDetail({
   onNavigate,
 }) {
   const [ordner] = useStored("ordner", [])
-  const [alleProjekte, setAlleProjekte] = useStored("projekte", [])
+  const [alleProjekte] = useStored("projekte", [])
   // Ziele für Verknüpfungen aus den Seiten heraus (Sammeln & Projekt-Notizen).
   const [wissen, setWissen] = useStored("wissen", [])
   const [notizen] = useStored("notizen", [])
-  // Areas = dauerhafte Lebensbereiche, denen Projekte zugeordnet werden.
-  const areas = alleProjekte.filter(
-    (p) => (p.typ ?? "projekt") === "area" && !p.archiviert
-  )
-  const istArea = (projekt.typ ?? "projekt") === "area"
   // Kopfbereich (Eigenschaften) ist zuklappbar, damit vom Projekt nur das
   // volle Blatt zu sehen ist. Die Wahl gilt für alle Projekte und bleibt
   // gespeichert.
@@ -115,7 +109,9 @@ export default function ProjektDetail({
     .map((id) => seiten.find((s) => s.id === id))
     .filter(Boolean)
   const [offeneSeiteId, setOffeneSeiteId] = useState(null)
-  const [vorlagenMenu, setVorlagenMenu] = useState(false)
+  // Ein Menü für alles, was ein Projekt wachsen lässt: Bereich, Seite,
+  // Vorlage.
+  const [plusMenu, setPlusMenu] = useState(false)
   // Vorgemerkte Seiten-Änderungen (siehe „Unterseiten" weiter unten).
   const vorgemerkt = useRef({ neu: [], weg: [] })
 
@@ -129,8 +125,7 @@ export default function ProjektDetail({
     ordnerPfad.unshift(o.name)
     pfadZeiger = o.parentId ?? null
   }
-  const eyebrow =
-    ordnerPfad.length > 0 ? ordnerPfad.join(" / ") : istArea ? "Area" : "Projekt"
+  const eyebrow = ordnerPfad.length > 0 ? ordnerPfad.join(" / ") : "Projekt"
 
   function modulInfo(key) {
     return (
@@ -150,7 +145,7 @@ export default function ProjektDetail({
   // Auswahl des Projekts hinter dem Rücken des Nutzers zu ändern.
   const sichtbareModule = module.map(modulInfo).filter(Boolean)
   const gastModul =
-    aktiv && !aktiv.startsWith("seite:") && aktiv !== "areaprojekte" && !module.includes(aktiv)
+    aktiv && !aktiv.startsWith("seite:") && !module.includes(aktiv)
       ? modulInfo(aktiv)
       : null
   const tabModule = gastModul ? [...sichtbareModule, gastModul] : sichtbareModule
@@ -190,9 +185,6 @@ export default function ProjektDetail({
 
   const workflow = projekt.workflow ?? []
   const erledigt = workflow.filter((s) => s.erledigt).length
-  const areaProjekte = istArea
-    ? alleProjekte.filter((p) => p.areaId === projekt.id && !p.archiviert)
-    : []
 
   function toggleModul(key) {
     const neu = module.includes(key)
@@ -390,7 +382,6 @@ export default function ProjektDetail({
   // Projekt nicht dauerhaft aktiviert ist.
   const gueltig =
     (aktivTyp === "seite" && aktiveTabSeite) ||
-    aktiv === "areaprojekte" ||
     (aktiv && tabModule.some((m) => m.key === aktiv))
   if (!gueltig) {
     const ersatz =
@@ -414,8 +405,32 @@ export default function ProjektDetail({
       seiten: [...seitenStand(), neueSeite],
       seitenTabs: [...(projekt.seitenTabs ?? []), id],
     })
-    setVorlagenMenu(false)
+    setPlusMenu(false)
     setAktiv(`seite:${id}`)
+  }
+
+  // Eine Projektvorlage nachträglich übernehmen: Sie ergänzt, was fehlt,
+  // und überschreibt nichts – vorhandene Bereiche, Schritte und Seiten
+  // bleiben, wo sie sind. Beim Anlegen fragt die App bewusst nicht nach
+  // einer Vorlage; da weiß man noch gar nicht, was man braucht.
+  function projektVorlageUebernehmen(vorlage) {
+    const struktur = vorlageAnwenden(
+      vorlage,
+      (text) => vorlageZuBloecken(text, neueBlockId),
+      () => Date.now() + Math.floor(Math.random() * 100000)
+    )
+    const neueModule = struktur.module.filter((k) => !module.includes(k))
+    onUpdate({
+      ...projekt,
+      module: [...module, ...neueModule],
+      workflow: [...workflow, ...struktur.workflow],
+      seiten: [...seitenStand(), ...struktur.seiten],
+      seitenTabs: [...(projekt.seitenTabs ?? []), ...struktur.seitenTabs],
+      uebersichtMigriert: true,
+    })
+    setPlusMenu(false)
+    if (struktur.seitenTabs.length > 0) setAktiv(`seite:${struktur.seitenTabs[0]}`)
+    else if (neueModule.length > 0) setAktiv(neueModule[0])
   }
 
   function tabSeiteLoeschen(id) {
@@ -564,56 +579,24 @@ export default function ProjektDetail({
               </select>
             </EigenschaftsZeile>
 
-            {!istArea && areas.length > 0 && (
-              <EigenschaftsZeile
-                label="Area"
-                icon={
-                  <PropIcon>
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 3v18M3 12h18" />
-                  </PropIcon>
+            <EigenschaftsZeile
+              label="Fälligkeit"
+              icon={
+                <PropIcon>
+                  <rect x="3" y="4.5" width="18" height="16" rx="2" />
+                  <path d="M3 9.5h18M8 3v3M16 3v3" />
+                </PropIcon>
+              }
+            >
+              <input
+                type="date"
+                value={projekt.deadline ?? ""}
+                onChange={(e) =>
+                  onUpdate({ ...projekt, deadline: e.target.value })
                 }
-              >
-                <select
-                  value={projekt.areaId ?? ""}
-                  onChange={(e) =>
-                    onUpdate({
-                      ...projekt,
-                      areaId: e.target.value ? Number(e.target.value) : null,
-                    })
-                  }
-                  className="w-full cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
-                >
-                  <option value="">Keine Area</option>
-                  {areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
-              </EigenschaftsZeile>
-            )}
-
-            {!istArea && (
-              <EigenschaftsZeile
-                label="Fälligkeit"
-                icon={
-                  <PropIcon>
-                    <rect x="3" y="4.5" width="18" height="16" rx="2" />
-                    <path d="M3 9.5h18M8 3v3M16 3v3" />
-                  </PropIcon>
-                }
-              >
-                <input
-                  type="date"
-                  value={projekt.deadline ?? ""}
-                  onChange={(e) =>
-                    onUpdate({ ...projekt, deadline: e.target.value })
-                  }
-                  className="cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
-                />
-              </EigenschaftsZeile>
-            )}
+                className="cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 text-sm text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100"
+              />
+            </EigenschaftsZeile>
 
             <EigenschaftsZeile
               label="Priorität"
@@ -630,22 +613,20 @@ export default function ProjektDetail({
               />
             </EigenschaftsZeile>
 
-            {!istArea && (
-              <EigenschaftsZeile
-                label="Status"
-                icon={
-                  <PropIcon>
-                    <circle cx="12" cy="12" r="8.5" strokeDasharray="3 3" />
-                  </PropIcon>
-                }
-              >
-                <TagSelect
-                  value={projekt.status ?? "offen"}
-                  options={STATUS_OPTIONEN}
-                  onChange={(v) => onUpdate({ ...projekt, status: v })}
-                />
-              </EigenschaftsZeile>
-            )}
+            <EigenschaftsZeile
+              label="Status"
+              icon={
+                <PropIcon>
+                  <circle cx="12" cy="12" r="8.5" strokeDasharray="3 3" />
+                </PropIcon>
+              }
+            >
+              <TagSelect
+                value={projekt.status ?? "offen"}
+                options={STATUS_OPTIONEN}
+                onChange={(v) => onUpdate({ ...projekt, status: v })}
+              />
+            </EigenschaftsZeile>
 
             <div className="mt-1 flex flex-wrap items-center gap-1">
               <button
@@ -665,70 +646,67 @@ export default function ProjektDetail({
         </>
       )}
 
-      <nav className="sticky top-12 z-10 mt-4 flex items-center gap-5 overflow-x-auto border-b border-gray-200 bg-white/85 backdrop-blur sm:gap-6 md:top-0">
-        {seitenTabs.map((s) => (
-          <TabButton
-            key={s.id}
-            active={aktiv === `seite:${s.id}`}
-            onClick={() => setAktiv(`seite:${s.id}`)}
-          >
-            {s.titel?.trim() || "Unbenannte Seite"}
-          </TabButton>
-        ))}
-        {istArea && (
-          <TabButton
-            active={aktiv === "areaprojekte"}
-            onClick={() => setAktiv("areaprojekte")}
-          >
-            Projekte
-            {areaProjekte.length > 0 && (
-              <span className="ml-1.5 text-xs text-gray-400">
-                {areaProjekte.filter((p) => (p.status ?? "offen") !== "fertig").length}
-              </span>
-            )}
-          </TabButton>
-        )}
-        {tabModule.map((m) => (
-          <TabButton
-            key={m.key}
-            active={aktiv === m.key}
-            onClick={() => setAktiv(m.key)}
-          >
-            {m.label}
-            {m.key === "workflow" && workflow.length > 0 && (
-              <span className="ml-1.5 text-xs text-gray-400">
-                {erledigt}/{workflow.length}
-              </span>
-            )}
-          </TabButton>
-        ))}
+      {/* Die Reiterleiste scrollt waagerecht, das „+" bleibt daneben stehen.
+          Beides in *einem* scrollenden Element würde das Menü abschneiden –
+          `overflow-x: auto` klemmt auch nach unten ab. */}
+      <div className="sticky top-12 z-10 mt-4 flex items-stretch border-b border-gray-200 bg-white/85 backdrop-blur md:top-0">
+        <nav className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto sm:gap-6">
+          {seitenTabs.map((s) => (
+            <TabButton
+              key={s.id}
+              active={aktiv === `seite:${s.id}`}
+              onClick={() => setAktiv(`seite:${s.id}`)}
+            >
+              {s.titel?.trim() || "Unbenannte Seite"}
+            </TabButton>
+          ))}
+          {tabModule.map((m) => (
+            <TabButton
+              key={m.key}
+              active={aktiv === m.key}
+              onClick={() => setAktiv(m.key)}
+            >
+              {m.label}
+              {m.key === "workflow" && workflow.length > 0 && (
+                <span className="ml-1.5 text-xs text-gray-400">
+                  {erledigt}/{workflow.length}
+                </span>
+              )}
+            </TabButton>
+          ))}
+        </nav>
 
-        <div className="sticky right-0 ml-auto flex shrink-0 items-center bg-white/85 pb-1.5 pl-4 backdrop-blur">
+        {/* Ein Pluszeichen statt zweier Knöpfe: Bereich, Seite und Vorlage
+            sind dasselbe Bedürfnis – „hier fehlt noch was". */}
+        <div className="relative flex shrink-0 items-center pb-1.5 pl-4">
           <button
-            onClick={() => setAnpassen(!anpassen)}
-            title="Bereiche dieses Projekts anpassen"
+            onClick={() => setPlusMenu(!plusMenu)}
+            title="Bereich, Seite oder Vorlage hinzufügen"
             className={`rounded-md px-2 py-1 text-sm transition-colors hover:bg-gray-100 hover:text-gray-900 ${
-              anpassen ? "bg-gray-100 text-gray-900" : "text-gray-400"
+              plusMenu || anpassen ? "bg-gray-100 text-gray-900" : "text-gray-400"
             }`}
           >
-            + Bereich
+            +
           </button>
-          <button
-            onClick={() => setVorlagenMenu(!vorlagenMenu)}
-            title="Neue Seite anlegen"
-            className="rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            + Seite
-          </button>
-          {vorlagenMenu && (
+          {plusMenu && (
             <>
               <div
-                onClick={() => setVorlagenMenu(false)}
+                onClick={() => setPlusMenu(false)}
                 className="fixed inset-0 z-20"
               />
-              <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-gray-200 bg-white p-1 shadow-md">
-                <p className="px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-                  Vorlage
+              <div className="absolute right-0 top-full z-30 mt-1 w-60 rounded-lg border border-gray-200 bg-white p-1 shadow-md">
+                <button
+                  onClick={() => {
+                    setAnpassen(true)
+                    setPlusMenu(false)
+                  }}
+                  className="block w-full rounded-sm px-2 py-1.5 text-left text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                >
+                  <span className="mr-1.5">🧩</span>
+                  Bereich einblenden
+                </button>
+                <p className="px-2 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                  Neue Seite
                 </p>
                 {VORLAGEN.map((v) => (
                   <button
@@ -740,18 +718,39 @@ export default function ProjektDetail({
                     {v.key === "leer" ? "Leere Seite" : v.label}
                   </button>
                 ))}
+                <p className="px-2 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                  Struktur übernehmen
+                </p>
+                {PROJEKT_VORLAGEN.filter((v) => v.key !== "leer").map((v) => (
+                  <button
+                    key={v.key}
+                    onClick={() => projektVorlageUebernehmen(v)}
+                    title={v.beschreibung}
+                    className="block w-full rounded-sm px-2 py-1.5 text-left text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    {v.label}
+                  </button>
+                ))}
               </div>
             </>
           )}
         </div>
-      </nav>
+      </div>
 
       {anpassen && (
         <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
-          <div>
+          <div className="flex items-start justify-between gap-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
               Aktive Bereiche – mit ‹ › verschieben
             </p>
+            <button
+              onClick={() => setAnpassen(false)}
+              className="-mt-1 shrink-0 rounded-md px-2 py-1 text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            >
+              Fertig
+            </button>
+          </div>
+          <div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {sichtbareModule.map((m) => (
                 <span
@@ -859,139 +858,12 @@ export default function ProjektDetail({
             projekt={projekt}
             seitenProps={seitenProps}
           />
-        ) : aktiv === "areaprojekte" ? (
-          <AreaProjekte
-            area={projekt}
-            projekte={alleProjekte}
-            setProjekte={setAlleProjekte}
-            onOeffnen={(id) => onOeffneZiel?.({ typ: "projekt", id })}
-          />
         ) : aktiv ? (
           bereichRenderer(aktiv)
         ) : (
-          <LeeresProjekt onNeueSeite={() => setVorlagenMenu(true)} />
+          <LeeresProjekt onNeueSeite={() => setPlusMenu(true)} />
         )}
       </div>
-    </div>
-  )
-}
-
-// Die Projekte einer Area: das, was eine Area von einem Ordner unterscheidet
-// – sie bündelt laufende Vorhaben eines Lebensbereichs und zeigt, wie es um
-// sie steht. Neue Projekte entstehen direkt hier und erben Area und Ordner.
-function AreaProjekte({ area, projekte, setProjekte, onOeffnen }) {
-  const [todos] = useStored("todos", [])
-  const [name, setName] = useState("")
-
-  const zugeordnet = projekte.filter(
-    (p) => p.areaId === area.id && !p.archiviert
-  )
-  const laufend = zugeordnet.filter((p) => (p.status ?? "offen") !== "fertig")
-  const fertig = zugeordnet.filter((p) => (p.status ?? "offen") === "fertig")
-  // Offene Aufgaben der Area selbst und ihrer Projekte.
-  const offeneTodos = todos.filter((t) => {
-    if (t.erledigt) return false
-    const ziel = t.projektId ?? t.kursId
-    return ziel === area.id || zugeordnet.some((p) => p.id === ziel)
-  })
-
-  function addProjekt(e) {
-    e.preventDefault()
-    if (!name.trim()) return
-    const neu = {
-      id: Date.now(),
-      name: name.trim(),
-      beschreibung: "",
-      ordnerId: area.ordnerId ?? null,
-      areaId: area.id,
-      deadline: "",
-      typ: "projekt",
-      module: [],
-      ziel: "",
-      workflow: [],
-    }
-    setProjekte((alle) => [...alle, neu])
-    setName("")
-  }
-
-  function loeseZuordnung(id) {
-    setProjekte((alle) =>
-      alle.map((p) => (p.id === id ? { ...p, areaId: null } : p))
-    )
-  }
-
-  return (
-    <div className="py-2">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-gray-100 pb-4">
-        <p className="text-sm font-medium text-gray-900">
-          {laufend.length} {laufend.length === 1 ? "laufendes" : "laufende"}{" "}
-          {laufend.length === 1 ? "Projekt" : "Projekte"}
-        </p>
-        <p className="text-xs text-gray-400">
-          {fertig.length > 0 && `${fertig.length} erledigt · `}
-          {offeneTodos.length} offene {offeneTodos.length === 1 ? "Aufgabe" : "Aufgaben"}
-        </p>
-      </div>
-
-      {zugeordnet.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-400">
-          Dieser Area ist noch kein Projekt zugeordnet. Lege hier eins an –
-          oder wähle die Area in einem bestehenden Projekt unter „Area".
-        </p>
-      ) : (
-        <ul className="mt-4 space-y-1.5">
-          {[...laufend, ...fertig].map((p) => {
-            const status = STATUS_OPTIONEN.find(
-              (s) => s.value === (p.status ?? "offen")
-            )
-            return (
-              <li
-                key={p.id}
-                className="group flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2"
-              >
-                <button
-                  onClick={() => onOeffnen(p.id)}
-                  className="min-w-0 flex-1 truncate text-left text-sm font-medium text-gray-900"
-                >
-                  {p.name}
-                </button>
-                {status && (
-                  <span
-                    className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-medium ${status.tag}`}
-                  >
-                    {status.label}
-                  </span>
-                )}
-                {p.deadline && <DeadlineChip datum={p.deadline} />}
-                <div className="w-28 shrink-0">
-                  <Fortschrittsbalken {...projektFortschrittWerte(p, todos)} />
-                </div>
-                <LoeschKnopf
-                  onLoeschen={() => loeseZuordnung(p.id)}
-                  titel="Aus dieser Area lösen (Projekt bleibt bestehen)"
-                  frageText="Aus Area lösen?"
-                  klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
-                />
-              </li>
-            )
-          })}
-        </ul>
-      )}
-
-      <form onSubmit={addProjekt} className="mt-4 flex gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Neues Projekt in dieser Area"
-          className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-        />
-        <button
-          type="submit"
-          className="shrink-0 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-        >
-          Anlegen
-        </button>
-      </form>
     </div>
   )
 }
@@ -1041,15 +913,14 @@ function LeeresProjekt({ onNeueSeite }) {
     <div className="mt-6 rounded-xl border border-dashed border-gray-300 p-10 text-center">
       <p className="text-sm font-medium text-gray-900">Noch keine Seite.</p>
       <p className="mx-auto mt-1 max-w-md text-xs text-gray-400">
-        Ein Projekt bekommt seine Seiten, wenn du sie brauchst – leer oder aus
-        einer Vorlage. Bereiche wie Todos oder Kalender kommen über
-        „+ Bereich" rechts über dem Blatt dazu.
+        Ein Projekt bekommt seine Seiten und Bereiche, wenn du sie brauchst.
+        Alles davon steckt hinter dem „+“ rechts über dem Blatt.
       </p>
       <button
         onClick={onNeueSeite}
         className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
       >
-        + Seite
+        + Hinzufügen
       </button>
     </div>
   )

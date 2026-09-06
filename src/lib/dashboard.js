@@ -30,6 +30,11 @@ export const DASHBOARD_BLOECKE = [
     beschreibung: "Heutige Abläufe aus Daily Operations zum Abhaken",
   },
   {
+    key: "leben",
+    label: "Leben",
+    beschreibung: "Finanzen, Beruf, Periode, Körper & Leisure in einer Reihe",
+  },
+  {
     key: "kennzahlen",
     label: "Kennzahlen",
     beschreibung: "Zahlen-Kacheln (offen, erledigt, …)",
@@ -47,6 +52,7 @@ const STANDARD = {
   lernen: true,
   habits: true,
   routinen: true,
+  leben: true,
   kennzahlen: true,
   kalender: true,
 }

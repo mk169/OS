@@ -436,6 +436,118 @@ test("Bewerbungsfrist taucht im Kalender auf", async ({ page }) => {
   await expect(page.locator("main")).not.toContainText("Abgesagt GmbH")
 })
 
+test("Projekte: eine Liste, ein Archiv – kein zweites Ordnungssystem", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Projekte", exact: true }).first().click()
+
+  // Von den früher sieben Reitern sind zwei geblieben.
+  for (const weg of ["Areas", "Backlog", "Board", "Anstehend"]) {
+    await expect(page.locator("main")).not.toContainText(weg)
+  }
+  await expect(page.locator("main")).toContainText("Archiv")
+
+  // Ein Projekt braucht nur einen Namen – keine Vorlagenwahl vorab.
+  await page.locator("main button").filter({ hasText: /^\+ ?Projekt/ }).first().click()
+  await expect(page.locator("main")).not.toContainText("Uni-Kurs")
+  await page.locator("main input").first().fill("Umzug")
+  await page.locator("main button").filter({ hasText: /Projekt anlegen/ }).first().click()
+  await expect(page.locator("main")).toContainText("Umzug")
+  expect(fehler).toEqual([])
+})
+
+test("alte Areas und Backlog-Ideen ziehen in Ordner und Todos um", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "einstellungen",
+      JSON.stringify({
+        onboardingAbgeschlossen: true,
+        profil: "komplett",
+        sichtbareSeiten: ["dashboard", "todos", "projekte"],
+        appName: "OS",
+        startseite: "dashboard",
+        akzent: "indigo",
+        stil: "todo",
+      })
+    )
+    localStorage.setItem(
+      "projekte",
+      JSON.stringify([
+        { id: 1, name: "Gesundheit", typ: "area", ordnerId: null },
+        { id: 2, name: "Marathon", areaId: 1, ordnerId: null },
+      ])
+    )
+    localStorage.setItem(
+      "projektIdeen",
+      JSON.stringify([{ id: 3, text: "Podcast starten", notiz: "" }])
+    )
+  })
+  await page.goto("/")
+
+  // Aus der Area ist ein Ordner geworden; das Projekt liegt darin.
+  await page.getByRole("button", { name: "Projekte", exact: true }).first().click()
+  await expect(page.locator("main")).toContainText("Gesundheit")
+  await expect(page.locator("main")).not.toContainText("Marathon")
+  await page.locator("main").getByText("Gesundheit").first().click()
+  await expect(page.locator("main")).toContainText("Marathon")
+
+  // Die Backlog-Idee steht jetzt in der Todo-Liste.
+  await page.getByRole("button", { name: "Todos", exact: true }).first().click()
+  await expect(page.locator("main")).toContainText("Podcast starten")
+
+  // Und der Umzug wiederholt sich nach einem Neuladen nicht.
+  await page.reload()
+  await expect(page.locator("main")).toContainText("Podcast starten")
+  await expect(page.locator("main")).not.toContainText("Podcast starten – Podcast")
+  expect(fehler).toEqual([])
+})
+
+test("die Startseite fasst auch Finanzen und Beruf zusammen", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "einstellungen",
+      JSON.stringify({
+        onboardingAbgeschlossen: true,
+        profil: "komplett",
+        sichtbareSeiten: ["dashboard", "todos", "finanzen", "beruf"],
+        appName: "OS",
+        startseite: "dashboard",
+        akzent: "indigo",
+        stil: "todo",
+      })
+    )
+    localStorage.setItem(
+      "finanzen_konten",
+      JSON.stringify([{ id: 1, name: "Giro", typ: "giro", startsaldo: 1200 }])
+    )
+    localStorage.setItem(
+      "beruf_bewerbungen",
+      JSON.stringify([
+        {
+          id: 1,
+          firma: "Acme",
+          rolle: "Werkstudent",
+          status: "notiert",
+          // Frist in der Zukunft, damit die Zeile die nächste Frist nennt.
+          frist: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+        },
+      ])
+    )
+  })
+  await page.goto("/")
+
+  await expect(page.locator("main")).toContainText("Finanzen")
+  await expect(page.locator("main")).toContainText("1.200,00")
+  await expect(page.locator("main")).toContainText("Acme")
+
+  // Ein Klick führt in den Bereich.
+  await page.locator("main").getByText("Acme").first().click()
+  await expect(page.locator("main")).toContainText("Beruf & Karriere")
+  expect(fehler).toEqual([])
+})
+
 test("Bereiche eines Projekts sind gebündelt und erklärt", async ({ page }) => {
   const fehler = fehlerWaechter(page)
   await appMitAllenBereichen(page)
@@ -451,10 +563,12 @@ test("Bereiche eines Projekts sind gebündelt und erklärt", async ({ page }) =>
     await expect(page.locator("main")).toContainText(bereich)
   }
 
-  // Der Weg zu den Bereichen liegt neben den Reitern, nicht im zugeklappten
-  // Eigenschaften-Kopf: „Details" bleibt hier unangetastet.
+  // Der Weg zu allem, was ein Projekt wachsen lässt, ist ein einziges „+"
+  // neben den Reitern – nicht im zugeklappten Eigenschaften-Kopf:
+  // „Details" bleibt hier unangetastet.
   await expect(page.getByRole("button", { name: "Details", exact: true })).toBeVisible()
-  await page.getByRole("button", { name: "+ Bereich", exact: true }).click()
+  await page.getByRole("button", { name: "+", exact: true }).click()
+  await page.getByRole("button", { name: /Bereich einblenden/ }).click()
 
   // Die verfügbaren Bereiche sind nach Zweck gruppiert und erklärt.
   await expect(page.locator("main")).toContainText("Lernen")

@@ -14,7 +14,6 @@ const TYP_LABEL = {
   wissen: "Wissen",
   notiz: "Notiz",
   projekt: "Projekt",
-  area: "Area",
 }
 
 export default function TagsAnsicht({ onNavigate, startTag = null }) {

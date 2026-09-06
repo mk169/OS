@@ -19,6 +19,7 @@ import TodoErstellen from "./TodoErstellen"
 import { FristChip } from "./Bausteine"
 import { EINTEILUNGEN, einteilungVon } from "../lib/todos"
 import MentorBanner from "./MentorBanner"
+import LebenPanel from "./LebenPanel"
 import { SEITE_LESEN } from "../lib/layout"
 import {
   useHabitDaten,
@@ -373,6 +374,9 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
       {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
       {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
       {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
+      {dashboard.leben && (
+        <LebenPanel onNavigate={onNavigate} ohnePeriode={dashboard.fokusPeriode} />
+      )}
 
       {dashboard.kennzahlen && (
         <div className="mb-8 flex gap-3">
@@ -592,6 +596,9 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
       {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
       {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
       {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
+      {dashboard.leben && (
+        <LebenPanel onNavigate={onNavigate} ohnePeriode={dashboard.fokusPeriode} />
+      )}
 
       {/* Fortschrittsbalken */}
       {dashboard.kennzahlen && (
@@ -761,6 +768,13 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
           <MentorBanner onNavigate={onNavigate} variant="dunkel" />
         )}
         {dashboard.lernen && <LernBanner onNavigate={onNavigate} variant="dunkel" />}
+        {dashboard.leben && (
+          <LebenPanel
+            onNavigate={onNavigate}
+            ohnePeriode={dashboard.fokusPeriode}
+            variant="dunkel"
+          />
+        )}
 
         {/* Readouts */}
         {dashboard.kennzahlen && (
@@ -893,6 +907,9 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
         {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
       {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
       {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
+      {dashboard.leben && (
+        <LebenPanel onNavigate={onNavigate} ohnePeriode={dashboard.fokusPeriode} />
+      )}
 
         {dashboard.kalender && (
           <section className="mb-8">
@@ -1060,6 +1077,9 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard })
       {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
       {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
       {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
+      {dashboard.leben && (
+        <LebenPanel onNavigate={onNavigate} ohnePeriode={dashboard.fokusPeriode} />
+      )}
 
       {/* Aufgaben */}
       <section className="mb-12">
@@ -1206,6 +1226,7 @@ function DashboardLockedIn({ todos, offene, toggle, onNavigate, dashboard }) {
           </div>
         )}
         {dashboard.lernen && <LernBanner onNavigate={onNavigate} variant="dunkel" />}
+        {dashboard.leben && <LebenPanel onNavigate={onNavigate} variant="mono" />}
 
         {dashboard.kennzahlen && (
           <div className="mt-6 grid grid-cols-3 divide-x divide-white/10 border-y border-white/10">

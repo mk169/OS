@@ -58,8 +58,8 @@ neu)` in denselben Speicher.
 | `termine` | Kalendereinträge inkl. Wiederholung, Tagesblock, Fokus-Bezug |
 | `tagesbloecke` | Benannte Tagesabschnitte mit Farbe |
 | `habits`, `habitBereiche`, `habitFreeze` | Gewohnheiten, ihre Bereiche, Pausen |
-| `projekte`, `ordner` | Projekte und Areas samt Ordnerbaum |
-| `boardKarten`, `projektIdeen` | Board-Spalten, Ideenspeicher |
+| `projekte`, `ordner` | Projekte samt Ordnerbaum |
+| `boardKarten` | Karten des projektinternen Boards |
 | `wissen`, `wissenOrdner`, `notizen`, `artikel` | Notizen, Ordner, Projektnotizen |
 | `karten`, `kartenLimits`, `lernprotokoll`, `lernTag`, `ablage` | Karteikarten und Lernstand |
 | `zyklen` | Fokus-Perioden mit Zielen, Zwischenphasen, „Nicht jetzt"-Liste |
@@ -96,13 +96,14 @@ Ausweg – Zurücksetzen an.
 | `migriereMentor` | Mentor ist keine eigene Seite mehr | prüft sich selbst |
 | `migriereLernbereich` | Lernbereich nur bei vorhandenem Lernbezug | `einstellungen.lernbereichErgaenzt` |
 | `migriereVitalitaet` | Vitalität wanderte in „Alltag" | prüft sich selbst |
+| `migriereProjekteEntschlacken` | Areas werden Ordner, Backlog-Ideen werden Todos (Rechnung in `lib/projektmigration.js`) | `einstellungen.projekteEntschlackt` |
 
 Alle sind mehrfach lauffähig und lesen über den Helfer `lies(key, fallback)`,
 der kaputtes JSON, `null` und falsche Typen abfängt. Sie laufen der Reihe
 nach, und weil `schreibeStore` synchron schreibt, sieht jede Migration die
 Änderungen ihrer Vorgänger.
 
-Eine sechste Migration steht in `components/ProjektDetail.jsx`: Sie überführt
+Eine weitere Migration steht in `components/ProjektDetail.jsx`: Sie überführt
 die frühere Projekt-Übersicht in eine eigene Seite (`uebersichtMigriert`).
 
 ## Bereiche und Navigation

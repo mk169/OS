@@ -78,7 +78,7 @@ export function sammleTags(wissen = [], notizen = [], projekte = []) {
     if (p.archiviert) continue
     const tags = extrahiereTags(`${p.beschreibung ?? ""}\n${p.ziel ?? ""}`)
     erfasse(tags, {
-      typ: (p.typ ?? "projekt") === "area" ? "area" : "projekt",
+      typ: "projekt",
       id: p.id,
       titel: p.name,
     })

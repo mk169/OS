@@ -39,14 +39,14 @@ Cloud, Daten nur auf diesem Gerät.
 
 | Bereich | Inhalt |
 | --- | --- |
-| **Start** | Tagesüberblick in sechs wählbaren Stilen (Todo-Liste, Gamified, Terminal, Clean Girl, Notion, Locked In) – der Stil prägt Start, Todos und Habits |
+| **Start** | Tagesüberblick in sechs wählbaren Stilen (Todo-Liste, Gamified, Terminal, Clean Girl, Notion, Locked In) – der Stil prägt Start, Todos und Habits. Dazu eine Reihe „Leben": Finanzen, Beruf, Periode, Körper und Leisure auf einen Blick |
 | **Locked In** | Kompromissloser Fokus-Modus: ein Ziel, eine Phase, nur das Nötigste – solange er läuft, ist die ganze App monochrom |
 | **Kalender** | Tages-, Wochen- und Monatsansicht, Tagesblöcke, ICS-Export |
 | **Todos** | Eisenhower-Matrix, Dauer, Deadlines, Projektzuordnung |
 | **Sammeln** | Notizen in Ordnern, Tags, `[[Wikilinks]]` und Graph-Ansicht |
 | **Habits** | Gewohnheiten mit Wochenzielen, Streaks, Bereichen und Habit-Stacking |
 | **Fokus** | Pomodoro-Timer mit Sessions-Protokoll |
-| **Projekte** | Ordner, Areas, Board, Blatt-Ansicht mit Blöcken, Workflow, Vorlagen |
+| **Projekte** | Ordner, Blatt-Ansicht mit Blöcken, Todos, Workflow, Notizen – jedes Projekt zeigt nur die Bereiche, die es braucht |
 | **Lernen** | Lernpläne und Karteikarten mit Spaced Repetition |
 | **Periode** | Fokus-Perioden (14/30/90 Tage, Halbjahr, Jahr) mit Wochenzielen, Zwischenphasen und Zielmethoden (SMART, OKR, WOOP, 5/25-Regel) |
 | **Finanzen** | Konten, Budgets, Ausgaben, Sparziele, CSV-Import |
@@ -109,20 +109,24 @@ Google Fonts – ohne Netz greifen dort die System-Schriften.
 
 ## Tests
 
-`npm test` prüft die Logik in `src/lib` mit Vitest (16 Dateien) – Datums-
+`npm test` prüft die Logik in `src/lib` mit Vitest (18 Dateien) – Datums-
 rechnung, Habit-Streaks und Disziplin, Spaced Repetition, Wochenbericht,
 Finanz-Auswertungen, Projekt-Fortschritt, Eisenhower-Einteilung, Termin-
 Wiederholungen, Routinen-Rhythmus und -Serie, Bewerbungs-Pipeline, Tags und
-Wikilinks, Navigation, Locked-In-Zeitfenster, Datums-Erkennung sowie die
-Zielmethoden (SMART-Prüfung, OKR-Fortschritt, 5/25-Aufteilung).
+Wikilinks, Navigation, Locked-In-Zeitfenster, Datums-Erkennung, die
+Zielmethoden (SMART-Prüfung, OKR-Fortschritt, 5/25-Aufteilung), den
+Lebens-Überblick der Startseite sowie den Umzug alter Areas und
+Backlog-Ideen.
 
 `npm run test:e2e` fährt zusätzlich den Produktions-Build hoch und klickt ihn
-mit Playwright durch (28 Tests): Einrichtung, alle Bereiche öffnen, Todo mit
+mit Playwright durch (31 Tests): Einrichtung, alle Bereiche öffnen, Todo mit
 Datums-Erkennung anlegen und nachträglich ändern, Routine abhaken (inklusive
 Startseite und Neuladen), Termin, Bewerbung und Buchung nachträglich ändern,
 Bewerbung durch die Pipeline schieben, die Zielmethoden durchspielen, jeden
-der sechs Stile auf Start, Todos und Habits – dazu ein Start mit absichtlich
-kaputten Altdaten und ein Durchlauf mit abgeschaltetem Netz.
+der sechs Stile auf Start, Todos und Habits, den Projekte-Bereich samt Umzug
+alter Areas und Backlog-Ideen sowie die Leben-Reihe auf der Startseite – dazu
+ein Start mit absichtlich kaputten Altdaten und ein Durchlauf mit
+abgeschaltetem Netz.
 
 `.github/workflows/ci.yml` führt Lint, Tests, Oberflächen-Tests und Build auf
 jedem Pull Request aus; `deploy.yml` wiederholt sie vor jedem Deployment.

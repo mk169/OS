@@ -19,7 +19,6 @@ const HOEHE = 480
 const FARBE = {
   wissen: "#3b82f6",
   projekt: "#10b981",
-  area: "#8b5cf6",
   notiz: "#f59e0b",
 }
 
@@ -152,7 +151,7 @@ export default function WissensGraph({ onNavigate, onTagKlick }) {
       .filter((pr) => !pr.archiviert)
       .map((pr) => ({
         id: `projekt-${pr.id}`,
-        typ: (pr.typ ?? "projekt") === "area" ? "area" : "projekt",
+        typ: "projekt",
         refId: pr.id,
         titel: pr.name,
       }))
@@ -261,13 +260,6 @@ export default function WissensGraph({ onNavigate, onTagKlick }) {
             style={{ backgroundColor: FARBE.projekt }}
           />
           Projekt
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: FARBE.area }}
-          />
-          Area
         </span>
         <span className="flex items-center gap-1.5">
           <span

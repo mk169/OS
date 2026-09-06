@@ -14,6 +14,7 @@ import KalenderSeite from "./components/KalenderSeite"
 import TodosSeite from "./components/TodosSeite"
 import OrdnerSeite from "./components/OrdnerSeite"
 import { STANDARD_MODULE } from "./lib/projekte"
+import { areasZuOrdnern, ideenZuTodos } from "./lib/projektmigration"
 
 // Seiten werden erst geladen, wenn sie geöffnet werden. Das hält den ersten
 // Start klein – gerade auf dem Handy, wo die App als PWA läuft. Fest im
@@ -171,6 +172,53 @@ function migriereVitalitaet() {
       sichtbareSeiten: ohne.includes("dailyops") ? ohne : [...ohne, "dailyops"],
       startseite: e.startseite === "vitalitaet" ? "dailyops" : e.startseite,
     })
+  } catch {
+    /* defektes JSON – ignorieren */
+  }
+}
+
+// Der Projekte-Bereich kannte zwei Ordnungssysteme (Ordner und Areas) und
+// mit dem Backlog einen eigenen Speicher für Ideen. Geblieben sind Ordner
+// und Todos; Areas und Ideen ziehen einmalig dorthin um (Merker
+// `projekteEntschlackt`, damit der Umzug nicht bei jedem Start erneut
+// läuft). Die Rechnung steckt in lib/projektmigration.js.
+function migriereProjekteEntschlacken() {
+  const roh = localStorage.getItem("einstellungen")
+  if (!roh) return // Neue Nutzer haben weder Areas noch Backlog-Ideen.
+  try {
+    const e = JSON.parse(roh)
+    if (e.projekteEntschlackt) return
+
+    const projekte = lies("projekte", [])
+    const todos = lies("todos", [])
+
+    // Unter welchen Projekt-IDs liegen überhaupt Inhalte? Entscheidet, ob
+    // eine Area nur eine Schublade war oder selbst etwas enthielt.
+    const mitInhalt = new Set()
+    for (const key of ["todos", "notizen", "artikel", "boardKarten", "ablage", "karten"]) {
+      for (const x of lies(key, [])) {
+        const id = x?.projektId ?? x?.kursId
+        if (id != null) mitInhalt.add(id)
+      }
+    }
+
+    const areas = areasZuOrdnern({
+      projekte,
+      ordner: lies("ordner", []),
+      mitInhalt,
+    })
+    if (areas.geaendert) {
+      schreibeStore("ordner", [], areas.ordner)
+      schreibeStore("projekte", [], areas.projekte)
+    }
+
+    const ideen = ideenZuTodos({ ideen: lies("projektIdeen", []), todos })
+    if (ideen.geaendert) {
+      schreibeStore("todos", [], ideen.todos)
+      schreibeStore("projektIdeen", [], [])
+    }
+
+    schreibeStore("einstellungen", {}, { ...e, projekteEntschlackt: true })
   } catch {
     /* defektes JSON – ignorieren */
   }
@@ -384,6 +432,7 @@ export default function App() {
     migriereMentor()
     migriereLernbereich()
     migriereVitalitaet()
+    migriereProjekteEntschlacken()
   }, [])
 
   // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den

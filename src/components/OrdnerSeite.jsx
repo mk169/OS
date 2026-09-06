@@ -4,16 +4,12 @@ import { tageBisZahl } from "../lib/datum"
 import { DeadlineChip, Fortschrittsbalken } from "./Bausteine"
 import ProjektDetail from "./ProjektDetail"
 import {
-  STATUS_OPTIONEN,
-  PRIORITAETEN,
+  NEUES_PROJEKT_MODULE,
   projektFortschrittWerte,
   sammleTermine,
 } from "../lib/projekte"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
-import { PROJEKT_VORLAGEN, vorlageAnwenden } from "../lib/projektvorlagen"
-import { vorlageZuBloecken } from "../lib/wissen"
-import { neueBlockId } from "../lib/bloecke"
 import { SortMenu, LayoutUmschalter } from "./ListenControls"
 import LeerHinweis from "./LeerHinweis"
 import { SEITE_RASTER } from "../lib/layout"
@@ -25,9 +21,18 @@ const ORDNER_SORT = [
   { value: "neueste", label: "Neueste" },
 ]
 
-// Ordnersystem: Projekte liegen in beliebig verschachtelbaren Ordnern
-// (z.B. Uni → 4. Semester → Statistik). Jedes Projekt wird individuell
-// erstellt und bringt nur die Bereiche mit, die es braucht.
+// Projekte: eine Liste und ein Archiv, mehr nicht.
+//
+// Früher standen hier sieben gleichrangige Reiter (Ordner, Alle, Backlog,
+// Areas, Board, Anstehend, Archiv) – vier davon zeigten dieselben Projekte
+// nur anders gefiltert, und mit „Ordner" und „Areas" gab es zwei
+// konkurrierende Ordnungssysteme nebeneinander. Geblieben sind:
+//
+//   • Ordner sortieren Projekte (beliebig verschachtelbar) – „Alle zeigen"
+//     hebt die Ordnergrenzen für einen Blick über alles auf.
+//   • Fristen der nächsten sieben Tage stehen als schmale Leiste oben,
+//     statt hinter einem eigenen Reiter.
+//   • Archiv bleibt ein Reiter, weil es bewusst aus dem Weg sein soll.
 
 function OrdnerIcon() {
   return (
@@ -62,12 +67,13 @@ export default function OrdnerSeite({
   const [offenesModul, setOffenesModul] = useState(startModul)
   const [ordnerFormOffen, setOrdnerFormOffen] = useState(false)
   const [ordnerName, setOrdnerName] = useState("")
-  // Formular für neue Projekte/Areas: der Wert ist zugleich der Starttyp.
   const [projektFormOffen, setProjektFormOffen] = useState(false)
-  const [formTyp, setFormTyp] = useState("projekt")
-  const [ansicht, setAnsicht] = useState("ordner")
+  const [ansicht, setAnsicht] = useState("projekte")
   const [ordnerSort, setOrdnerSort] = useStored("projekteOrdnerSort", "name")
   const [ordnerLayout, setOrdnerLayout] = useStored("projekteOrdnerLayout", "raster")
+  // „Alle zeigen" hebt die Ordnergrenzen auf – das, wofür es früher einen
+  // eigenen Reiter „Alle" gab.
+  const [alleZeigen, setAlleZeigen] = useStored("projekteAlleZeigen", false)
 
   // Von außen (App.jsx) angestoßene Navigation nachziehen – OrdnerSeite
   // bleibt bei aktiver "projekte"-Seite dauerhaft gemountet, ein bloßer
@@ -116,21 +122,9 @@ export default function OrdnerSeite({
   // Archiv-Ansicht auf.
   const aktive = projekte.filter((p) => !p.archiviert)
   const archivierte = projekte.filter((p) => p.archiviert)
-  // Areas bekommen eine eigene Ansicht – Ordner/Alle/Board zeigen nur
-  // echte Projekte. Anstehend/Dashboard filtern bewusst nicht nach typ,
-  // damit Areas' datierte Todos/Deadlines dort trotzdem auftauchen.
-  const aktiveProjekte = aktive.filter((p) => (p.typ ?? "projekt") !== "area")
 
-  const unterordner = ordner
-    .filter((o) => (o.parentId ?? null) === aktuellerOrdnerId)
-    .sort((a, b) =>
-      ordnerSort === "neueste"
-        ? b.id - a.id
-        : (a.name ?? "").localeCompare(b.name ?? "")
-    )
-  const hiesigeProjekte = aktiveProjekte
-    .filter((p) => (p.ordnerId ?? null) === aktuellerOrdnerId)
-    .sort((a, b) => {
+  function sortiere(liste) {
+    return [...liste].sort((a, b) => {
       if (ordnerSort === "faellig")
         return (a.deadline || "9999").localeCompare(b.deadline || "9999")
       if (ordnerSort === "neueste") return b.id - a.id
@@ -143,6 +137,20 @@ export default function OrdnerSeite({
       }
       return (a.name ?? "").localeCompare(b.name ?? "")
     })
+  }
+
+  const unterordner = ordner
+    .filter((o) => (o.parentId ?? null) === aktuellerOrdnerId)
+    .sort((a, b) =>
+      ordnerSort === "neueste"
+        ? b.id - a.id
+        : (a.name ?? "").localeCompare(b.name ?? "")
+    )
+  const sichtbareProjekte = sortiere(
+    alleZeigen
+      ? aktive
+      : aktive.filter((p) => (p.ordnerId ?? null) === aktuellerOrdnerId)
+  )
 
   // Brotkrumen-Pfad vom Start bis zum aktuellen Ordner
   const pfad = []
@@ -179,6 +187,8 @@ export default function OrdnerSeite({
     setProjekte(projekte.filter((x) => x.id !== id))
   }
 
+  const nichtsDa = unterordner.length === 0 && sichtbareProjekte.length === 0
+
   return (
     <div className={SEITE_RASTER}>
       <Seitenkopf
@@ -193,10 +203,7 @@ export default function OrdnerSeite({
               + Ordner
             </button>
             <button
-              onClick={() => {
-                setFormTyp("projekt")
-                setProjektFormOffen(!projektFormOffen)
-              }}
+              onClick={() => setProjektFormOffen(!projektFormOffen)}
               className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
             >
               + Projekt
@@ -235,58 +242,13 @@ export default function OrdnerSeite({
 
       {projektFormOffen && (
         <ProjektErstellen
-          key={formTyp}
-          startTyp={formTyp}
-          ordnerId={aktuellerOrdnerId}
+          ordnerId={alleZeigen ? null : aktuellerOrdnerId}
           projekte={projekte}
           setProjekte={setProjekte}
           onFertig={() => setProjektFormOffen(false)}
         />
       )}
 
-      {ansicht === "alle" && (
-        <AlleAnsicht
-          projekte={aktiveProjekte}
-          todos={todos}
-          onOeffnen={setOffenesProjektId}
-          onRemove={removeProjekt}
-        />
-      )}
-      {ansicht === "backlog" && (
-        <BacklogAnsicht
-          ordner={ordner}
-          projekte={projekte}
-          setProjekte={setProjekte}
-          aktuellerOrdnerId={aktuellerOrdnerId}
-          onOeffnen={setOffenesProjektId}
-        />
-      )}
-      {ansicht === "board" && (
-        <BoardAnsicht
-          projekte={projekte.filter((p) => (p.typ ?? "projekt") !== "area")}
-          setProjekte={setProjekte}
-          onOeffnen={setOffenesProjektId}
-        />
-      )}
-      {ansicht === "areas" && (
-        <AreasAnsicht
-          projekte={aktive}
-          todos={todos}
-          onOeffnen={setOffenesProjektId}
-          onRemove={removeProjekt}
-          onNeueArea={() => {
-            setFormTyp("area")
-            setProjektFormOffen(true)
-          }}
-        />
-      )}
-      {ansicht === "anstehend" && (
-        <AnstehendAnsicht
-          projekte={aktive}
-          todos={todos}
-          onOeffnen={setOffenesProjektId}
-        />
-      )}
       {ansicht === "archiv" && (
         <ArchivAnsicht
           archivierte={archivierte}
@@ -296,144 +258,165 @@ export default function OrdnerSeite({
         />
       )}
 
-      {ansicht === "ordner" && (
+      {ansicht === "projekte" && (
         <div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <nav className="flex flex-wrap items-center gap-1 text-sm text-gray-400">
-              <button
-                onClick={() => setAktuellerOrdnerId(null)}
-                className={
-                  aktuellerOrdnerId === null
-                    ? "font-medium text-gray-900"
-                    : "hover:text-gray-900"
-                }
-              >
-                Start
-              </button>
-              {pfad.map((o) => (
-                <span key={o.id} className="flex items-center gap-1">
-                  <span>/</span>
+              {alleZeigen ? (
+                <span className="font-medium text-gray-900">Alle Projekte</span>
+              ) : (
+                <>
                   <button
-                    onClick={() => setAktuellerOrdnerId(o.id)}
+                    onClick={() => setAktuellerOrdnerId(null)}
                     className={
-                      o.id === aktuellerOrdnerId
+                      aktuellerOrdnerId === null
                         ? "font-medium text-gray-900"
                         : "hover:text-gray-900"
                     }
                   >
-                    {o.name}
+                    Start
                   </button>
-                </span>
-              ))}
+                  {pfad.map((o) => (
+                    <span key={o.id} className="flex items-center gap-1">
+                      <span>/</span>
+                      <button
+                        onClick={() => setAktuellerOrdnerId(o.id)}
+                        className={
+                          o.id === aktuellerOrdnerId
+                            ? "font-medium text-gray-900"
+                            : "hover:text-gray-900"
+                        }
+                      >
+                        {o.name}
+                      </button>
+                    </span>
+                  ))}
+                </>
+              )}
             </nav>
-            {(unterordner.length > 0 || hiesigeProjekte.length > 0) && (
-              <div className="flex items-center gap-2">
-                <SortMenu wert={ordnerSort} onChange={setOrdnerSort} optionen={ORDNER_SORT} />
-                <LayoutUmschalter layout={ordnerLayout} setLayout={setOrdnerLayout} />
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {(ordner.length > 0 || alleZeigen) && (
+                <button
+                  onClick={() => setAlleZeigen(!alleZeigen)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    alleZeigen
+                      ? "border-gray-900 bg-gray-900 text-white"
+                      : "border-gray-200 text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Alle zeigen
+                </button>
+              )}
+              {!nichtsDa && (
+                <>
+                  <SortMenu
+                    wert={ordnerSort}
+                    onChange={setOrdnerSort}
+                    optionen={ORDNER_SORT}
+                  />
+                  <LayoutUmschalter
+                    layout={ordnerLayout}
+                    setLayout={setOrdnerLayout}
+                  />
+                </>
+              )}
+            </div>
           </div>
 
-      {unterordner.length > 0 && (
-        <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
-            Ordner
-          </h2>
-          {ordnerLayout === "liste" ? (
-            <ul className="mt-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-              {unterordner.map((o) => {
-                const anzahl =
-                  ordner.filter((x) => x.parentId === o.id).length +
-                  projekte.filter((p) => p.ordnerId === o.id).length
-                return (
-                  <li
-                    key={o.id}
-                    onClick={() => setAktuellerOrdnerId(o.id)}
-                    className="group flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50"
-                  >
-                    <OrdnerIcon />
-                    <span className="flex-1 truncate text-sm font-medium text-gray-900">
-                      {o.name}
-                    </span>
-                    <span className="shrink-0 text-xs text-gray-400">{anzahl}</span>
-                    {anzahl === 0 && (
-                      <LoeschKnopf
-                        onLoeschen={() => removeOrdner(o.id)}
-                        titel="Leeren Ordner löschen"
-                        klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
-                      />
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {unterordner.map((o) => {
-                const anzahl =
-                  ordner.filter((x) => x.parentId === o.id).length +
-                  projekte.filter((p) => p.ordnerId === o.id).length
-                return (
-                  <div
-                    key={o.id}
-                    onClick={() => setAktuellerOrdnerId(o.id)}
-                    className="group flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:border-gray-400"
-                  >
-                    <OrdnerIcon />
-                    <span className="flex-1 truncate text-sm font-medium text-gray-900">
-                      {o.name}
-                    </span>
-                    <span className="shrink-0 text-xs text-gray-400">
-                      {anzahl}
-                    </span>
-                    {anzahl === 0 && (
-                      <LoeschKnopf
-                        onLoeschen={() => removeOrdner(o.id)}
-                        titel="Leeren Ordner löschen"
-                        klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
-                      />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
-      )}
+          <FristenLeiste
+            projekte={aktive}
+            todos={todos}
+            onOeffnen={setOffenesProjektId}
+          />
 
-      {hiesigeProjekte.length > 0 && (
-        <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
-            Projekte
-          </h2>
-          {ordnerLayout === "liste" ? (
-            <ul className="mt-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-              {hiesigeProjekte.map((p) => (
-                <ProjektZeile
-                  key={p.id}
-                  p={p}
-                  todos={todos}
-                  onOeffnen={setOffenesProjektId}
-                  onRemove={removeProjekt}
-                />
-              ))}
-            </ul>
-          ) : (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {hiesigeProjekte.map((p) => (
-                <ProjektKarte
-                  key={p.id}
-                  p={p}
-                  todos={todos}
-                  onOeffnen={setOffenesProjektId}
-                  onRemove={removeProjekt}
-                />
-              ))}
-            </div>
+          {!alleZeigen && unterordner.length > 0 && (
+            <section className="mt-8">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+                Ordner
+              </h2>
+              {ordnerLayout === "liste" ? (
+                <ul className="mt-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                  {unterordner.map((o) => (
+                    <OrdnerEintrag
+                      key={o.id}
+                      o={o}
+                      ordner={ordner}
+                      projekte={projekte}
+                      layout="liste"
+                      onOeffnen={setAktuellerOrdnerId}
+                      onRemove={removeOrdner}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {unterordner.map((o) => (
+                    <OrdnerEintrag
+                      key={o.id}
+                      o={o}
+                      ordner={ordner}
+                      projekte={projekte}
+                      layout="raster"
+                      onOeffnen={setAktuellerOrdnerId}
+                      onRemove={removeOrdner}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
           )}
-        </section>
-      )}
 
+          {sichtbareProjekte.length > 0 && (
+            <section className="mt-8">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+                Projekte
+              </h2>
+              {ordnerLayout === "liste" ? (
+                <ul className="mt-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                  {sichtbareProjekte.map((p) => (
+                    <ProjektZeile
+                      key={p.id}
+                      p={p}
+                      todos={todos}
+                      onOeffnen={setOffenesProjektId}
+                      onRemove={removeProjekt}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {sichtbareProjekte.map((p) => (
+                    <ProjektKarte
+                      key={p.id}
+                      p={p}
+                      todos={todos}
+                      onOeffnen={setOffenesProjektId}
+                      onRemove={removeProjekt}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {nichtsDa && (
+            <LeerHinweis
+              klasse="mt-8"
+              emoji="📁"
+              titel={
+                aktive.length === 0
+                  ? "Noch kein Projekt"
+                  : "Dieser Ordner ist leer"
+              }
+              text={
+                aktive.length === 0
+                  ? "Ein Projekt ist alles, was mehr als eine Aufgabe braucht – eine Hausarbeit, ein Umzug, ein Nebenprojekt. Ordner sind nur zum Sortieren da; du brauchst sie erst, wenn es viele werden."
+                  : "Leg hier ein Projekt an – oder schau dir mit „Alle zeigen“ an, was in den anderen Ordnern liegt."
+              }
+              aktion="+ Projekt"
+              onAktion={() => setProjektFormOffen(true)}
+            />
+          )}
         </div>
       )}
     </div>
@@ -441,24 +424,13 @@ export default function OrdnerSeite({
 }
 
 const ANSICHTEN = [
-  { key: "ordner", label: "Ordner" },
-  { key: "alle", label: "Alle" },
-  { key: "backlog", label: "Backlog" },
-  { key: "areas", label: "Areas" },
-  { key: "board", label: "Board" },
-  { key: "anstehend", label: "Anstehend" },
+  { key: "projekte", label: "Projekte" },
   { key: "archiv", label: "Archiv" },
 ]
 
-const PRIO_RANG = { hoch: 3, mittel: 2, niedrig: 1, "": 0 }
-
 function AnsichtToggle({ ansicht, setAnsicht }) {
-  // Auf schmalen Handys passen die sechs Ansichten nicht nebeneinander. Statt
-  // die Seite zu verbreitern (horizontaler Overflow), wird die Leiste auf die
-  // Viewport-Breite begrenzt und scrollt bei Bedarf intern. `100vw − 3rem`
-  // entspricht der Seitenpolsterung (px-6) des umgebenden Containers.
   return (
-    <div className="flex max-w-[calc(100vw-3rem)] overflow-x-auto rounded-md border border-gray-200 p-0.5 text-xs">
+    <div className="flex rounded-md border border-gray-200 p-0.5 text-xs">
       {ANSICHTEN.map((a) => (
         <button
           key={a.key}
@@ -476,9 +448,50 @@ function AnsichtToggle({ ansicht, setAnsicht }) {
   )
 }
 
-// Wiederverwendbare Projektkarte (Ordner- und Alle-Ansicht). Bewusst
-// karg: Name, Beschreibung, Fortschritt, Fälligkeit – die Bereichs-Tags
-// von früher haben die Übersicht nur zugestellt.
+// Ein Ordner als Karte oder Zeile – beide zeigen dasselbe (Name und
+// Inhaltsmenge), nur in der Form des gewählten Layouts.
+function OrdnerEintrag({ o, ordner, projekte, layout, onOeffnen, onRemove }) {
+  const anzahl =
+    ordner.filter((x) => x.parentId === o.id).length +
+    projekte.filter((p) => p.ordnerId === o.id).length
+
+  const inhalt = (
+    <>
+      <OrdnerIcon />
+      <span className="flex-1 truncate text-sm font-medium text-gray-900">
+        {o.name}
+      </span>
+      <span className="shrink-0 text-xs text-gray-400">{anzahl}</span>
+      {anzahl === 0 && (
+        <LoeschKnopf
+          onLoeschen={() => onRemove(o.id)}
+          titel="Leeren Ordner löschen"
+          klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
+        />
+      )}
+    </>
+  )
+
+  return layout === "liste" ? (
+    <li
+      onClick={() => onOeffnen(o.id)}
+      className="group flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50"
+    >
+      {inhalt}
+    </li>
+  ) : (
+    <div
+      onClick={() => onOeffnen(o.id)}
+      className="group flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:border-gray-400"
+    >
+      {inhalt}
+    </div>
+  )
+}
+
+// Wiederverwendbare Projektkarte. Bewusst karg: Name, Beschreibung,
+// Fortschritt, Fälligkeit – die Bereichs-Tags von früher haben die
+// Übersicht nur zugestellt.
 function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
   return (
     <div
@@ -514,7 +527,7 @@ function ProjektKarte({ p, todos, onOeffnen, onRemove }) {
   )
 }
 
-// Kompakte Projekt-Zeile für die Listen-Ansicht (Ordneransicht).
+// Kompakte Projekt-Zeile für die Listen-Ansicht.
 function ProjektZeile({ p, todos, onOeffnen, onRemove }) {
   return (
     <li
@@ -539,560 +552,33 @@ function ProjektZeile({ p, todos, onOeffnen, onRemove }) {
   )
 }
 
-// Backlog: der Sammelplatz für alles, was noch kein Projekt ist – Ideen,
-// Vorhaben, Vielleicht-irgendwann. Festhalten geht in einer Zeile; erst
-// wenn etwas daraus wird, macht ein Klick ein Projekt daraus (die Notiz
-// wird dessen Beschreibung).
-function BacklogAnsicht({
-  ordner,
-  projekte,
-  setProjekte,
-  aktuellerOrdnerId,
-  onOeffnen,
-}) {
-  const [ideen, setIdeen] = useStored("projektIdeen", [])
-  const [text, setText] = useState("")
-  const [offeneId, setOffeneId] = useState(null)
-  const [zielOrdner, setZielOrdner] = useStored("backlogZielOrdner", "")
-
-  // Neueste zuerst – frisch Notiertes steht oben.
-  const liste = [...ideen].sort((a, b) => b.id - a.id)
-
-  function addIdee(e) {
-    e.preventDefault()
-    if (!text.trim()) return
-    // Bewusst ohne Notizfeld aufzuklappen: schnelles Festhalten bleibt
-    // einzeilig, die Notiz kommt später über „Notiz".
-    setIdeen([...ideen, { id: Date.now(), text: text.trim(), notiz: "" }])
-    setText("")
-  }
-
-  function setIdee(id, patch) {
-    setIdeen(ideen.map((i) => (i.id === id ? { ...i, ...patch } : i)))
-  }
-
-  // Aus einer Idee ein Projekt machen: Titel wird Projektname, die Notiz
-  // die Beschreibung. Die Idee verlässt damit den Backlog.
-  function zuProjekt(idee) {
-    const id = Date.now()
-    const ordnerId = zielOrdner ? Number(zielOrdner) : (aktuellerOrdnerId ?? null)
-    setProjekte([
-      ...projekte,
-      {
-        id,
-        name: idee.text.trim(),
-        beschreibung: (idee.notiz ?? "").trim(),
-        ordnerId,
-        deadline: "",
-        typ: "projekt",
-        module: [],
-        ziel: "",
-        workflow: [],
-      },
-    ])
-    setIdeen(ideen.filter((i) => i.id !== idee.id))
-    onOeffnen(id)
-  }
-
-  return (
-    <div className="mt-4">
-      <form
-        onSubmit={addIdee}
-        className="flex gap-2 rounded-xl border border-gray-300 bg-white p-3"
-      >
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Idee festhalten – alles, was noch kein Projekt ist"
-          className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-        />
-        <button
-          type="submit"
-          className="shrink-0 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-        >
-          Merken
-        </button>
-      </form>
-
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-gray-400">
-          {liste.length === 0
-            ? "Der Backlog ist leer."
-            : `${liste.length} ${liste.length === 1 ? "Idee" : "Ideen"}`}
-        </p>
-        {ordner.length > 0 && (
-          <label className="flex items-center gap-1.5 text-xs text-gray-400">
-            Neue Projekte in
-            <select
-              value={zielOrdner}
-              onChange={(e) => setZielOrdner(e.target.value)}
-              className="cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 outline-none focus:border-gray-900"
-            >
-              <option value="">Kein Ordner</option>
-              {ordner.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </div>
-
-      {liste.length > 0 && (
-        <ul className="mt-3 space-y-2">
-          {liste.map((idee) => {
-            const offen = offeneId === idee.id
-            return (
-              <li
-                key={idee.id}
-                className="group rounded-xl border border-gray-200 bg-white px-4 py-3"
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    value={idee.text}
-                    onChange={(e) => setIdee(idee.id, { text: e.target.value })}
-                    className="min-w-0 flex-1 border-none bg-transparent text-sm font-medium text-gray-900 outline-none"
-                  />
-                  <button
-                    onClick={() => setOffeneId(offen ? null : idee.id)}
-                    title="Notiz"
-                    className={`shrink-0 text-xs transition-colors hover:text-gray-900 ${
-                      idee.notiz?.trim() ? "text-gray-500" : "text-gray-300"
-                    }`}
-                  >
-                    Notiz
-                  </button>
-                  <button
-                    onClick={() => zuProjekt(idee)}
-                    title="Daraus ein Projekt machen"
-                    className="shrink-0 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
-                  >
-                    → Projekt
-                  </button>
-                  <LoeschKnopf
-                    onLoeschen={() =>
-                      setIdeen(ideen.filter((i) => i.id !== idee.id))
-                    }
-                    titel="Idee verwerfen"
-                    klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
-                  />
-                </div>
-                {(offen || idee.notiz?.trim()) && (
-                  <textarea
-                    value={idee.notiz ?? ""}
-                    onChange={(e) => setIdee(idee.id, { notiz: e.target.value })}
-                    rows={offen ? 3 : 2}
-                    placeholder="Notiz – worum geht es, warum, was wäre der erste Schritt?"
-                    className="mt-2 w-full resize-none rounded-md bg-gray-50/60 px-3 py-2 text-sm leading-relaxed text-gray-700 outline-none placeholder:text-gray-300 focus:bg-gray-50"
-                  />
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-// „Alle Projekte" ordnerübergreifend mit Sortierung und Filtern.
-function AlleAnsicht({ projekte, todos, onOeffnen, onRemove }) {
-  const [sortierung, setSortierung] = useState("faellig")
-  const [statusFilter, setStatusFilter] = useState("")
-  const [prioFilter, setPrioFilter] = useState("")
-
-  const gefiltert = projekte.filter((p) => {
-    if (statusFilter && (p.status ?? "offen") !== statusFilter) return false
-    if (prioFilter && (p.prioritaet ?? "") !== prioFilter) return false
-    return true
-  })
-  const liste = [...gefiltert].sort((a, b) => {
-    if (sortierung === "faellig")
-      return (a.deadline || "9999").localeCompare(b.deadline || "9999")
-    if (sortierung === "prioritaet")
-      return (
-        (PRIO_RANG[b.prioritaet ?? ""] ?? 0) -
-        (PRIO_RANG[a.prioritaet ?? ""] ?? 0)
-      )
-    if (sortierung === "status")
-      return (a.status ?? "offen").localeCompare(b.status ?? "offen")
-    return a.name.localeCompare(b.name)
-  })
-
-  const selektStil =
-    "rounded-md border border-gray-200 bg-white px-2 py-1 text-gray-800 outline-none focus:border-gray-900"
-
-  return (
-    <div className="mt-4">
-      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-        <label className="flex items-center gap-1.5">
-          Sortieren
-          <select
-            value={sortierung}
-            onChange={(e) => setSortierung(e.target.value)}
-            className={selektStil}
-          >
-            <option value="faellig">Fälligkeit</option>
-            <option value="prioritaet">Priorität</option>
-            <option value="status">Status</option>
-            <option value="name">Name</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-1.5">
-          Status
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className={selektStil}
-          >
-            <option value="">Alle</option>
-            {STATUS_OPTIONEN.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-1.5">
-          Priorität
-          <select
-            value={prioFilter}
-            onChange={(e) => setPrioFilter(e.target.value)}
-            className={selektStil}
-          >
-            <option value="">Alle</option>
-            {PRIORITAETEN.filter((p) => p.value).map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {liste.length === 0 ? (
-        <LeerHinweis
-          klasse="mt-4"
-          emoji="📁"
-          titel={
-            projekte.length === 0
-              ? "Noch keine Projekte"
-              : "Kein Projekt passt zum Filter"
-          }
-          text={
-            projekte.length === 0
-              ? "Ein Projekt ist alles, was mehr als eine Aufgabe braucht – eine Hausarbeit, ein Umzug, ein Nebenprojekt. Leg das erste an."
-              : "Setz den Filter oben zurück, um wieder alle Projekte zu sehen."
-          }
-        />
-      ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {liste.map((p) => (
-            <ProjektKarte
-              key={p.id}
-              p={p}
-              todos={todos}
-              onOeffnen={onOeffnen}
-              onRemove={onRemove}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Areas: dauerhafte Lebensbereiche (Gesundheit, Finanzen, Wohnung …). Anders
-// als ein Ordner, der nur sortiert, bündelt eine Area laufende Vorhaben und
-// zeigt, wie es um den Bereich steht: laufende Projekte, offene und
-// überfällige Aufgaben. Eine Area ohne laufendes Projekt fällt hier auf –
-// genau dafür sind Areas da.
-function AreaKarte({ area, projekte, todos, onOeffnen, onRemove }) {
-  const zugeordnet = projekte.filter(
-    (p) => p.areaId === area.id && !p.archiviert
-  )
-  const laufend = zugeordnet.filter((p) => (p.status ?? "offen") !== "fertig")
-  // Aufgaben der Area: direkt an ihr hängende plus die ihrer Projekte.
-  const gehoert = (t) => {
-    const ziel = t.projektId ?? t.kursId
-    return ziel === area.id || zugeordnet.some((p) => p.id === ziel)
-  }
-  const offen = todos.filter((t) => !t.erledigt && gehoert(t))
-  const ueberfaellig = offen.filter((t) => t.datum && tageBisZahl(t.datum) < 0)
-
-  return (
-    <div
-      onClick={() => onOeffnen(area.id)}
-      className="group relative flex cursor-pointer flex-col rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-gray-400"
-    >
-      {onRemove && (
-        <span className="absolute right-3 top-3">
-          <LoeschKnopf
-            onLoeschen={() => onRemove(area.id)}
-            titel="Area löschen"
-            klasse="text-gray-300 opacity-0 group-hover:opacity-100 max-md:opacity-100"
-          />
-        </span>
-      )}
-      <h3 className="truncate pr-4 text-sm font-medium text-gray-900">
-        {area.name}
-      </h3>
-      {area.beschreibung && (
-        <p className="mt-1 line-clamp-2 text-xs text-gray-400">
-          {area.beschreibung}
-        </p>
-      )}
-
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span
-          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-            laufend.length === 0
-              ? "bg-gray-100 text-gray-400"
-              : "bg-blue-50 text-blue-700"
-          }`}
-        >
-          {laufend.length === 0
-            ? "kein laufendes Projekt"
-            : `${laufend.length} ${laufend.length === 1 ? "Projekt" : "Projekte"}`}
-        </span>
-        {offen.length > 0 && (
-          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
-            {offen.length} offen
-          </span>
-        )}
-        {ueberfaellig.length > 0 && (
-          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-600">
-            {ueberfaellig.length} überfällig
-          </span>
-        )}
-      </div>
-
-      {laufend.length > 0 && (
-        <ul className="mt-3 space-y-1 border-t border-gray-100 pt-2">
-          {laufend.slice(0, 3).map((p) => (
-            <li key={p.id}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onOeffnen(p.id)
-                }}
-                className="block w-full truncate text-left text-xs text-gray-500 transition-colors hover:text-gray-900"
-              >
-                → {p.name}
-              </button>
-            </li>
-          ))}
-          {laufend.length > 3 && (
-            <li className="text-[10px] text-gray-400">
-              +{laufend.length - 3} weitere
-            </li>
-          )}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function AreasAnsicht({ projekte, todos, onOeffnen, onRemove, onNeueArea }) {
-  const areas = projekte.filter((p) => (p.typ ?? "projekt") === "area")
-  const ohneArea = projekte.filter(
-    (p) =>
-      (p.typ ?? "projekt") !== "area" && !p.archiviert && p.areaId == null
-  )
-
-  return (
-    <div className="mt-4">
-      {areas.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center">
-          <p className="text-sm font-medium text-gray-900">
-            Noch keine Area angelegt.
-          </p>
-          <p className="mx-auto mt-1 max-w-md text-xs text-gray-400">
-            Eine Area ist ein dauerhafter Lebensbereich ohne Enddatum –
-            Gesundheit, Finanzen, Wohnung, Beruf. Projekte laufen darin ab und
-            hören auf; die Area bleibt.
-          </p>
-          <button
-            onClick={onNeueArea}
-            className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-          >
-            + Area anlegen
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-400">
-              {areas.length} {areas.length === 1 ? "Area" : "Areas"}
-            </p>
-            <button
-              onClick={onNeueArea}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-            >
-              + Area
-            </button>
-          </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {areas.map((a) => (
-              <AreaKarte
-                key={a.id}
-                area={a}
-                projekte={projekte}
-                todos={todos}
-                onOeffnen={onOeffnen}
-                onRemove={onRemove}
-              />
-            ))}
-          </div>
-
-          {ohneArea.length > 0 && (
-            <section className="mt-8">
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
-                Projekte ohne Area
-              </h2>
-              <p className="mt-1 text-xs text-gray-400">
-                Zuordnen im Projekt unter „Area" – oder bewusst so lassen.
-              </p>
-              <ul className="mt-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-                {ohneArea.map((p) => (
-                  <li
-                    key={p.id}
-                    onClick={() => onOeffnen(p.id)}
-                    className="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
-                      {p.name}
-                    </span>
-                    {p.deadline && <DeadlineChip datum={p.deadline} />}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-
-// Kanban-Board nach Status, Projekte per Drag&Drop verschiebbar.
-function BoardAnsicht({ projekte, setProjekte, onOeffnen }) {
-  const [ziehId, setZiehId] = useState(null)
-
-  function setzeStatus(id, status) {
-    setProjekte(projekte.map((p) => (p.id === id ? { ...p, status } : p)))
-  }
-
-  return (
-    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-      {STATUS_OPTIONEN.map((sp) => {
-        const spalte = projekte.filter(
-          (p) => !p.archiviert && (p.status ?? "offen") === sp.value
-        )
-        return (
-          <div
-            key={sp.value}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => {
-              if (ziehId != null) setzeStatus(ziehId, sp.value)
-              setZiehId(null)
-            }}
-            className="rounded-xl border border-gray-200 bg-gray-50/40 p-2"
-          >
-            <div className="flex items-center justify-between px-1 py-1">
-              <span
-                className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${sp.tag}`}
-              >
-                {sp.label}
-              </span>
-              <span className="text-xs text-gray-400">{spalte.length}</span>
-            </div>
-            <div className="mt-1 space-y-2">
-              {spalte.map((p) => {
-                const pr = PRIORITAETEN.find((x) => x.value === p.prioritaet)
-                return (
-                  <div
-                    key={p.id}
-                    draggable
-                    onDragStart={() => setZiehId(p.id)}
-                    onDragEnd={() => setZiehId(null)}
-                    onClick={() => onOeffnen(p.id)}
-                    className="cursor-pointer rounded-lg border border-gray-200 bg-white p-3 transition-colors hover:border-gray-400"
-                  >
-                    <p className="truncate text-sm font-medium text-gray-900">
-                      {p.name}
-                    </p>
-                    <div className="mt-2 flex items-center gap-1.5">
-                      {pr && pr.value && (
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${pr.tag}`}
-                        >
-                          {pr.label}
-                        </span>
-                      )}
-                      {p.deadline && (
-                        <span className="ml-auto">
-                          <DeadlineChip datum={p.deadline} />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-              {spalte.length === 0 && (
-                <p className="px-1 py-6 text-center text-xs text-gray-300">
-                  Hierher ziehen
-                </p>
-              )}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// Projektübergreifend: nächste Deadlines, terminierte Schritte, Todos.
-function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
-  const projektName = (id) => projekte.find((p) => p.id === id)?.name ?? ""
+// Was in den nächsten sieben Tagen (oder schon überfällig) ansteht – über
+// alle Projekte hinweg. Früher ein eigener Reiter „Anstehend"; als Leiste
+// sieht man es, ohne danach zu suchen, und sie verschwindet, wenn nichts
+// ansteht.
+function FristenLeiste({ projekte, todos, onOeffnen }) {
   const liste = sammleTermine(projekte, todos)
+    .filter((e) => tageBisZahl(e.datum) <= 7)
     .sort((a, b) => a.datum.localeCompare(b.datum))
-    .slice(0, 25)
+    .slice(0, 5)
+
+  if (liste.length === 0) return null
 
   return (
-    <div className="mt-4">
-      {liste.length === 0 ? (
-        <LeerHinweis
-          emoji="🗓️"
-          titel="Nichts steht an"
-          text="Hier sammeln sich alle Projekte und Aufgaben mit Frist – sobald du irgendwo ein Datum setzt, taucht es auf."
-        />
-      ) : (
-        <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-          {liste.map((e, i) => (
-            <li
-              key={i}
-              onClick={() => onOeffnen(e.projektId)}
-              className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50"
-            >
-              <span className="w-20 shrink-0 text-xs text-gray-500">
-                {new Date(e.datum).toLocaleDateString("de-DE")}
-              </span>
-              <DeadlineChip datum={e.datum} />
-              <span className="flex-1 truncate text-sm text-gray-800">
-                {e.label}
-              </span>
-              <span className="hidden max-w-32 truncate text-xs text-gray-400 sm:inline">
-                {projektName(e.projektId)}
-              </span>
-              <span className="shrink-0 rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
-                {e.typ}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5">
+      <span className="mr-1 text-xs font-semibold uppercase tracking-widest text-gray-500">
+        Diese Woche
+      </span>
+      {liste.map((e, i) => (
+        <button
+          key={i}
+          onClick={() => onOeffnen(e.projektId)}
+          className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+        >
+          <DeadlineChip datum={e.datum} />
+          <span className="max-w-48 truncate">{e.label}</span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -1150,33 +636,17 @@ function ArchivAnsicht({ archivierte, projekte, setProjekte, onOeffnen }) {
   )
 }
 
-function ProjektErstellen({
-  ordnerId,
-  projekte,
-  setProjekte,
-  onFertig,
-  startTyp = "projekt",
-}) {
-  const [typ, setTyp] = useState(startTyp)
+// Ein neues Projekt braucht nur einen Namen. Struktur (Bereiche, Seiten,
+// Vorlagen) kommt später im Projekt selbst dazu – vorher weiß man ohnehin
+// nicht, was man braucht.
+function ProjektErstellen({ ordnerId, projekte, setProjekte, onFertig }) {
   const [name, setName] = useState("")
   const [beschreibung, setBeschreibung] = useState("")
   const [deadline, setDeadline] = useState("")
-  const [vorlage, setVorlage] = useState("leer")
 
-  // Ein Projekt startet leer – oder mit der Struktur einer Vorlage
-  // (Bereiche, Seiten, Ablauf). Areas bleiben bewusst schlicht.
   function speichern(e) {
     e.preventDefault()
     if (!name.trim()) return
-    const gewaehlt =
-      typ === "area"
-        ? null
-        : PROJEKT_VORLAGEN.find((v) => v.key === vorlage) ?? null
-    const struktur = gewaehlt
-      ? vorlageAnwenden(gewaehlt, (t) => vorlageZuBloecken(t, neueBlockId), () =>
-          neueBlockId()
-        )
-      : { module: [], workflow: [], seiten: [], seitenTabs: [], uebersichtMigriert: true }
     setProjekte([
       ...projekte,
       {
@@ -1184,10 +654,13 @@ function ProjektErstellen({
         name: name.trim(),
         beschreibung: beschreibung.trim(),
         ordnerId,
-        deadline: typ === "area" ? "" : deadline,
-        typ,
+        deadline,
         ziel: "",
-        ...struktur,
+        module: [...NEUES_PROJEKT_MODULE],
+        workflow: [],
+        seiten: [],
+        seitenTabs: [],
+        uebersichtMigriert: true,
       },
     ])
     onFertig()
@@ -1198,60 +671,13 @@ function ProjektErstellen({
       onSubmit={speichern}
       className="mt-4 rounded-xl border border-gray-300 bg-white p-4"
     >
-      <div className="mb-3 flex w-fit rounded-md border border-gray-200 p-0.5 text-xs">
-        {[
-          { key: "projekt", label: "Projekt" },
-          { key: "area", label: "Area" },
-        ].map((o) => (
-          <button
-            key={o.key}
-            type="button"
-            onClick={() => setTyp(o.key)}
-            className={`rounded px-2.5 py-1 font-medium transition-colors ${
-              typ === o.key
-                ? "bg-gray-900 text-white"
-                : "text-gray-500 hover:text-gray-900"
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-      {typ === "projekt" && (
-        <div className="mb-3">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-            Vorlage
-          </p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {PROJEKT_VORLAGEN.map((v) => (
-              <button
-                key={v.key}
-                type="button"
-                onClick={() => setVorlage(v.key)}
-                title={v.beschreibung}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  vorlage === v.key
-                    ? "border-gray-900 bg-gray-900 text-white"
-                    : "border-gray-200 text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                {v.label}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1.5 text-xs text-gray-400">
-            {PROJEKT_VORLAGEN.find((v) => v.key === vorlage)?.beschreibung}
-          </p>
-        </div>
-      )}
-
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col text-xs text-gray-500">
           Name
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={typ === "area" ? "z.B. Finanzen" : "z.B. Statistik I"}
+            placeholder="z.B. Statistik I"
             autoFocus
             className="mt-1 w-52 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
           />
@@ -1265,17 +691,15 @@ function ProjektErstellen({
             className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
           />
         </label>
-        {typ === "projekt" && (
-          <label className="flex flex-col text-xs text-gray-500">
-            Deadline / Prüfung
-            <input
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
-            />
-          </label>
-        )}
+        <label className="flex flex-col text-xs text-gray-500">
+          Deadline
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            className="mt-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900"
+          />
+        </label>
       </div>
 
       <div className="mt-4 flex justify-end gap-2">
