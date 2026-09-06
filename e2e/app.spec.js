@@ -451,10 +451,12 @@ test("Bereiche eines Projekts sind gebündelt und erklärt", async ({ page }) =>
     await expect(page.locator("main")).toContainText(bereich)
   }
 
+  // Der Weg zu den Bereichen liegt neben den Reitern, nicht im zugeklappten
+  // Eigenschaften-Kopf: „Details" bleibt hier unangetastet.
+  await expect(page.getByRole("button", { name: "Details", exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "+ Bereich", exact: true }).click()
+
   // Die verfügbaren Bereiche sind nach Zweck gruppiert und erklärt.
-  // Der Eigenschaften-Kopf ist standardmäßig zugeklappt („Details").
-  await page.getByRole("button", { name: "Details", exact: true }).first().click()
-  await page.getByRole("button", { name: /Bereiche anpassen/ }).click()
   await expect(page.locator("main")).toContainText("Lernen")
   await expect(page.locator("main")).toContainText("Karteikarten")
   await expect(page.locator("main")).toContainText(/Spaced Repetition/)
