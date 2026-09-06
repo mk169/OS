@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import {
@@ -229,9 +229,16 @@ function ProjektZiele({
 // damit auch mehrere in derselben Millisekunde eindeutig bleiben.
 const neueZielId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
-function EigeneZiele({ ziele, onChange, phasen = [] }) {
+function EigeneZiele({ ziele, onChange, phasen = [], oeffneId = null }) {
   const [entwurf, setEntwurf] = useState("")
   const [offenId, setOffenId] = useState(null)
+
+  // Nach der 5/25-Übung klappt der Aufrufer das erste Ergebnis auf – sonst
+  // stünden dort fünf zugeklappte Zeilen, und die Methoden dahinter fände
+  // niemand.
+  useEffect(() => {
+    if (oeffneId) setOffenId(oeffneId)
+  }, [oeffneId])
 
   const neueId = neueZielId
 
@@ -282,12 +289,28 @@ function EigeneZiele({ ziele, onChange, phasen = [] }) {
                   fertig ? "text-gray-400 line-through" : "text-gray-800"
                 }`}
               />
-              {z.methode === "smart" && <SmartBadge ziel={z} />}
-              {z.methode && z.methode !== "smart" && (
-                <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium uppercase text-gray-500">
-                  {methodeVon(z.methode).label}
-                </span>
-              )}
+              {/* Die Methodenwahl steckte hinter dem „▸" und war damit
+                  unsichtbar – auf der zugeklappten Zeile deutete nichts
+                  darauf hin, dass es sie gibt. Dieser Knopf benennt sie und
+                  klappt das Ziel gleich mit auf. */}
+              <button
+                type="button"
+                onClick={() => setOffenId(offen ? null : z.id)}
+                title="Zielmethode: SMART, OKR oder WOOP"
+                className="shrink-0 rounded-full px-1 py-0.5 transition-colors hover:bg-gray-200"
+              >
+                {z.methode === "smart" ? (
+                  <SmartBadge ziel={z} />
+                ) : z.methode ? (
+                  <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium uppercase text-gray-500">
+                    {methodeVon(z.methode).label}
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-dashed border-gray-400 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                    + Methode
+                  </span>
+                )}
+              </button>
               {gesamt > 0 && (
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
@@ -548,6 +571,11 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
       ? { text: `Startet in ${s.tageBisStart} Tagen`, stil: "bg-blue-50 text-blue-700" }
       : { text: "Abgeschlossen", stil: "bg-gray-100 text-gray-500" }
 
+  // Die 5/25-Übung gibt es auch für eine bestehende Periode – Ziele findet
+  // man nicht nur beim Anlegen.
+  const [fuenf25Offen, setFuenf25Offen] = useState(false)
+  const [oeffneZiel, setOeffneZiel] = useState(null)
+
   // Jede Änderung persistiert die Periode in der aktuellen Datenstruktur.
   const patch = (aenderung) => onUpdate(aktualisiereZyklus(zyklus, aenderung))
 
@@ -603,14 +631,47 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
         phasen={zyklusPhasen(zyklus)}
       />
 
-      <p className="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-        Eigene Ziele
-      </p>
-      <EigeneZiele
-        ziele={zyklusZiele(zyklus)}
-        onChange={(neu) => patch({ ziele: neu })}
-        phasen={zyklusPhasen(zyklus)}
-      />
+      <div className="mt-3 mb-1.5 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+          Eigene Ziele
+        </p>
+        {!fuenf25Offen && (
+          <button
+            type="button"
+            onClick={() => setFuenf25Offen(true)}
+            title="25 Ziele sammeln, 5 wählen, 20 bewusst liegen lassen"
+            className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-900"
+          >
+            Mit der 5/25-Regel finden
+          </button>
+        )}
+      </div>
+      {fuenf25Offen ? (
+        <Fuenf25
+          neueId={neueZielId}
+          onAbbrechen={() => setFuenf25Offen(false)}
+          onUebernehmen={({ ziele: gewaehlt, nichtJetzt: rest }) => {
+            const neue = gewaehlt.map((text) => ({
+              id: neueZielId(),
+              text,
+              schritte: [],
+            }))
+            patch({
+              ziele: [...zyklusZiele(zyklus), ...neue],
+              nichtJetzt: [...nichtJetzt(zyklus), ...rest],
+            })
+            setOeffneZiel(neue[0]?.id ?? null)
+            setFuenf25Offen(false)
+          }}
+        />
+      ) : (
+        <EigeneZiele
+          ziele={zyklusZiele(zyklus)}
+          onChange={(neu) => patch({ ziele: neu })}
+          phasen={zyklusPhasen(zyklus)}
+          oeffneId={oeffneZiel}
+        />
+      )}
 
       {/* Was die 5/25-Regel aussortiert hat, bleibt sichtbar – genau darin
           besteht ihr Nutzen. Löschen geht, aber nur bewusst. */}
@@ -654,6 +715,7 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
   // Ergebnis füllt sie.
   const [fuenf25Offen, setFuenf25Offen] = useState(false)
   const [nichtJetzt, setNichtJetzt] = useState([])
+  const [oeffneZiel, setOeffneZiel] = useState(null)
   const [phasen, setPhasen] = useState([])
   const [fehler, setFehler] = useState("")
 
@@ -786,15 +848,14 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
             neueId={neueZielId}
             onAbbrechen={() => setFuenf25Offen(false)}
             onUebernehmen={({ ziele: gewaehlt, nichtJetzt: rest }) => {
-              setEigeneZiele([
-                ...eigeneZiele,
-                ...gewaehlt.map((text) => ({
-                  id: neueZielId(),
-                  text,
-                  schritte: [],
-                })),
-              ])
+              const neue = gewaehlt.map((text) => ({
+                id: neueZielId(),
+                text,
+                schritte: [],
+              }))
+              setEigeneZiele([...eigeneZiele, ...neue])
               setNichtJetzt([...nichtJetzt, ...rest])
+              setOeffneZiel(neue[0]?.id ?? null)
               setFuenf25Offen(false)
             }}
           />
@@ -804,6 +865,7 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
               ziele={eigeneZiele}
               onChange={setEigeneZiele}
               phasen={phasen}
+              oeffneId={oeffneZiel}
             />
             <div className="mt-2">
               <NichtJetztListe
