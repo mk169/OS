@@ -10,6 +10,8 @@
 // ── Geldbeträge ───────────────────────────────────────────────────────────
 
 // Standard-Währung; kann in den Finanzen-Einstellungen geändert werden.
+import { MONATE } from "./datum"
+
 export const WAEHRUNGEN = [
   { code: "EUR", symbol: "€", label: "Euro" },
   { code: "CHF", symbol: "CHF", label: "Schweizer Franken" },
@@ -118,10 +120,6 @@ export function aktuellerMonat() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
 }
 
-const MONATSNAMEN = [
-  "Januar", "Februar", "März", "April", "Mai", "Juni",
-  "Juli", "August", "September", "Oktober", "November", "Dezember",
-]
 
 export const MONATSKURZ = [
   "Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
@@ -145,7 +143,7 @@ export function monatLabel(schluessel) {
   // Schlüssel wie "2026" durch den Bereichsvergleich und ergibt "undefined 2026".
   if (!jahr || !Number.isInteger(idx) || idx < 0 || idx > 11)
     return schluessel ?? ""
-  return `${MONATSNAMEN[idx]} ${jahr}`
+  return `${MONATE[idx]} ${jahr}`
 }
 
 // Nachbarmonat berechnen (schritt = −1 zurück, +1 vor).

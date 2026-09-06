@@ -1,0 +1,61 @@
+name: CI
+
+# Prüft jeden Pull Request, bevor er in main landet. Der Deploy-Workflow
+# läuft erst nach dem Merge – ohne diesen hier fiele ein kaputter Stand erst
+# auf, wenn er schon in main ist.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Ein neuer Push auf denselben Pull Request bricht den vorigen Lauf ab –
+# das Ergebnis wäre ohnehin überholt.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Browser für die Oberflächen-Tests
+        run: npx playwright install --with-deps chromium
+
+      # Ohne Supabase-Variablen: Playwright baut sich seine eigene Fassung
+      # und testet die App im lokalen Modus. Mit Cloud-Zugang stünde der
+      # Login davor und die Tests kämen nie in die App.
+      - name: Oberflächen-Tests
+        run: npm run test:e2e
+
+      - name: Build
+        run: npm run build
+
+      # Bei einem Fehlschlag sind die Spuren des Browsers das Wertvollste,
+      # was der Lauf hinterlässt.
+      - name: Testberichte sichern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7

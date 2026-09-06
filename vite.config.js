@@ -35,9 +35,16 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: false,
-      includeAssets: ["favicon.svg", "icon.svg", "manifest.webmanifest"],
+      includeAssets: [
+        "favicon.svg",
+        "icon.svg",
+        "icon-180.png",
+        "icon-192.png",
+        "icon-512.png",
+        "manifest.webmanifest",
+      ],
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,webmanifest}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,webmanifest}"],
         // Einstiegspunkt für jede Route (SPA), damit ein Reload offline
         // nicht ins Leere läuft.
         navigateFallback: "index.html",

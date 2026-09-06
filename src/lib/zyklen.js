@@ -1,4 +1,4 @@
-import { heute } from "./datum"
+import { heute, schluessel } from "./datum"
 import { okrErreicht } from "./zielmethoden"
 
 // Fokus-Perioden („Zyklen") nach dem Prinzip eines 90-Day-Year / 12-Week-Year:
@@ -28,14 +28,10 @@ export function laengeLabel(key) {
   return ZYKLUS_LAENGEN.find((l) => l.key === key)?.kurz ?? "individuell"
 }
 
-function iso(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-}
-
 function verschiebe(datum, tage) {
   const d = new Date(datum)
   d.setDate(d.getDate() + tage)
-  return iso(d)
+  return schluessel(d)
 }
 
 // Der Kalendertag nach `datum` ("JJJJ-MM-TT"). Praktisch, um Zwischenphasen
@@ -262,7 +258,7 @@ export function wochenFortschritt(woche) {
 export function montagKey(datum) {
   const d = new Date(datum)
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-  return iso(d)
+  return schluessel(d)
 }
 
 // Alle Wochen einer Periode, chronologisch: [{ nummer, start, ende }].

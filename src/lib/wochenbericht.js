@@ -1,4 +1,4 @@
-import { montagVon, wochenSchluessel } from "./datum"
+import { montagVon, schluessel, wochenSchluessel } from "./datum"
 import { faelltAuf } from "./wiederholung"
 import { wochenZielErreicht } from "./habits"
 import { tagesBilanz } from "./dailyops"
@@ -19,15 +19,11 @@ import { tagesBilanz } from "./dailyops"
 // Ältere Berichte kennen die späteren Felder nicht – die Tabelle zeigt dort
 // einen Strich statt einer erfundenen Null.
 
-export function wochenStartVon(datum = new Date()) {
-  return wochenSchluessel(datum)
-}
-
 // Sonntag (letzter Tag) der Woche, die mit `montagKey` beginnt.
 export function wochenEndeVon(montagKey) {
   const d = new Date(montagKey)
   d.setDate(d.getDate() + 6)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  return schluessel(d)
 }
 
 // Die zuletzt abgeschlossene Woche liegt hinter uns: Vorschlag zum Abschließen
@@ -36,10 +32,6 @@ export function letzteWoche(datum = new Date()) {
   const m = montagVon(datum)
   m.setDate(m.getDate() - 7)
   return wochenSchluessel(m)
-}
-
-export function istSonntag(datum = new Date()) {
-  return datum.getDay() === 0
 }
 
 // Kalenderwoche (ISO) für die Beschriftung.
@@ -122,7 +114,7 @@ export function baueBericht({
   for (let i = 0; i < 7; i++) {
     const d = new Date(von)
     d.setDate(d.getDate() + i)
-    const tag = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    const tag = schluessel(d)
     if (tag > bis) break
     terminAnzahl += termine.filter((t) => faelltAuf(t, tag)).length
   }
@@ -134,7 +126,7 @@ export function baueBericht({
   for (let i = 0; i < 7; i++) {
     const d = new Date(von)
     d.setDate(d.getDate() + i)
-    const tag = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    const tag = schluessel(d)
     if (tag > bis) break
     const bilanz = tagesBilanz(routinen, routineProtokoll, tag)
     if (bilanz.gesamt === 0) continue

@@ -12,9 +12,9 @@ Geräten.
 
 ![Startseite](docs/screenshots/start.png)
 
-| Habits | Projekte | Unterwegs |
-| --- | --- | --- |
-| ![Habits](docs/screenshots/habits.png) | ![Projekte](docs/screenshots/projekte.png) | ![Mobil](docs/screenshots/mobil.png) |
+| Habits | Projekte | Finanzen | Unterwegs |
+| --- | --- | --- | --- |
+| ![Habits](docs/screenshots/habits.png) | ![Projekte](docs/screenshots/projekte.png) | ![Finanzen](docs/screenshots/finanzen.png) | ![Mobil](docs/screenshots/mobil.png) |
 
 *(Screenshots mit Beispieldaten)*
 
@@ -48,7 +48,7 @@ Cloud, Daten nur auf diesem Gerät.
 | **Fokus** | Pomodoro-Timer mit Sessions-Protokoll |
 | **Projekte** | Ordner, Areas, Board, Blatt-Ansicht mit Blöcken, Workflow, Vorlagen |
 | **Lernen** | Lernpläne und Karteikarten mit Spaced Repetition |
-| **Periode** | Fokus-Perioden (14/30/90 Tage, Halbjahr, Jahr) mit Wochenzielen |
+| **Periode** | Fokus-Perioden (14/30/90 Tage, Halbjahr, Jahr) mit Wochenzielen, Zwischenphasen und Zielmethoden (SMART, OKR, WOOP, 5/25-Regel) |
 | **Finanzen** | Konten, Budgets, Ausgaben, Sparziele, CSV-Import |
 | **Beruf & Karriere** | Bewerbungs-Pipeline mit Fristen, Karriereziele, Weiterbildung |
 | **Alltag** | Routinen als Checklisten mit Rhythmus, Tagesbilanz und Serie – dazu der tägliche Körper-Check-in |
@@ -109,37 +109,43 @@ Google Fonts – ohne Netz greifen dort die System-Schriften.
 
 ## Tests
 
-`npm test` prüft die Logik in `src/lib` mit Vitest – Datumsrechnung, Habit-
-Streaks und Disziplin, Spaced Repetition, Wochenbericht, Finanz-Auswertungen,
-Projekt-Fortschritt, Eisenhower-Einteilung, Termin-Wiederholungen, Routinen-
-Rhythmus und -Serie, Bewerbungs-Pipeline, Tags und Wikilinks sowie die
-Einstellungs-Vorgaben. Die Oberfläche selbst ist nicht
-abgedeckt; sie hängt an denselben Funktionen.
+`npm test` prüft die Logik in `src/lib` mit Vitest (16 Dateien) – Datums-
+rechnung, Habit-Streaks und Disziplin, Spaced Repetition, Wochenbericht,
+Finanz-Auswertungen, Projekt-Fortschritt, Eisenhower-Einteilung, Termin-
+Wiederholungen, Routinen-Rhythmus und -Serie, Bewerbungs-Pipeline, Tags und
+Wikilinks, Navigation, Locked-In-Zeitfenster, Datums-Erkennung sowie die
+Zielmethoden (SMART-Prüfung, OKR-Fortschritt, 5/25-Aufteilung).
 
 `npm run test:e2e` fährt zusätzlich den Produktions-Build hoch und klickt ihn
-mit Playwright durch: Einrichtung, alle Bereiche öffnen, Todo mit Datums-
-Erkennung anlegen, Routine abhaken (inklusive Startseite und Neuladen),
-Bewerbung durch die Pipeline schieben, jeden der sechs Stile auf Start, Todos
-und Habits – und ein Durchlauf mit abgeschaltetem Netz, der prüft, dass die
-App offline startet.
+mit Playwright durch (28 Tests): Einrichtung, alle Bereiche öffnen, Todo mit
+Datums-Erkennung anlegen und nachträglich ändern, Routine abhaken (inklusive
+Startseite und Neuladen), Termin, Bewerbung und Buchung nachträglich ändern,
+Bewerbung durch die Pipeline schieben, die Zielmethoden durchspielen, jeden
+der sechs Stile auf Start, Todos und Habits – dazu ein Start mit absichtlich
+kaputten Altdaten und ein Durchlauf mit abgeschaltetem Netz.
 
-Der Workflow auf GitHub führt vor jedem Deployment `npm run lint`, `npm test`,
-`npm run test:e2e` und `npm run build` aus.
+`.github/workflows/ci.yml` führt Lint, Tests, Oberflächen-Tests und Build auf
+jedem Pull Request aus; `deploy.yml` wiederholt sie vor jedem Deployment.
 
 ## Aufbau
 
 ```
 src/
+  main.jsx         Einstieg, Fehlergrenze um die App
   App.jsx          Navigation, Routing, einmalige Daten-Migrationen
   components/      Seiten und Bausteine (eine Datei pro Bereich)
   lib/             Logik ohne Darstellung: Rechnungen, Speicher, Konstanten
   index.css        Tailwind + Akzentfarben als CSS-Variablen
 e2e/               Oberflächen-Tests (Playwright)
+docs/              Architektur-Übersicht und Screenshots
 supabase/          SQL-Schema für den Sync
 ```
 
 Faustregel: `components/` zeigt an, `lib/` rechnet. Was zwei Seiten teilen,
-gehört in `lib/`.
+gehört in `lib/` – geteilte Darstellung in `components/Bausteine.jsx` und
+`components/LeerHinweis.jsx`.
+
+Ausführlicher: [`docs/architektur.md`](docs/architektur.md).
 
 Die Versionsnummer in den Einstellungen kommt aus der `package.json`, das
 Datum daneben aus dem Build (`vite.config.js` → `src/lib/version.js`).
@@ -147,3 +153,7 @@ Datum daneben aus dem Build (`vite.config.js` → `src/lib/version.js`).
 ## Technik
 
 React 19 · Vite 8 · Tailwind CSS 4 · Oxlint · Supabase (optional)
+
+## Lizenz
+
+[MIT](LICENSE)
