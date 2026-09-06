@@ -19,6 +19,8 @@ import {
 import Seitenkopf from "./Seitenkopf"
 import VitalitaetSeite from "./VitalitaetSeite"
 import LoeschKnopf from "./LoeschKnopf"
+import LeerHinweis from "./LeerHinweis"
+import { SEITE_LESEN } from "../lib/layout"
 
 // Lebensbereich „Daily Operations": der tägliche Betrieb als Checklisten.
 // Habits fragen „habe ich es getan?", Routinen fragen „ist der Ablauf
@@ -45,7 +47,7 @@ export default function DailyOpsSeite() {
   const istHeute = tag === heute()
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_LESEN}>
       <Seitenkopf
         eyebrow="Betrieb"
         titel="Alltag"
@@ -168,16 +170,6 @@ function StatKarte({ label, wert }) {
     <div className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm shadow-gray-100">
       <p className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{wert}</p>
       <p className="mt-0.5 text-xs font-medium text-gray-400">{label}</p>
-    </div>
-  )
-}
-
-function LeerHinweis({ emoji, titel, text }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-10 text-center">
-      <p className="text-2xl">{emoji}</p>
-      <p className="mt-2 text-sm font-medium text-gray-900">{titel}</p>
-      <p className="mt-1 text-xs text-gray-400">{text}</p>
     </div>
   )
 }

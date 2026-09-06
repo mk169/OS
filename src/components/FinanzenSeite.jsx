@@ -28,6 +28,8 @@ import {
 } from "../lib/finanzen"
 import { alsCsv, parseCsv } from "../lib/finanzenCsv"
 import LoeschKnopf from "./LoeschKnopf"
+import LeerHinweis from "./LeerHinweis"
+import { SEITE_RASTER } from "../lib/layout"
 
 // Lebensbereich „Finanzen": Konten, Buchungen, Budgets und Sparziele an
 // einem Ort. Alle Daten liegen in useStored (localStorage + Cloud-Sync).
@@ -60,7 +62,7 @@ export default function FinanzenSeite() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_RASTER}>
       <Seitenkopf
         titel="Finanzen"
         unterzeile="Konten, Ausgaben, Budgets und Sparziele an einem Ort."
@@ -137,16 +139,6 @@ function Balken({ anteil, farbe = "emerald" }) {
         }`}
         style={{ width: `${ueber ? 100 : breite}%` }}
       />
-    </div>
-  )
-}
-
-function LeerHinweis({ emoji, titel, text }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-12 text-center">
-      <div className="mb-2 text-3xl">{emoji}</div>
-      <p className="text-sm font-semibold text-gray-700">{titel}</p>
-      <p className="mx-auto mt-1 max-w-sm text-sm text-gray-400">{text}</p>
     </div>
   )
 }

@@ -16,9 +16,10 @@ import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { KalenderPanel } from "./KalenderSeite"
 import TodoErstellen from "./TodoErstellen"
-import { FristChip } from "./TodosSeite"
+import { FristChip } from "./Bausteine"
 import { EINTEILUNGEN, einteilungVon } from "../lib/todos"
 import MentorBanner from "./MentorBanner"
+import { SEITE_LESEN } from "../lib/layout"
 import {
   useHabitDaten,
   nutzeHabitToggle,
@@ -358,7 +359,7 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
   const erledigt = todos.filter((t) => t.erledigt).length
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_LESEN}>
       <header className="mb-7">
         <p className="text-sm font-semibold text-accent-600">{datumLang(heute())}</p>
         <h1
@@ -611,7 +612,14 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
           />
         </div>
 
-        {todoKacheln.length === 0 && habits.length === 0 ? null : (
+        {todoKacheln.length === 0 && habits.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-8 text-center">
+            <p className="text-sm font-semibold text-gray-900">Noch keine Quests</p>
+            <p className="mt-1 text-xs text-gray-400">
+              Leg eine Aufgabe an – sie erscheint hier und bringt XP.
+            </p>
+          </div>
+        ) : (
           <div className="space-y-2.5">
             {todoKacheln.map((t) => (
               <AktionsKachel
@@ -770,7 +778,11 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
           </span>
         </TermSection>
 
-        {tasks.length === 0 && habits.length === 0 ? null : (
+        {tasks.length === 0 && habits.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-xs text-zinc-600">
+            no tasks queued — add one to begin
+          </p>
+        ) : (
           <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-white/10">
             {tasks.map((t) => (
               <TermRow

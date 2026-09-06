@@ -9,6 +9,7 @@ import Kalender, { TagesAnsicht } from "./Kalender"
 import Seitenkopf from "./Seitenkopf"
 import { TagesblockAuswahl } from "./Tagesbloecke"
 import { useTagesblockVorlagen } from "../lib/tagesbloecke"
+import { SEITE_RASTER } from "../lib/layout"
 
 // Kalender-Panel: vollständiger Kalender (Tag/Woche/Monat, Timestacking)
 // mit Termin-Erstellung. Wird im Dashboard eingebettet und auf der
@@ -463,7 +464,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
 
 export default function KalenderSeite() {
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_RASTER}>
       <Seitenkopf titel="Kalender" />
 
       <KalenderPanel tagesdetail />

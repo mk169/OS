@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import useStored from "../lib/useStored"
-import { tageBis, tageBisZahl } from "../lib/datum"
+import { tageBisZahl } from "../lib/datum"
+import { DeadlineChip, Fortschrittsbalken } from "./Bausteine"
 import ProjektDetail from "./ProjektDetail"
 import {
   STATUS_OPTIONEN,
@@ -14,6 +15,8 @@ import { PROJEKT_VORLAGEN, vorlageAnwenden } from "../lib/projektvorlagen"
 import { vorlageZuBloecken } from "../lib/wissen"
 import { neueBlockId } from "../lib/bloecke"
 import { SortMenu, LayoutUmschalter } from "./ListenControls"
+import LeerHinweis from "./LeerHinweis"
+import { SEITE_RASTER } from "../lib/layout"
 
 const ORDNER_SORT = [
   { value: "name", label: "Name A–Z" },
@@ -25,44 +28,6 @@ const ORDNER_SORT = [
 // Ordnersystem: Projekte liegen in beliebig verschachtelbaren Ordnern
 // (z.B. Uni → 4. Semester → Statistik). Jedes Projekt wird individuell
 // erstellt und bringt nur die Bereiche mit, die es braucht.
-
-// Farbiger Deadline-Chip – Farbe nach Dringlichkeit, Text via tageBis.
-export function DeadlineChip({ datum }) {
-  if (!datum) return null
-  const tage = tageBisZahl(datum)
-  const stil =
-    tage <= 0
-      ? "bg-red-50 text-red-600"
-      : tage <= 3
-        ? "bg-amber-50 text-amber-700"
-        : "bg-gray-100 text-gray-500"
-  return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${stil}`}>
-      {tageBis(datum)}
-    </span>
-  )
-}
-
-// Schlanker Fortschrittsbalken mit erledigt/gesamt-Beschriftung.
-export function Fortschrittsbalken({ erledigt, gesamt }) {
-  if (gesamt === 0) {
-    return <span className="text-xs text-gray-300">Noch keine Aufgaben</span>
-  }
-  const prozent = Math.round((erledigt / gesamt) * 100)
-  return (
-    <div className="flex items-center gap-2">
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
-        <div
-          className="h-full rounded-full bg-gray-900 transition-all"
-          style={{ width: `${prozent}%` }}
-        />
-      </div>
-      <span className="shrink-0 text-xs tabular-nums text-gray-400">
-        {erledigt}/{gesamt}
-      </span>
-    </div>
-  )
-}
 
 function OrdnerIcon() {
   return (
@@ -215,7 +180,7 @@ export default function OrdnerSeite({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_RASTER}>
       <Seitenkopf
         titel="Projekte"
         aktion={
@@ -806,7 +771,22 @@ function AlleAnsicht({ projekte, todos, onOeffnen, onRemove }) {
         </label>
       </div>
 
-      {liste.length === 0 ? null : (
+      {liste.length === 0 ? (
+        <LeerHinweis
+          klasse="mt-4"
+          emoji="📁"
+          titel={
+            projekte.length === 0
+              ? "Noch keine Projekte"
+              : "Kein Projekt passt zum Filter"
+          }
+          text={
+            projekte.length === 0
+              ? "Ein Projekt ist alles, was mehr als eine Aufgabe braucht – eine Hausarbeit, ein Umzug, ein Nebenprojekt. Leg das erste an."
+              : "Setz den Filter oben zurück, um wieder alle Projekte zu sehen."
+          }
+        />
+      ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {liste.map((p) => (
             <ProjektKarte
@@ -1082,7 +1062,13 @@ function AnstehendAnsicht({ projekte, todos, onOeffnen }) {
 
   return (
     <div className="mt-4">
-      {liste.length === 0 ? null : (
+      {liste.length === 0 ? (
+        <LeerHinweis
+          emoji="🗓️"
+          titel="Nichts steht an"
+          text="Hier sammeln sich alle Projekte und Aufgaben mit Frist – sobald du irgendwo ein Datum setzt, taucht es auf."
+        />
+      ) : (
         <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
           {liste.map((e, i) => (
             <li
@@ -1124,7 +1110,13 @@ function ArchivAnsicht({ archivierte, projekte, setProjekte, onOeffnen }) {
 
   return (
     <div className="mt-4">
-      {archivierte.length === 0 ? null : (
+      {archivierte.length === 0 ? (
+        <LeerHinweis
+          emoji="📦"
+          titel="Das Archiv ist leer"
+          text="Fertige Projekte kannst du im geöffneten Projekt archivieren – sie verschwinden dann aus der Übersicht, bleiben aber hier erhalten."
+        />
+      ) : (
         <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
           {archivierte.map((p) => (
             <li

@@ -3,6 +3,8 @@ import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
+import { LeerZeile } from "./LeerHinweis"
+import { SEITE_LESEN } from "../lib/layout"
 
 const VORGABEN = [25, 50, 90]
 
@@ -127,7 +129,7 @@ export default function DeepWorkSeite() {
   const letzte = [...sessions].reverse().slice(0, 5)
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_LESEN}>
       <Seitenkopf titel="Deep Work" />
 
       {/* Timer */}
@@ -281,7 +283,12 @@ export default function DeepWorkSeite() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
           Letzte Sessions
         </h2>
-        {letzte.length === 0 ? null : (
+        {letzte.length === 0 ? (
+          <LeerZeile
+            klasse="mt-3"
+            text="Noch keine Session abgeschlossen – der Verlauf füllt sich, sobald ein Timer durchgelaufen ist."
+          />
+        ) : (
           <ul className="mt-3 space-y-1.5">
             {letzte.map((s) => (
               <li

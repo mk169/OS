@@ -499,3 +499,47 @@ test("kaputte Altdaten legen die App nicht lahm", async ({ page }) => {
   await expect(page.locator("body")).not.toContainText("Da ist etwas schiefgelaufen")
   expect(fehler).toEqual([])
 })
+
+test("leere Bereiche erklären sich statt leer zu bleiben", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+
+  // Die Gruppe „Leben" ist standardmäßig eingeklappt.
+  await page.locator("aside button").filter({ hasText: "LEBEN" }).first().click()
+
+  // Jeder dieser Bereiche zeigte ohne Daten eine komplett weiße Fläche.
+  const erwartet = [
+    ["Habits", /Noch keine Habits/],
+    ["Fokus", /Noch keine Session abgeschlossen/],
+    ["Leisure & Kultur", /Noch nichts in der Bibliothek/],
+    ["Wochenrückblick", /Inbox leer/],
+  ]
+  for (const [bereich, text] of erwartet) {
+    await page.getByRole("button", { name: bereich, exact: true }).first().click()
+    await expect(page.locator("main")).toContainText(text)
+  }
+  expect(fehler).toEqual([])
+})
+
+test("erledigte Todos sind als erledigt zu erkennen", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Todos", exact: true }).first().click()
+
+  await page.getByTitle(/Todo erstellen/).first().click()
+  await page.getByPlaceholder(/benennen/).fill("Wäsche aufhängen")
+  await page.getByRole("button", { name: "Erstellen" }).click()
+
+  const zeile = page.locator("main li").filter({ hasText: "Wäsche aufhängen" })
+  const knopf = zeile.getByRole("button", { name: "Als erledigt markieren" })
+  await expect(knopf).toBeVisible()
+  await knopf.click()
+
+  // Danach: durchgestrichener Text und ein Knopf, der das Gegenteil anbietet.
+  await expect(page.locator("main")).toContainText("Erledigt")
+  await expect(
+    zeile.locator("button.line-through, button[class*='line-through']")
+  ).toHaveCount(1)
+  await expect(zeile.getByRole("button", { name: "Wieder öffnen" })).toBeVisible()
+  expect(fehler).toEqual([])
+})

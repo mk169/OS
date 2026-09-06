@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
 import { extrahiereWikilinks, findeZiel } from "../lib/wikilinks"
 import { NotizBearbeiten } from "./ProjektNotizen"
+import LeerHinweis from "./LeerHinweis"
 
 // Visuelle Übersicht aller "[[Titel]]"-Verlinkungen zwischen Wissen,
 // Projekten/Areas und einzelnen Projekt-Notizen (auch über Projekte
@@ -197,7 +198,13 @@ export default function WissensGraph({ onNavigate, onTagKlick }) {
 
   return (
     <div className="mt-4">
-      {knoten.length === 0 ? null : (
+      {knoten.length === 0 ? (
+        <LeerHinweis
+          emoji="🕸️"
+          titel="Noch nichts zu verknüpfen"
+          text="Der Graph zeigt, welche Notizen aufeinander verweisen. Schreib [[Titel einer Notiz]] in eine andere – die Verbindung erscheint hier."
+        />
+      ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <svg viewBox={`0 0 ${BREITE} ${HOEHE}`} className="h-[480px] w-full">
             {kanten.map((k, i) => {

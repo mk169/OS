@@ -2,6 +2,8 @@ import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
+import LeerHinweis from "./LeerHinweis"
+import { SEITE_LESEN } from "../lib/layout"
 
 // Lebensbereich „Leisure & Kultur": eine kleine Medienbibliothek – Filme,
 // Serien, Bücher, Podcasts & Spiele als Watch/Read-Later-Liste mit Status
@@ -71,7 +73,7 @@ export default function LeisureSeite() {
   const anzahlProTyp = (key) => medien.filter((m) => m.typ === key).length
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_LESEN}>
       <Seitenkopf
         titel="Leisure & Kultur"
         unterzeile="Deine Medienbibliothek – Filme, Serien, Bücher & mehr."
@@ -120,6 +122,15 @@ export default function LeisureSeite() {
             </FilterChip>
           ))}
         </div>
+      )}
+
+      {medien.length === 0 && (
+        <LeerHinweis
+          klasse="mt-6"
+          emoji="🎬"
+          titel="Noch nichts in der Bibliothek"
+          text="Filme, Serien, Bücher, Spiele, Podcasts – trag oben ein, was du sehen, lesen oder hören willst. Der Status wandert von „geplant“ über „läuft“ zu „fertig“."
+        />
       )}
 
       {/* Liste, nach Status gruppiert */}

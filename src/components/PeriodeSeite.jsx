@@ -22,12 +22,13 @@ import {
   verknuepfungen,
   wochenFortschritt,
 } from "../lib/zyklen"
-import { Fortschrittsbalken } from "./OrdnerSeite"
+import { Fortschrittsbalken } from "./Bausteine"
 import { projektFortschrittWerte } from "../lib/projekte"
 import PhasenZeitstrahl from "./PhasenZeitstrahl"
 import ZyklenEinstellungen from "./ZyklenEinstellungen"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
+import { SEITE_RASTER } from "../lib/layout"
 
 // Eigener Bereich für die Fokus-Perioden: Übersicht über die laufende
 // Periode, Wochenziele mit Unterzielen und Verknüpfungen (zu Projekten,
@@ -82,7 +83,7 @@ export default function PeriodeSeite({ onNavigate }) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_RASTER}>
       <Seitenkopf
         eyebrow="Fokus-Periode"
         titel="Periode"

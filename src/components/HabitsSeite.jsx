@@ -21,9 +21,11 @@ import {
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { levelVon, attributLevel } from "../lib/spiel"
-import { Fortschrittsbalken } from "./OrdnerSeite"
+import { Fortschrittsbalken } from "./Bausteine"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
+import LeerHinweis from "./LeerHinweis"
+import { SEITE_RASTER } from "../lib/layout"
 
 const TAG_LABELS = ["Mo", "", "Mi", "", "Fr", "", ""]
 const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
@@ -426,7 +428,7 @@ export default function HabitsSeite() {
 
 function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWochenZiel, remove, amZielCount }) {
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_RASTER}>
       <Seitenkopf
         titel="Habits"
         aktion={
@@ -445,7 +447,14 @@ function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWoche
         </div>
       )}
 
-      {habits.length === 0 ? null : (
+      {habits.length === 0 ? (
+        <LeerHinweis
+          klasse="mt-6"
+          emoji="🔁"
+          titel="Noch keine Habits"
+          text="Habits sind die Dinge, die du regelmäßig tun willst – mit Wochenziel und Verlauf. Fang mit einer einzigen an, die du diese Woche wirklich schaffst."
+        />
+      ) : (
         <div className="mt-6 sm:mt-8">
           <HabitKarten
             habits={habits}
@@ -877,7 +886,11 @@ function HabitsGamified({
           />
         </div>
 
-        {habits.length === 0 ? null : (
+        {habits.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-violet-300/40 px-6 py-8 text-center text-sm text-violet-200/70">
+            Noch keine Fähigkeiten – leg deine erste an und sammle Streaks.
+          </p>
+        ) : (
           <div className="space-y-3">
             {ketten.map((kette) => (
               <div key={kette[0].id} className="space-y-2">

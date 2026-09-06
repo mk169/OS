@@ -10,10 +10,12 @@ import {
 import LoeschKnopf from "./LoeschKnopf"
 import Seitenkopf from "./Seitenkopf"
 import { TodoZeile } from "./TodosSeite"
-import { DeadlineChip } from "./OrdnerSeite"
+import { DeadlineChip } from "./Bausteine"
 import { sammleTermine } from "../lib/projekte"
 import { wochenZielErreicht } from "../lib/habits"
 import MentorInhalt from "./MentorInhalt"
+import { LeerZeile } from "./LeerHinweis"
+import { SEITE_RASTER } from "../lib/layout"
 
 // Wochen-Review: zeigt proaktiv, was liegen geblieben, überfällig oder
 // unbearbeitet ist – kein NAV-Eintrag, erreichbar wie „Suchen" über einen
@@ -35,10 +37,6 @@ function Abschnitt({ titel, aktion, children }) {
       <div className="mt-3">{children}</div>
     </section>
   )
-}
-
-function LeerHinweis() {
-  return null
 }
 
 export default function ReviewSeite({ onNavigate }) {
@@ -146,7 +144,7 @@ export default function ReviewSeite({ onNavigate }) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_RASTER}>
       <Seitenkopf
         titel="Wochenrückblick"
         unterzeile="Was der Mentor sieht – und was liegen geblieben ist."
@@ -164,7 +162,7 @@ export default function ReviewSeite({ onNavigate }) {
 
       <Abschnitt titel="Überfällig">
         {ueberfaellig.length === 0 ? (
-          <LeerHinweis text="Nichts überfällig." />
+          <LeerZeile text="Nichts überfällig." />
         ) : (
           <ul className="space-y-1.5">
             {ueberfaellig.map((t) => (
@@ -192,7 +190,7 @@ export default function ReviewSeite({ onNavigate }) {
         }
       >
         {inbox.length === 0 ? (
-          <LeerHinweis text="Inbox leer." />
+          <LeerZeile text="Inbox leer." />
         ) : (
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="text-sm font-medium text-gray-900">
@@ -222,9 +220,9 @@ export default function ReviewSeite({ onNavigate }) {
         }
       >
         {habits.length === 0 ? (
-          <LeerHinweis text="Noch keine Habits angelegt." />
+          <LeerZeile text="Noch keine Habits angelegt." />
         ) : habitsVerpasst.length === 0 ? (
-          <LeerHinweis text="Letzte Woche haben alle Habits ihr Ziel erreicht." />
+          <LeerZeile text="Letzte Woche haben alle Habits ihr Ziel erreicht." />
         ) : (
           <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
             {habitsVerpasst.map((h) => (
@@ -238,7 +236,7 @@ export default function ReviewSeite({ onNavigate }) {
 
       <Abschnitt titel="Diese Woche fällig">
         {dieseWoche.length === 0 ? (
-          <LeerHinweis text="Nichts in den nächsten 7 Tagen fällig." />
+          <LeerZeile text="Nichts in den nächsten 7 Tagen fällig." />
         ) : (
           <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
             {dieseWoche.map((e, i) => (
