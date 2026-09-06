@@ -17,13 +17,40 @@ function eintragFuer(key, fallback) {
     let wert
     try {
       const raw = localStorage.getItem(key)
-      wert = raw ? JSON.parse(raw) : fallback
+      // `?? fallback` auch nach dem Parsen: Ein gespeichertes "null" ist ein
+      // gültiger JSON-Text, käme sonst als null durch und ließe jedes
+      // nachfolgende .map/.filter auflaufen.
+      wert = raw ? (JSON.parse(raw) ?? fallback) : fallback
     } catch {
       wert = fallback
     }
     speicher.set(key, { wert, hoerer: new Set(), geladen: false })
   }
   return speicher.get(key)
+}
+
+// Wer erfahren will, dass der Browser-Speicher voll ist. Das Schreiben
+// scheitert mitten in einer Nutzeraktion (ein großer Anhang reicht schon) –
+// stillschweigend Daten zu verlieren wäre die schlechteste aller Antworten.
+const speicherFehlerHoerer = new Set()
+
+export function beiSpeicherFehler(melde) {
+  speicherFehlerHoerer.add(melde)
+  return () => speicherFehlerHoerer.delete(melde)
+}
+
+// Einziger Schreibweg in den localStorage. Schlägt er fehl (Kontingent voll,
+// privater Modus, Speicher gesperrt), bleibt der Wert im Arbeitsspeicher
+// gültig – die App läuft weiter – und die Oberfläche wird gewarnt.
+function schreibeLokal(key, wert) {
+  try {
+    localStorage.setItem(key, JSON.stringify(wert))
+    return true
+  } catch (fehler) {
+    console.warn("Speichern fehlgeschlagen:", key, fehler?.message ?? fehler)
+    speicherFehlerHoerer.forEach((melde) => melde(key))
+    return false
+  }
 }
 
 function benachrichtige(e) {
@@ -34,7 +61,7 @@ function benachrichtige(e) {
 // keiner, wird der lokale Stand hochgeladen (erste Synchronisierung).
 async function ladeVonCloud(key) {
   if (!cloudAktiv || !userId) return
-  const e = eintragFuer(key)
+  const e = eintragFuer(key, null)
   const { data, error } = await supabase
     .from("app_state")
     .select("value")
@@ -47,7 +74,7 @@ async function ladeVonCloud(key) {
   }
   if (data && data.value != null) {
     e.wert = data.value
-    localStorage.setItem(key, JSON.stringify(e.wert))
+    schreibeLokal(key, e.wert)
     benachrichtige(e)
   } else {
     speichereInCloud(key, e.wert)
@@ -109,7 +136,7 @@ export async function setzeCloudSession(neuerUserId) {
         const neu = JSON.stringify(row.value)
         if (JSON.stringify(e.wert) !== neu) {
           e.wert = row.value
-          localStorage.setItem(row.key, neu)
+          schreibeLokal(row.key, row.value)
           benachrichtige(e)
         }
       }
@@ -163,10 +190,10 @@ export async function importiereDaten(daten) {
   const eintraege = Object.entries(daten).filter(([k]) => k && !k.startsWith("sb-"))
 
   for (const [key, wert] of eintraege) {
-    const e = eintragFuer(key)
+    const e = eintragFuer(key, wert)
     e.wert = wert
     e.geladen = true
-    localStorage.setItem(key, JSON.stringify(wert))
+    schreibeLokal(key, wert)
     benachrichtige(e)
   }
 
@@ -190,7 +217,7 @@ export async function importiereDaten(daten) {
 export function schreibeStore(key, fallback, neu) {
   const e = eintragFuer(key, fallback)
   e.wert = typeof neu === "function" ? neu(e.wert) : neu
-  localStorage.setItem(key, JSON.stringify(e.wert))
+  schreibeLokal(key, e.wert)
   benachrichtige(e)
   speichereInCloud(key, e.wert)
 }
@@ -215,7 +242,7 @@ export default function useStored(key, fallback) {
     (neu) => {
       const e = eintragFuer(key, fallback)
       e.wert = typeof neu === "function" ? neu(e.wert) : neu
-      localStorage.setItem(key, JSON.stringify(e.wert))
+      schreibeLokal(key, e.wert)
       benachrichtige(e)
       speichereInCloud(key, e.wert)
     },

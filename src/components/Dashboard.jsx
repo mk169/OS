@@ -25,6 +25,7 @@ import {
   wochenStreakVon,
   wochenZielErreicht,
   disziplinAmTag,
+  erledigteTage,
 } from "../lib/habits"
 
 function begruessung() {
@@ -193,7 +194,7 @@ function HabitsPanel({ onNavigate }) {
       </button>
       <ul className="space-y-2">
         {habits.map((h) => {
-          const dran = h.erledigtAn.includes(heuteKey)
+          const dran = erledigteTage(h).includes(heuteKey)
           return (
             <li
               key={h.id}
@@ -528,7 +529,7 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
   const level = Math.floor(erledigtGesamt / 10) + 1
   const xpInLevel = erledigtGesamt % 10
 
-  const habitsHeute = habits.filter((h) => h.erledigtAn.includes(heuteKey)).length
+  const habitsHeute = habits.filter((h) => erledigteTage(h).includes(heuteKey)).length
   const habitsAmZiel = habits.filter((h) => wochenZielErreicht(h, wocheMontag)).length
   const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
 
@@ -623,7 +624,7 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
               />
             ))}
             {dashboard.habits && habits.map((h) => {
-              const dran = h.erledigtAn.includes(heuteKey)
+              const dran = erledigteTage(h).includes(heuteKey)
               const bereich = bereiche.find((b) => b.id === h.bereichId)
               return (
                 <AktionsKachel
@@ -784,7 +785,7 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
               habits.map((h) => (
                 <TermRow
                   key={`h-${h.id}`}
-                  erledigt={h.erledigtAn.includes(heuteKey)}
+                  erledigt={erledigteTage(h).includes(heuteKey)}
                   onToggle={() => habitToggle(h)}
                   label={h.name}
                   meta={`habit · ${wochenStreakVon(h)}w`}
@@ -907,7 +908,7 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
             </button>
             <ul className="space-y-2">
               {habits.map((h) => {
-                const dran = h.erledigtAn.includes(heuteKey)
+                const dran = erledigteTage(h).includes(heuteKey)
                 return (
                   <li
                     key={h.id}

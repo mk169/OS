@@ -17,6 +17,14 @@ export const STANDARD_BEREICHE = [
 
 export const STANDARD_WOCHENZIEL = 3
 
+// Die abgehakten Tage eines Habits. Eigener Zugriff statt `h.erledigtAn`
+// überall, weil ein Habit ohne dieses Feld ankommen kann – aus einem alten
+// Backup, einem Teil-Import oder einer Cloud-Zeile. Dann ist die Liste hier
+// leer, statt dass ein `.includes` auf undefined die ganze App abräumt.
+export function erledigteTage(habit) {
+  return habit?.erledigtAn ?? []
+}
+
 export function useHabitDaten() {
   const [habits, setHabits] = useStored("habits", [])
   const [bereiche, setBereiche] = useStored("habitBereiche", STANDARD_BEREICHE)
@@ -78,7 +86,7 @@ export function habitsAmTag(habits, datum) {
 export function disziplinAmTag(habits, datum) {
   const relevant = habitsAmTag(habits, datum)
   const key = schluessel(datum)
-  const erledigt = relevant.filter((h) => h.erledigtAn.includes(key)).length
+  const erledigt = relevant.filter((h) => erledigteTage(h).includes(key)).length
   const gesamt = relevant.length
   return {
     erledigt,
@@ -161,7 +169,7 @@ export function wochenZielVon(habit) {
 
 export function erledigtInWoche(habit, wocheMontag) {
   const zielSchluessel = schluessel(wocheMontag)
-  return habit.erledigtAn.filter(
+  return erledigteTage(habit).filter(
     (tag) => wochenSchluessel(new Date(tag)) === zielSchluessel
   ).length
 }
@@ -184,15 +192,15 @@ export function wochenStreakVon(habit) {
 export function nutzeHabitToggle(habits, setHabits) {
   const heuteKey = heute()
   return (habit) => {
-    const dran = habit.erledigtAn.includes(heuteKey)
+    const dran = erledigteTage(habit).includes(heuteKey)
     setHabits(
       habits.map((h) =>
         h.id === habit.id
           ? {
               ...h,
               erledigtAn: dran
-                ? h.erledigtAn.filter((d) => d !== heuteKey)
-                : [...h.erledigtAn, heuteKey],
+                ? erledigteTage(h).filter((d) => d !== heuteKey)
+                : [...erledigteTage(h), heuteKey],
             }
           : h
       )

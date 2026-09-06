@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react"
-import { schreibeStore, setzeCloudSession } from "./lib/useStored"
+import { beiSpeicherFehler, schreibeStore, setzeCloudSession } from "./lib/useStored"
 import useStored from "./lib/useStored"
 import { supabase, cloudAktiv } from "./lib/supabase"
 import { wendeAkzentAn } from "./lib/akzent"
@@ -33,14 +33,31 @@ const ReviewSeite = lazy(() => import("./components/ReviewSeite"))
 const Einstellungen = lazy(() => import("./components/Einstellungen"))
 const Suche = lazy(() => import("./components/Suche"))
 
+// Liest einen Store roh aus dem localStorage – für die Migrationen, die
+// laufen, bevor irgendeine Komponente den Schlüssel abonniert hat. Kaputtes
+// JSON, ein gespeichertes "null" oder ein falscher Typ ergeben den Fallback.
+function lies(key, fallback) {
+  try {
+    const wert = JSON.parse(localStorage.getItem(key) ?? "null")
+    if (wert == null) return fallback
+    if (Array.isArray(fallback) && !Array.isArray(wert)) return fallback
+    return wert
+  } catch {
+    return fallback
+  }
+}
+
 // Einmalige Migration: alte Kurse werden zu Projekten in einem
 // „Uni“-Ordner. Die IDs bleiben erhalten, damit Todos, Karten und
 // Inhalte weiter zugeordnet sind.
 function migriereAlteKurse() {
-  const kurse = JSON.parse(localStorage.getItem("kurse") ?? "[]")
+  // Wie die übrigen Migrationen gegen kaputte Altdaten gekapselt: Ein
+  // defekter Eintrag darf den Start nicht verhindern, sonst steht der
+  // Nutzer vor einer weißen Seite, ohne an seine Daten zu kommen.
+  const kurse = lies("kurse", [])
   if (kurse.length === 0) return
 
-  const ordner = JSON.parse(localStorage.getItem("ordner") ?? "[]")
+  const ordner = lies("ordner", [])
   let uni = ordner.find((o) => o.name === "Uni" && !o.parentId)
   if (!uni) {
     uni = { id: Date.now(), name: "Uni", parentId: null }
@@ -102,15 +119,8 @@ function migriereLernbereich() {
     const e = JSON.parse(roh)
     if (e.lernbereichErgaenzt) return
 
-    const lies = (key) => {
-      try {
-        return JSON.parse(localStorage.getItem(key) ?? "[]") ?? []
-      } catch {
-        return []
-      }
-    }
-    const lernDaten = [...lies("ablage"), ...lies("karten")]
-    const lernTodos = lies("todos").filter((t) => t.lernplan)
+    const lernDaten = [...lies("ablage", []), ...lies("karten", [])]
+    const lernTodos = lies("todos", []).filter((t) => t.lernplan)
     const hatLernbezug = (id) =>
       [...lernDaten, ...lernTodos].some(
         (x) => x.projektId === id || x.kursId === id
@@ -420,6 +430,12 @@ export default function App() {
     return () => window.removeEventListener("keydown", taste)
   }, [])
 
+  // Wenn der Browser-Speicher voll ist, scheitert das Sichern lautlos mitten
+  // in einer Eingabe. Ein Hinweis mit dem einzigen wirksamen Rat – Backup
+  // ziehen, große Anhänge löschen – ist besser als verlorene Arbeit.
+  const [speicherVoll, setSpeicherVoll] = useState(false)
+  useEffect(() => beiSpeicherFehler(() => setSpeicherVoll(true)), [])
+
   if (cloudAktiv && !authBereit) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-400">
@@ -501,6 +517,21 @@ export default function App() {
         lockedInSeite ? "bg-black text-white" : "bg-gray-50 text-gray-900"
       }`}
     >
+      {speicherVoll && (
+        <div className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bg-red-600 px-4 py-2 text-center text-xs font-medium text-white">
+          <span>
+            Speicher voll – neue Änderungen werden nicht gesichert. Sichere ein
+            Backup und lösche große Anhänge.
+          </span>
+          <button
+            onClick={() => setSpeicherVoll(false)}
+            className="underline underline-offset-2"
+          >
+            Ausblenden
+          </button>
+        </div>
+      )}
+
       {/* ── Desktop-Sidebar ─────────────────────────────────────── */}
       <aside
         className={`fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r px-3 py-5 md:flex ${

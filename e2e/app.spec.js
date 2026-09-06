@@ -463,3 +463,39 @@ test("Bereiche eines Projekts sind gebündelt und erklärt", async ({ page }) =>
   await expect(page.locator("main")).toContainText(/Kapitel, Skripte/)
   expect(fehler).toEqual([])
 })
+
+test("kaputte Altdaten legen die App nicht lahm", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "einstellungen",
+      JSON.stringify({
+        onboardingAbgeschlossen: true,
+        profil: "komplett",
+        sichtbareSeiten: ["dashboard", "todos", "habits"],
+        appName: "OS",
+        startseite: "dashboard",
+        akzent: "indigo",
+        stil: "todo",
+      })
+    )
+    // Drei Sorten Altlast, die die App früher beim Start zerlegt hätten:
+    // ein Habit ohne erledigtAn, ein Store mit gespeichertem null und
+    // kaputtes JSON in einem Schlüssel, den eine Migration liest.
+    localStorage.setItem("habits", JSON.stringify([{ id: 1, name: "Lesen" }]))
+    localStorage.setItem("todos", "null")
+    localStorage.setItem("kurse", "{das ist kein JSON")
+  })
+  await page.goto("/")
+
+  await expect(page.locator("main")).toContainText("Guten")
+  await page.getByRole("button", { name: "Todos", exact: true }).first().click()
+  await expect(page.locator("main")).toContainText("offene Aufgaben")
+  await page.getByRole("button", { name: "Habits", exact: true }).first().click()
+  await expect(page.locator("main")).toContainText("Lesen")
+
+  // Und die Fehlergrenze ist nicht eingesprungen – es gab schlicht nichts
+  // zu fangen.
+  await expect(page.locator("body")).not.toContainText("Da ist etwas schiefgelaufen")
+  expect(fehler).toEqual([])
+})

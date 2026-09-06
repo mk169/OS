@@ -8,6 +8,7 @@ import {
   useHabitDaten,
   nutzeHabitToggle,
   disziplinAmTag,
+  erledigteTage,
 } from "../lib/habits"
 
 // Locked In ist ein scharf geschalteter Fokus-Modus: Man definiert ein Ziel
@@ -539,7 +540,7 @@ export default function LockedInSeite({ onNavigate }) {
               {zielHabits.map((h) => (
                 <AbhakZeile
                   key={h.id}
-                  erledigt={h.erledigtAn.includes(heuteKey)}
+                  erledigt={erledigteTage(h).includes(heuteKey)}
                   onToggle={() => habitToggle(h)}
                   text={h.name}
                   meta={h.istSchluessel ? "KEY" : null}
