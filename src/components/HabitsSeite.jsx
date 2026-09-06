@@ -57,6 +57,7 @@ function HabitKarten({
   bereiche,
   onToggleHeute,
   onSetWochenZiel,
+  onUmbenennen,
   onRemove,
 }) {
   const ketten = alsKettenListe(habits)
@@ -74,6 +75,7 @@ function HabitKarten({
               bereiche={bereiche}
               onToggleHeute={onToggleHeute}
               onSetWochenZiel={onSetWochenZiel}
+              onUmbenennen={onUmbenennen}
               onRemove={onRemove}
               eingerueckt={i > 0}
             />
@@ -94,6 +96,7 @@ function HabitHeatmapKarte({
   wochenAnzahl = 26,
   onToggleHeute,
   onSetWochenZiel,
+  onUmbenennen,
   onRemove,
   eingerueckt,
 }) {
@@ -110,9 +113,15 @@ function HabitHeatmapKarte({
       <div className="flex items-center gap-2">
         {eingerueckt && <span className="-ml-4 text-xs text-gray-300">↳</span>}
         <span className={`h-2 w-2 shrink-0 rounded-full ${farbe.punkt}`} />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-          {habit.name}
-        </span>
+        {/* Name direkt änderbar – ein Habit hieß bisher für immer so, wie
+            man ihn im ersten Anlauf getippt hat. */}
+        <input
+          value={habit.name}
+          onChange={(e) => onUmbenennen?.(habit.id, e.target.value)}
+          readOnly={!onUmbenennen}
+          aria-label="Habit umbenennen"
+          className="min-w-0 flex-1 truncate rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm font-medium text-gray-900 outline-none transition-colors hover:border-gray-200 focus:border-gray-900 read-only:hover:border-transparent"
+        />
         {onRemove && (
           <LoeschKnopf
             onLoeschen={() => onRemove(habit.id)}
@@ -385,6 +394,10 @@ export default function HabitsSeite() {
   const toggle = nutzeHabitToggle(habits, setHabits)
   const wocheAktuell = montagVon(new Date())
 
+  function umbenennen(id, name) {
+    setHabits(habits.map((h) => (h.id === id ? { ...h, name } : h)))
+  }
+
   function remove(id) {
     setHabits(
       habits
@@ -410,6 +423,7 @@ export default function HabitsSeite() {
     setBereiche,
     toggle,
     setWochenZiel,
+    umbenennen,
     remove,
     amZielCount,
   }
@@ -426,7 +440,7 @@ export default function HabitsSeite() {
 // Stil: Todo (Standard) – Klassische Heatmap-Ansicht
 // ──────────────────────────────────────────────────────────────
 
-function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWochenZiel, remove, amZielCount }) {
+function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWochenZiel, umbenennen, remove, amZielCount }) {
   return (
     <div className={SEITE_RASTER}>
       <Seitenkopf
@@ -461,6 +475,7 @@ function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWoche
             bereiche={bereiche}
             onToggleHeute={toggle}
             onSetWochenZiel={setWochenZiel}
+            onUmbenennen={umbenennen}
             onRemove={remove}
           />
         </div>

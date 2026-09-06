@@ -352,7 +352,7 @@ function Uebersicht({ konten, transaktionen, budgets, sparziele, w, onTab }) {
  * Buchungen – erfassen, filtern (Monat/Art), nach Datum gruppiert
  * ════════════════════════════════════════════════════════════════════════ */
 
-function BuchungsZeile({ t, konten, w, onLoeschen }) {
+function BuchungsZeile({ t, konten, w, onBearbeiten, onLoeschen }) {
   const kat = kategorieVon(t.art, t.kategorie)
   const konto = konten.find((k) => k.id === t.kontoId)
   const einnahme = t.art === "einnahme"
@@ -361,7 +361,13 @@ function BuchungsZeile({ t, konten, w, onLoeschen }) {
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-lg">
         {kat.emoji}
       </span>
-      <div className="min-w-0 flex-1">
+      {/* Klick auf die Zeile öffnet dieselbe Maske, vorbelegt. */}
+      <button
+        onClick={onBearbeiten ? () => onBearbeiten(t) : undefined}
+        disabled={!onBearbeiten}
+        title={onBearbeiten ? "Buchung bearbeiten" : undefined}
+        className="min-w-0 flex-1 text-left disabled:cursor-default"
+      >
         <p className="truncate text-sm font-medium text-gray-800">
           {t.notiz?.trim() || kat.label}
         </p>
@@ -369,7 +375,7 @@ function BuchungsZeile({ t, konten, w, onLoeschen }) {
           {kat.label}
           {konto ? ` · ${konto.name}` : ""} · {t.datum}
         </p>
-      </div>
+      </button>
       <span
         className={`shrink-0 text-sm font-semibold tabular-nums ${
           einnahme ? "text-emerald-600" : "text-gray-900"
@@ -399,6 +405,10 @@ function Transaktionen({ konten, setKonten, transaktionen, setTransaktionen, w }
   const [datum, setDatum] = useState(heute())
   const [notiz, setNotiz] = useState("")
 
+  // Gesetzt, wenn das Formular eine bestehende Buchung ändert. Ein
+  // vertippter Betrag hat vorher Löschen und Neuerfassen bedeutet.
+  const [bearbeiteId, setBearbeiteId] = useState(null)
+
   const [filterMonat, setFilterMonat] = useState(aktuellerMonat())
   const [filterArt, setFilterArt] = useState("alle") // alle | einnahme | ausgabe
 
@@ -415,24 +425,43 @@ function Transaktionen({ konten, setKonten, transaktionen, setTransaktionen, w }
     e.preventDefault()
     const wert = parseBetrag(betrag)
     if (wert <= 0) return
-    setTransaktionen([
-      ...transaktionen,
-      {
-        id: Date.now(),
-        art,
-        betrag: wert,
-        kategorie,
-        kontoId: kontoId || null,
-        datum: datum || heute(),
-        notiz: notiz.trim(),
-        erstelltAm: Date.now(),
-      },
-    ])
+    const felder = {
+      art,
+      betrag: wert,
+      kategorie,
+      kontoId: kontoId || null,
+      datum: datum || heute(),
+      notiz: notiz.trim(),
+    }
+    setTransaktionen(
+      bearbeiteId
+        ? transaktionen.map((t) =>
+            t.id === bearbeiteId ? { ...t, ...felder } : t
+          )
+        : [
+            ...transaktionen,
+            { id: Date.now(), ...felder, erstelltAm: Date.now() },
+          ]
+    )
+    setBearbeiteId(null)
     setBetrag("")
     setNotiz("")
   }
 
+  // Bestehende Buchung ins Formular holen.
+  function bearbeiten(t) {
+    setBearbeiteId(t.id)
+    wechsleArt(t.art)
+    setBetrag(String(t.betrag).replace(".", ","))
+    setKategorie(t.kategorie)
+    setKontoId(t.kontoId ? String(t.kontoId) : "")
+    setDatum(t.datum ?? heute())
+    setNotiz(t.notiz ?? "")
+    setOffen(true)
+  }
+
   function loeschen(id) {
+    if (id === bearbeiteId) setBearbeiteId(null)
     setTransaktionen(transaktionen.filter((t) => t.id !== id))
   }
 
@@ -582,7 +611,10 @@ function Transaktionen({ konten, setKonten, transaktionen, setTransaktionen, w }
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => setOffen(false)}
+              onClick={() => {
+                setBearbeiteId(null)
+                setOffen(false)
+              }}
               className="rounded-md px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900"
             >
               Schließen
@@ -647,7 +679,14 @@ function Transaktionen({ konten, setKonten, transaktionen, setTransaktionen, w }
       ) : (
         <ul className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white">
           {gefiltert.map((t) => (
-            <BuchungsZeile key={t.id} t={t} konten={konten} w={w} onLoeschen={loeschen} />
+            <BuchungsZeile
+                key={t.id}
+                t={t}
+                konten={konten}
+                w={w}
+                onBearbeiten={bearbeiten}
+                onLoeschen={loeschen}
+              />
           ))}
         </ul>
       )}
@@ -886,6 +925,10 @@ function Konten({ konten, setKonten, transaktionen, w }) {
     setKonten(konten.filter((k) => k.id !== id))
   }
 
+  function umbenennen(id, name) {
+    setKonten(konten.map((k) => (k.id === id ? { ...k, name } : k)))
+  }
+
   const gesamt = konten.reduce(
     (s, k) => s + kontoSaldo(k.id, k.startsaldo, transaktionen),
     0
@@ -974,8 +1017,15 @@ function Konten({ konten, setKonten, transaktionen, w }) {
                     {typInfo.emoji}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-gray-800">{k.name}</p>
-                    <p className="text-xs text-gray-400">{typInfo.label}</p>
+                    {/* Name direkt änderbar – ein Konto hieß bisher für immer
+                        so wie beim Anlegen. */}
+                    <input
+                      value={k.name}
+                      onChange={(e) => umbenennen(k.id, e.target.value)}
+                      aria-label="Konto umbenennen"
+                      className="w-full min-w-0 truncate rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-gray-800 outline-none transition-colors hover:border-gray-200 focus:border-gray-900"
+                    />
+                    <p className="px-1 text-xs text-gray-400">{typInfo.label}</p>
                   </div>
                   <span
                     className={`shrink-0 text-base font-bold tabular-nums ${

@@ -34,7 +34,7 @@ function eintragFarbe(e) {
 
 // Wiederverwendbarer Kalender mit Tages-, Wochen- und Monatsansicht.
 // eintraegeAm(key) liefert die Einträge eines Tages:
-//   { typ, label, zeit?, onRemove? }
+//   { typ, label, zeit?, onOeffnen?, onRemove? }
 // tagesdetail: Google-Stil – Tag im Monat antippen wählt ihn aus und
 // zeigt sein Zeitraster unter dem Monatsraster.
 export default function Kalender({
@@ -463,7 +463,17 @@ export function TagesAnsicht({ cursor, eintraegeAm, onNeu, onNeuZeit }) {
               >
                 {EINTRAG_TYPEN[e.typ].name}
               </span>
-              <span className="flex-1 text-sm text-gray-800">{e.label}</span>
+              {e.onOeffnen ? (
+                <button
+                  onClick={e.onOeffnen}
+                  title="Termin bearbeiten"
+                  className="min-w-0 flex-1 truncate text-left text-sm text-gray-800"
+                >
+                  {e.label}
+                </button>
+              ) : (
+                <span className="flex-1 text-sm text-gray-800">{e.label}</span>
+              )}
               {e.onRemove && (
                 <LoeschKnopf
                   onLoeschen={e.onRemove}
@@ -530,8 +540,14 @@ export function TagesAnsicht({ cursor, eintraegeAm, onNeu, onNeuZeit }) {
           return (
             <div
               key={i}
-              onClick={(ev) => ev.stopPropagation()}
-              className={`group absolute right-0 cursor-default overflow-hidden border-l-2 border-white px-2 py-1 text-xs ${eintragFarbe(e).chip}`}
+              onClick={(ev) => {
+                ev.stopPropagation()
+                e.onOeffnen?.()
+              }}
+              title={e.onOeffnen ? "Termin bearbeiten" : undefined}
+              className={`group absolute right-0 overflow-hidden border-l-2 border-white px-2 py-1 text-xs ${
+                e.onOeffnen ? "cursor-pointer" : "cursor-default"
+              } ${eintragFarbe(e).chip}`}
               style={{ top, height: hoehe, left: "3.25rem" }}
             >
               <span className="font-medium">

@@ -91,6 +91,11 @@ const feldKlasse =
 
 function Bewerbungen({ bewerbungen, setBewerbungen }) {
   const [offenesFormular, setOffenesFormular] = useState(false)
+  // Gesetzt, wenn das Formular eine bestehende Bewerbung ändert. Firma,
+  // Rolle, Frist, Link und vor allem die Notiz („Ansprechpartner, Gehalt,
+  // Eindruck") wachsen im Laufe eines Verfahrens – sie waren bisher nach
+  // dem Anlegen schreibgeschützt.
+  const [bearbeiteId, setBearbeiteId] = useState(null)
   const [firma, setFirma] = useState("")
   const [rolle, setRolle] = useState("")
   const [frist, setFrist] = useState("")
@@ -109,29 +114,51 @@ function Bewerbungen({ bewerbungen, setBewerbungen }) {
       .sort((a, b) => (a.frist || "9999").localeCompare(b.frist || "9999")),
   }))
 
-  function anlegen(e) {
+  function speichern(e) {
     e.preventDefault()
     if (!firma.trim()) return
-    setBewerbungen([
-      ...bewerbungen,
-      {
-        id: Date.now(),
-        firma: firma.trim(),
-        rolle: rolle.trim(),
-        status: BEWERBUNG_STANDARD_STATUS,
-        frist,
-        link: link.trim(),
-        notiz: notiz.trim(),
-        erstelltAm: heute(),
-        verlauf: [],
-      },
-    ])
+    const felder = {
+      firma: firma.trim(),
+      rolle: rolle.trim(),
+      frist,
+      link: link.trim(),
+      notiz: notiz.trim(),
+    }
+    setBewerbungen(
+      bearbeiteId
+        ? bewerbungen.map((b) => (b.id === bearbeiteId ? { ...b, ...felder } : b))
+        : [
+            ...bewerbungen,
+            {
+              id: Date.now(),
+              ...felder,
+              status: BEWERBUNG_STANDARD_STATUS,
+              erstelltAm: heute(),
+              verlauf: [],
+            },
+          ]
+    )
+    schliessen()
+  }
+
+  function schliessen() {
+    setBearbeiteId(null)
     setFirma("")
     setRolle("")
     setFrist("")
     setLink("")
     setNotiz("")
     setOffenesFormular(false)
+  }
+
+  function bearbeiten(b) {
+    setBearbeiteId(b.id)
+    setFirma(b.firma ?? "")
+    setRolle(b.rolle ?? "")
+    setFrist(b.frist ?? "")
+    setLink(b.link ?? "")
+    setNotiz(b.notiz ?? "")
+    setOffenesFormular(true)
   }
 
   function statusSetzen(id, status) {
@@ -176,7 +203,7 @@ function Bewerbungen({ bewerbungen, setBewerbungen }) {
 
       {offenesFormular ? (
         <form
-          onSubmit={anlegen}
+          onSubmit={speichern}
           className="space-y-2 rounded-xl border border-gray-300 bg-white p-4"
         >
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -224,7 +251,7 @@ function Bewerbungen({ bewerbungen, setBewerbungen }) {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => setOffenesFormular(false)}
+              onClick={schliessen}
               className="px-2 py-1.5 text-sm text-gray-400 hover:text-gray-900"
             >
               Abbrechen
@@ -233,13 +260,16 @@ function Bewerbungen({ bewerbungen, setBewerbungen }) {
               type="submit"
               className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
             >
-              Anlegen
+              {bearbeiteId ? "Speichern" : "Anlegen"}
             </button>
           </div>
         </form>
       ) : (
         <button
-          onClick={() => setOffenesFormular(true)}
+          onClick={() => {
+            setBearbeiteId(null)
+            setOffenesFormular(true)
+          }}
           className="w-full rounded-xl border border-dashed border-gray-300 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-900"
         >
           + Bewerbung
@@ -271,6 +301,7 @@ function Bewerbungen({ bewerbungen, setBewerbungen }) {
                       key={b.id}
                       b={b}
                       onStatus={statusSetzen}
+                      onBearbeiten={bearbeiten}
                       onLoeschen={entfernen}
                     />
                   ))}
@@ -292,7 +323,7 @@ function Bewerbungen({ bewerbungen, setBewerbungen }) {
   )
 }
 
-function BewerbungsZeile({ b, onStatus, onLoeschen }) {
+function BewerbungsZeile({ b, onStatus, onBearbeiten, onLoeschen }) {
   const [offen, setOffen] = useState(false)
   const status = bewerbungStatusVon(b.status)
 
@@ -322,6 +353,13 @@ function BewerbungsZeile({ b, onStatus, onLoeschen }) {
             </option>
           ))}
         </select>
+        <button
+          onClick={() => onBearbeiten(b)}
+          title="Bewerbung bearbeiten"
+          className="rounded-md px-1.5 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-100 hover:text-gray-900"
+        >
+          Ändern
+        </button>
         <LoeschKnopf onLoeschen={() => onLoeschen(b.id)} klasse="text-gray-300" />
       </div>
 

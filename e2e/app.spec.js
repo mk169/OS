@@ -492,7 +492,8 @@ test("kaputte Altdaten legen die App nicht lahm", async ({ page }) => {
   await page.getByRole("button", { name: "Todos", exact: true }).first().click()
   await expect(page.locator("main")).toContainText("offene Aufgaben")
   await page.getByRole("button", { name: "Habits", exact: true }).first().click()
-  await expect(page.locator("main")).toContainText("Lesen")
+  // Der Name steht in einem Eingabefeld (umbenennbar), nicht im Fließtext.
+  await expect(page.getByRole("textbox", { name: "Habit umbenennen" })).toHaveValue("Lesen")
 
   // Und die Fehlergrenze ist nicht eingesprungen – es gab schlicht nichts
   // zu fangen.
@@ -541,5 +542,62 @@ test("erledigte Todos sind als erledigt zu erkennen", async ({ page }) => {
     zeile.locator("button.line-through, button[class*='line-through']")
   ).toHaveCount(1)
   await expect(zeile.getByRole("button", { name: "Wieder öffnen" })).toBeVisible()
+  expect(fehler).toEqual([])
+})
+
+test("Termin lässt sich nachträglich ändern", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Kalender", exact: true }).first().click()
+
+  await page.getByRole("button", { name: "+ Neu" }).click()
+  await page.getByPlaceholder("Titel des Termins…").fill("Sprechstunde")
+  await page.getByRole("button", { name: "Speichern" }).click()
+  await expect(page.locator("main")).toContainText("Sprechstunde")
+
+  // Klick auf den Eintrag öffnet dasselbe Formular, vorbelegt.
+  await page.getByTitle("Termin bearbeiten").first().click()
+  const feld = page.getByPlaceholder("Titel ändern…")
+  await expect(feld).toHaveValue("Sprechstunde")
+  await feld.fill("Sprechstunde beim Betreuer")
+  await page.getByRole("button", { name: "Speichern" }).click()
+
+  await expect(page.locator("main")).toContainText("Sprechstunde beim Betreuer")
+  // Kein Duplikat: Der alte Eintrag wurde geändert, nicht ein zweiter angelegt.
+  await expect(page.getByTitle("Termin bearbeiten")).toHaveCount(1)
+  expect(fehler).toEqual([])
+})
+
+test("Bewerbung und Buchung lassen sich nachträglich ändern", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+
+  // Bewerbung: Firma, Rolle, Frist, Link und Notiz waren schreibgeschützt.
+  await page.getByRole("button", { name: "Beruf & Karriere", exact: true }).first().click()
+  await page.getByRole("button", { name: "+ Bewerbung" }).click()
+  await page.getByPlaceholder("Firma").fill("Instiut für Statistik")
+  await page.getByPlaceholder(/Rolle/).fill("Werkstudent")
+  await page.getByRole("button", { name: "Anlegen" }).click()
+
+  await page.getByRole("button", { name: "Ändern" }).first().click()
+  await page.getByPlaceholder("Firma").fill("Institut für Statistik")
+  await page.getByRole("button", { name: "Speichern" }).click()
+  await expect(page.locator("main")).toContainText("Institut für Statistik")
+  await expect(page.locator("main")).not.toContainText("Instiut")
+
+  // Buchung: ein vertippter Betrag hieß bisher löschen und neu erfassen.
+  await page.locator("aside button").filter({ hasText: "LEBEN" }).first().click()
+  await page.getByRole("button", { name: "Finanzen", exact: true }).first().click()
+  await page.getByRole("button", { name: "Buchungen", exact: false }).first().click()
+  await page.getByRole("button", { name: "+ Buchung erfassen" }).click()
+  await page.getByPlaceholder(/Betrag/).fill("120")
+  await page.getByPlaceholder(/Notiz/).fill("Semesterbeitrga")
+  await page.getByRole("button", { name: "Speichern" }).click()
+
+  await page.getByTitle("Buchung bearbeiten").first().click()
+  await page.getByPlaceholder(/Notiz/).fill("Semesterbeitrag")
+  await page.getByRole("button", { name: "Speichern" }).click()
+  await expect(page.locator("main")).toContainText("Semesterbeitrag")
+  await expect(page.getByTitle("Buchung bearbeiten")).toHaveCount(1)
   expect(fehler).toEqual([])
 })
