@@ -601,3 +601,58 @@ test("Bewerbung und Buchung lassen sich nachträglich ändern", async ({ page })
   await expect(page.getByTitle("Buchung bearbeiten")).toHaveCount(1)
   expect(fehler).toEqual([])
 })
+
+test("Zielmethoden: SMART prüft, OKR misst, 5/25 sortiert aus", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Periode", exact: true }).first().click()
+  await page.getByRole("button", { name: "Einrichten", exact: true }).first().click()
+  await page.getByRole("button", { name: /Neue Fokus-Periode/ }).click()
+
+  // Die 5/25-Regel: sammeln, zwei wählen, der Rest kommt auf „nicht jetzt".
+  await page.getByRole("button", { name: /5\/25-Regel/ }).click()
+  const sammelliste = page.locator("div.max-h-72")
+  for (const [i, text] of [
+    [0, "Bachelorarbeit abgeben"],
+    [1, "Halbmarathon laufen"],
+    [2, "Italienisch lernen"],
+  ]) {
+    await sammelliste.locator("input").nth(i).fill(text)
+  }
+  await page.getByRole("button", { name: "Weiter zum Wählen" }).click()
+  await page.getByRole("button", { name: /Bachelorarbeit abgeben/ }).click()
+  await page.getByRole("button", { name: /Halbmarathon laufen/ }).click()
+  await expect(page.locator("main")).toContainText("2 von 5 gewählt")
+  await page.getByRole("button", { name: "Als Periodenziele übernehmen" }).click()
+
+  // Die zwei Gewählten sind Ziele, das Übriggebliebene steht sichtbar da.
+  await expect(page.locator("main")).toContainText("Nicht jetzt · 1")
+  await expect(page.locator("main")).toContainText("Italienisch lernen")
+
+  // SMART: ein vages Ziel meldet, was fehlt.
+  await page.getByPlaceholder(/Neues Ziel/).fill("Mehr Sport")
+  await page.getByRole("button", { name: "Hinzufügen" }).click()
+  await page.getByRole("button", { name: "SMART", exact: true }).click()
+  await expect(page.locator("main")).toContainText("Noch zu vage")
+  await expect(page.locator("main")).toContainText(/Ohne Zahl oder klaren Endpunkt/)
+
+  // OKR: zwei Key Results, einer davon voll → 50 %.
+  await page.getByRole("button", { name: "OKR", exact: true }).click()
+  await page.getByRole("button", { name: "+ Key Result" }).click()
+  await page.getByRole("button", { name: "+ Key Result" }).click()
+  const krs = page.locator("main input[type=number]")
+  await krs.nth(1).fill("10") // erstes KR: Ziel 10
+  await krs.nth(2).fill("10") // erstes KR: aktuell 10
+  await krs.nth(4).fill("10") // zweites KR: Ziel 10
+  await expect(page.locator("main")).toContainText("100 %")
+  await expect(page.locator("main")).toContainText("0 %")
+
+  // WOOP: aus Hindernis und Plan wird ein Wenn-dann-Satz.
+  await page.getByRole("button", { name: "WOOP", exact: true }).click()
+  await page.getByPlaceholder(/zu müde/).fill("ich abends müde bin")
+  await page.getByPlaceholder(/Schuhe an/).fill("gehe ich zehn Minuten raus")
+  await expect(page.locator("main")).toContainText(
+    "Wenn ich abends müde bin, dann gehe ich zehn Minuten raus."
+  )
+  expect(fehler).toEqual([])
+})

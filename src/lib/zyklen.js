@@ -1,4 +1,5 @@
 import { heute } from "./datum"
+import { okrErreicht } from "./zielmethoden"
 
 // Fokus-Perioden („Zyklen") nach dem Prinzip eines 90-Day-Year / 12-Week-Year:
 // ein klar begrenzter Zeitraum mit eigenem Ziel, in dem einige wenige Projekte
@@ -124,8 +125,11 @@ export function zielFortschritt(ziel) {
   return { erledigt: s.filter((x) => x.erledigt).length, gesamt: s.length }
 }
 
-// Ein Ziel gilt als erreicht, wenn es Teilschritte hat und alle erledigt sind.
+// Ein Ziel gilt als erreicht, wenn es Teilschritte hat und alle erledigt
+// sind. Ein OKR-Ziel misst sich stattdessen an seinen Key Results: stehen
+// die auf 100 %, ist es erreicht – auch ohne Teilschritte.
 export function zielErreicht(ziel) {
+  if (ziel?.methode === "okr") return okrErreicht(ziel)
   const s = zielSchritte(ziel)
   return s.length > 0 && s.every((x) => x.erledigt)
 }

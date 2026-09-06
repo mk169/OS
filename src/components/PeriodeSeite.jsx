@@ -29,6 +29,9 @@ import ZyklenEinstellungen from "./ZyklenEinstellungen"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
 import { SEITE_RASTER } from "../lib/layout"
+import { OkrFortschritt, SmartBadge, WoopSatz } from "./Zielmethoden"
+import { NichtJetztListe } from "./Fuenf25"
+import { nichtJetzt } from "../lib/zielmethoden"
 
 // Eigener Bereich für die Fokus-Perioden: Übersicht über die laufende
 // Periode, Wochenziele mit Unterzielen und Verknüpfungen (zu Projekten,
@@ -379,6 +382,12 @@ function Uebersicht({ periode, onUpdate, onNavigate, onZuWochen }) {
         )}
       </Karte>
 
+      {nichtJetzt(periode).length > 0 && (
+        <Karte titel="Nicht jetzt">
+          <NichtJetztListe eintraege={nichtJetzt(periode)} ohneKopf />
+        </Karte>
+      )}
+
       <Karte titel="Eigene Ziele">
         {eigeneZiele.length === 0 ? (
           <p className="text-sm text-gray-400">
@@ -400,10 +409,27 @@ function Uebersicht({ periode, onUpdate, onNavigate, onZuWochen }) {
                     >
                       {z.text || "Ohne Titel"}
                     </span>
-                    <span className="ml-auto text-xs text-gray-400">
+                    {z.methode === "smart" && (
+                      <span className="ml-auto">
+                        <SmartBadge ziel={z} />
+                      </span>
+                    )}
+                    <span
+                      className={`text-xs text-gray-400 ${
+                        z.methode === "smart" ? "" : "ml-auto"
+                      }`}
+                    >
                       {fortschritt.erledigt}/{fortschritt.gesamt}
                     </span>
                   </div>
+                  {/* Was die gewählte Methode beisteuert: bei OKR der
+                      gemessene Fortschritt, bei WOOP der Wenn-dann-Satz. */}
+                  {z.methode === "okr" && (
+                    <div className="mt-2">
+                      <OkrFortschritt ziel={z} />
+                    </div>
+                  )}
+                  {z.methode === "woop" && <WoopSatz ziel={z} />}
                   {zielSchritte(z).length > 0 && (
                     <ul className="mt-2 space-y-1">
                       {zielSchritte(z).map((s) => (
