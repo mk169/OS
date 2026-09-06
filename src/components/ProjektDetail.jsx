@@ -27,8 +27,8 @@ import { DeadlineChip, Fortschrittsbalken } from "./OrdnerSeite"
 import LoeschKnopf from "./LoeschKnopf"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und
-// jederzeit über „Bereiche anpassen“) wählbar – so wird aus demselben
-// System ein Uni-Kurs, ein Lernprojekt oder ein privates Vorhaben.
+// jederzeit über „+ Bereich“ neben den Reitern) wählbar – so wird aus
+// demselben System ein Uni-Kurs, ein Lernprojekt oder ein privates Vorhaben.
 
 // Kleines 16er-Linien-Icon.
 function PropIcon({ children }) {
@@ -649,15 +649,6 @@ export default function ProjektDetail({
 
             <div className="mt-1 flex flex-wrap items-center gap-1">
               <button
-                onClick={() => setAnpassen(!anpassen)}
-                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-900"
-              >
-                <PropIcon>
-                  <path d="M12 5v14M5 12h14" />
-                </PropIcon>
-                Bereiche anpassen
-              </button>
-              <button
                 onClick={() => {
                   onUpdate({ ...projekt, archiviert: !projekt.archiviert })
                   if (!projekt.archiviert) onBack()
@@ -671,108 +662,6 @@ export default function ProjektDetail({
               </button>
             </div>
           </div>
-
-          {anpassen && (
-            <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-                  Aktive Bereiche – mit ‹ › verschieben
-                </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {sichtbareModule.map((m) => (
-                    <span
-                      key={m.key}
-                      className="flex items-center gap-0.5 rounded-full bg-gray-900 py-1 pl-1.5 pr-2 text-xs font-medium text-white"
-                    >
-                      <button
-                        onClick={() => verschiebeModul(m.key, -1)}
-                        title="Nach vorne"
-                        className="rounded-sm px-1 text-gray-400 hover:text-white"
-                      >
-                        ‹
-                      </button>
-                      <button
-                        onClick={() => verschiebeModul(m.key, 1)}
-                        title="Nach hinten"
-                        className="rounded-sm px-1 text-gray-400 hover:text-white"
-                      >
-                        ›
-                      </button>
-                      <button onClick={() => toggleModul(m.key)} title="Ausblenden">
-                        {m.label}
-                      </button>
-                      {m.key.startsWith("eigen-") && (
-                        <LoeschKnopf
-                          onLoeschen={() => removeEigenerBereich(m.key)}
-                          titel="Bereich endgültig löschen"
-                          frageText="Bereich löschen?"
-                          klasse="ml-1 rounded-sm px-1 text-gray-400"
-                        />
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-                  Verfügbar – klicken zum Einblenden
-                </p>
-                {/* Nach Zweck gebündelt und mit einem Satz erklärt: „Inhalte",
-                    „Lernen" und „Karteikarten" sind als blanke Namen kaum
-                    auseinanderzuhalten. */}
-                <div className="mt-2 space-y-3">
-                  {MODUL_GRUPPEN.map((gruppe) => {
-                    const offen = moduleDerGruppe(gruppe.key, eigene).filter(
-                      (m) => !module.includes(m.key)
-                    )
-                    if (offen.length === 0) return null
-                    return (
-                      <div key={gruppe.key}>
-                        <p className="text-[10px] font-medium uppercase tracking-widest text-gray-300">
-                          {gruppe.label}
-                        </p>
-                        <div className="mt-1 grid gap-1 sm:grid-cols-2">
-                          {offen.map((m) => (
-                            <button
-                              key={m.key}
-                              onClick={() => toggleModul(m.key)}
-                              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-gray-400"
-                            >
-                              <span className="block text-xs font-medium text-gray-900">
-                                {m.label}
-                              </span>
-                              {m.beschreibung && (
-                                <span className="mt-0.5 block text-[11px] leading-snug text-gray-400">
-                                  {m.beschreibung}
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <form onSubmit={addEigenerBereich} className="flex gap-1.5">
-                    <input
-                      value={neuerBereichName}
-                      onChange={(e) => setNeuerBereichName(e.target.value)}
-                      placeholder="Eigener Bereich, z.B. Recherche"
-                      className="w-48 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-900 outline-none focus:border-gray-900"
-                    />
-                    <button
-                      type="submit"
-                      className="rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700"
-                    >
-                      + Erstellen
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
 
@@ -814,7 +703,16 @@ export default function ProjektDetail({
           </TabButton>
         ))}
 
-        <div className="relative ml-auto shrink-0 pb-1.5 pl-4">
+        <div className="sticky right-0 ml-auto flex shrink-0 items-center bg-white/85 pb-1.5 pl-4 backdrop-blur">
+          <button
+            onClick={() => setAnpassen(!anpassen)}
+            title="Bereiche dieses Projekts anpassen"
+            className={`rounded-md px-2 py-1 text-sm transition-colors hover:bg-gray-100 hover:text-gray-900 ${
+              anpassen ? "bg-gray-100 text-gray-900" : "text-gray-400"
+            }`}
+          >
+            + Bereich
+          </button>
           <button
             onClick={() => setVorlagenMenu(!vorlagenMenu)}
             title="Neue Seite anlegen"
@@ -847,6 +745,108 @@ export default function ProjektDetail({
           )}
         </div>
       </nav>
+
+      {anpassen && (
+        <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+              Aktive Bereiche – mit ‹ › verschieben
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {sichtbareModule.map((m) => (
+                <span
+                  key={m.key}
+                  className="flex items-center gap-0.5 rounded-full bg-gray-900 py-1 pl-1.5 pr-2 text-xs font-medium text-white"
+                >
+                  <button
+                    onClick={() => verschiebeModul(m.key, -1)}
+                    title="Nach vorne"
+                    className="rounded-sm px-1 text-gray-400 hover:text-white"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => verschiebeModul(m.key, 1)}
+                    title="Nach hinten"
+                    className="rounded-sm px-1 text-gray-400 hover:text-white"
+                  >
+                    ›
+                  </button>
+                  <button onClick={() => toggleModul(m.key)} title="Ausblenden">
+                    {m.label}
+                  </button>
+                  {m.key.startsWith("eigen-") && (
+                    <LoeschKnopf
+                      onLoeschen={() => removeEigenerBereich(m.key)}
+                      titel="Bereich endgültig löschen"
+                      frageText="Bereich löschen?"
+                      klasse="ml-1 rounded-sm px-1 text-gray-400"
+                    />
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+              Verfügbar – klicken zum Einblenden
+            </p>
+            {/* Nach Zweck gebündelt und mit einem Satz erklärt: „Inhalte",
+                „Lernen" und „Karteikarten" sind als blanke Namen kaum
+                auseinanderzuhalten. */}
+            <div className="mt-2 space-y-3">
+              {MODUL_GRUPPEN.map((gruppe) => {
+                const offen = moduleDerGruppe(gruppe.key, eigene).filter(
+                  (m) => !module.includes(m.key)
+                )
+                if (offen.length === 0) return null
+                return (
+                  <div key={gruppe.key}>
+                    <p className="text-[10px] font-medium uppercase tracking-widest text-gray-300">
+                      {gruppe.label}
+                    </p>
+                    <div className="mt-1 grid gap-1 sm:grid-cols-2">
+                      {offen.map((m) => (
+                        <button
+                          key={m.key}
+                          onClick={() => toggleModul(m.key)}
+                          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-gray-400"
+                        >
+                          <span className="block text-xs font-medium text-gray-900">
+                            {m.label}
+                          </span>
+                          {m.beschreibung && (
+                            <span className="mt-0.5 block text-[11px] leading-snug text-gray-400">
+                              {m.beschreibung}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <form onSubmit={addEigenerBereich} className="flex gap-1.5">
+                <input
+                  value={neuerBereichName}
+                  onChange={(e) => setNeuerBereichName(e.target.value)}
+                  placeholder="Eigener Bereich, z.B. Recherche"
+                  className="w-48 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-900 outline-none focus:border-gray-900"
+                />
+                <button
+                  type="submit"
+                  className="rounded-md bg-gray-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-gray-700"
+                >
+                  + Erstellen
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 flex flex-1 flex-col">
         {aktivTyp === "seite" ? (
@@ -1042,8 +1042,8 @@ function LeeresProjekt({ onNeueSeite }) {
       <p className="text-sm font-medium text-gray-900">Noch keine Seite.</p>
       <p className="mx-auto mt-1 max-w-md text-xs text-gray-400">
         Ein Projekt bekommt seine Seiten, wenn du sie brauchst – leer oder aus
-        einer Vorlage. Bereiche wie Todos oder Kalender kommen über „Bereiche
-        anpassen" dazu.
+        einer Vorlage. Bereiche wie Todos oder Kalender kommen über
+        „+ Bereich" rechts über dem Blatt dazu.
       </p>
       <button
         onClick={onNeueSeite}
