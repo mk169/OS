@@ -629,6 +629,14 @@ test("Zielmethoden: SMART prüft, OKR misst, 5/25 sortiert aus", async ({ page }
   await expect(page.locator("main")).toContainText("Nicht jetzt · 1")
   await expect(page.locator("main")).toContainText("Italienisch lernen")
 
+  // Das erste Ergebnis ist gleich aufgeklappt, die Methodenwahl also
+  // sichtbar – vorher standen dort nur zugeklappte Zeilen und niemand
+  // hätte gefunden, dass es SMART, OKR und WOOP überhaupt gibt.
+  await expect(page.getByRole("button", { name: "WOOP", exact: true })).toBeVisible()
+
+  // Und am zweiten, zugeklappten Ziel benennt ein Knopf die Methode.
+  await expect(page.getByTitle(/Zielmethode/).nth(1)).toBeVisible()
+
   // SMART: ein vages Ziel meldet, was fehlt.
   await page.getByPlaceholder(/Neues Ziel/).fill("Mehr Sport")
   await page.getByRole("button", { name: "Hinzufügen" }).click()
