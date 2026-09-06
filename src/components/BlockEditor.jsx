@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
-import { Fortschrittsbalken, DeadlineChip } from "./OrdnerSeite"
+import { Fortschrittsbalken, DeadlineChip } from "./Bausteine"
 import { projektFortschrittWerte } from "../lib/projekte"
 import LoeschKnopf from "./LoeschKnopf"
 import { WIKILINK_REGEX, findeZiel } from "../lib/wikilinks"

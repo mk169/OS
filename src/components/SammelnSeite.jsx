@@ -8,6 +8,7 @@ import { Suchfeld, SortMenu } from "./ListenControls"
 import { VORLAGEN } from "../lib/wissen"
 import { extrahiereWikilinks } from "../lib/wikilinks"
 import LoeschKnopf from "./LoeschKnopf"
+import { SEITE_RASTER } from "../lib/layout"
 
 // Leere Notiz für den direkten „+ Neue Notiz"-Klick (ohne Vorlage).
 const LEER_VORLAGE = VORLAGEN.find((v) => v.key === "leer") ?? { inhalt: "" }
@@ -117,7 +118,7 @@ export default function SammelnSeite({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_RASTER}>
       <AnsichtWechsler ansicht={ansicht} onWechsel={waehleAnsicht} />
       {ansicht === "wissen" && (
         <WissenAnsicht

@@ -463,3 +463,196 @@ test("Bereiche eines Projekts sind gebündelt und erklärt", async ({ page }) =>
   await expect(page.locator("main")).toContainText(/Kapitel, Skripte/)
   expect(fehler).toEqual([])
 })
+
+test("kaputte Altdaten legen die App nicht lahm", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "einstellungen",
+      JSON.stringify({
+        onboardingAbgeschlossen: true,
+        profil: "komplett",
+        sichtbareSeiten: ["dashboard", "todos", "habits"],
+        appName: "OS",
+        startseite: "dashboard",
+        akzent: "indigo",
+        stil: "todo",
+      })
+    )
+    // Drei Sorten Altlast, die die App früher beim Start zerlegt hätten:
+    // ein Habit ohne erledigtAn, ein Store mit gespeichertem null und
+    // kaputtes JSON in einem Schlüssel, den eine Migration liest.
+    localStorage.setItem("habits", JSON.stringify([{ id: 1, name: "Lesen" }]))
+    localStorage.setItem("todos", "null")
+    localStorage.setItem("kurse", "{das ist kein JSON")
+  })
+  await page.goto("/")
+
+  await expect(page.locator("main")).toContainText("Guten")
+  await page.getByRole("button", { name: "Todos", exact: true }).first().click()
+  await expect(page.locator("main")).toContainText("offene Aufgaben")
+  await page.getByRole("button", { name: "Habits", exact: true }).first().click()
+  // Der Name steht in einem Eingabefeld (umbenennbar), nicht im Fließtext.
+  await expect(page.getByRole("textbox", { name: "Habit umbenennen" })).toHaveValue("Lesen")
+
+  // Und die Fehlergrenze ist nicht eingesprungen – es gab schlicht nichts
+  // zu fangen.
+  await expect(page.locator("body")).not.toContainText("Da ist etwas schiefgelaufen")
+  expect(fehler).toEqual([])
+})
+
+test("leere Bereiche erklären sich statt leer zu bleiben", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+
+  // Die Gruppe „Leben" ist standardmäßig eingeklappt.
+  await page.locator("aside button").filter({ hasText: "LEBEN" }).first().click()
+
+  // Jeder dieser Bereiche zeigte ohne Daten eine komplett weiße Fläche.
+  const erwartet = [
+    ["Habits", /Noch keine Habits/],
+    ["Fokus", /Noch keine Session abgeschlossen/],
+    ["Leisure & Kultur", /Noch nichts in der Bibliothek/],
+    ["Wochenrückblick", /Inbox leer/],
+  ]
+  for (const [bereich, text] of erwartet) {
+    await page.getByRole("button", { name: bereich, exact: true }).first().click()
+    await expect(page.locator("main")).toContainText(text)
+  }
+  expect(fehler).toEqual([])
+})
+
+test("erledigte Todos sind als erledigt zu erkennen", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Todos", exact: true }).first().click()
+
+  await page.getByTitle(/Todo erstellen/).first().click()
+  await page.getByPlaceholder(/benennen/).fill("Wäsche aufhängen")
+  await page.getByRole("button", { name: "Erstellen" }).click()
+
+  const zeile = page.locator("main li").filter({ hasText: "Wäsche aufhängen" })
+  const knopf = zeile.getByRole("button", { name: "Als erledigt markieren" })
+  await expect(knopf).toBeVisible()
+  await knopf.click()
+
+  // Danach: durchgestrichener Text und ein Knopf, der das Gegenteil anbietet.
+  await expect(page.locator("main")).toContainText("Erledigt")
+  await expect(
+    zeile.locator("button.line-through, button[class*='line-through']")
+  ).toHaveCount(1)
+  await expect(zeile.getByRole("button", { name: "Wieder öffnen" })).toBeVisible()
+  expect(fehler).toEqual([])
+})
+
+test("Termin lässt sich nachträglich ändern", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Kalender", exact: true }).first().click()
+
+  await page.getByRole("button", { name: "+ Neu" }).click()
+  await page.getByPlaceholder("Titel des Termins…").fill("Sprechstunde")
+  await page.getByRole("button", { name: "Speichern" }).click()
+  await expect(page.locator("main")).toContainText("Sprechstunde")
+
+  // Klick auf den Eintrag öffnet dasselbe Formular, vorbelegt.
+  await page.getByTitle("Termin bearbeiten").first().click()
+  const feld = page.getByPlaceholder("Titel ändern…")
+  await expect(feld).toHaveValue("Sprechstunde")
+  await feld.fill("Sprechstunde beim Betreuer")
+  await page.getByRole("button", { name: "Speichern" }).click()
+
+  await expect(page.locator("main")).toContainText("Sprechstunde beim Betreuer")
+  // Kein Duplikat: Der alte Eintrag wurde geändert, nicht ein zweiter angelegt.
+  await expect(page.getByTitle("Termin bearbeiten")).toHaveCount(1)
+  expect(fehler).toEqual([])
+})
+
+test("Bewerbung und Buchung lassen sich nachträglich ändern", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+
+  // Bewerbung: Firma, Rolle, Frist, Link und Notiz waren schreibgeschützt.
+  await page.getByRole("button", { name: "Beruf & Karriere", exact: true }).first().click()
+  await page.getByRole("button", { name: "+ Bewerbung" }).click()
+  await page.getByPlaceholder("Firma").fill("Instiut für Statistik")
+  await page.getByPlaceholder(/Rolle/).fill("Werkstudent")
+  await page.getByRole("button", { name: "Anlegen" }).click()
+
+  await page.getByRole("button", { name: "Ändern" }).first().click()
+  await page.getByPlaceholder("Firma").fill("Institut für Statistik")
+  await page.getByRole("button", { name: "Speichern" }).click()
+  await expect(page.locator("main")).toContainText("Institut für Statistik")
+  await expect(page.locator("main")).not.toContainText("Instiut")
+
+  // Buchung: ein vertippter Betrag hieß bisher löschen und neu erfassen.
+  await page.locator("aside button").filter({ hasText: "LEBEN" }).first().click()
+  await page.getByRole("button", { name: "Finanzen", exact: true }).first().click()
+  await page.getByRole("button", { name: "Buchungen", exact: false }).first().click()
+  await page.getByRole("button", { name: "+ Buchung erfassen" }).click()
+  await page.getByPlaceholder(/Betrag/).fill("120")
+  await page.getByPlaceholder(/Notiz/).fill("Semesterbeitrga")
+  await page.getByRole("button", { name: "Speichern" }).click()
+
+  await page.getByTitle("Buchung bearbeiten").first().click()
+  await page.getByPlaceholder(/Notiz/).fill("Semesterbeitrag")
+  await page.getByRole("button", { name: "Speichern" }).click()
+  await expect(page.locator("main")).toContainText("Semesterbeitrag")
+  await expect(page.getByTitle("Buchung bearbeiten")).toHaveCount(1)
+  expect(fehler).toEqual([])
+})
+
+test("Zielmethoden: SMART prüft, OKR misst, 5/25 sortiert aus", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Periode", exact: true }).first().click()
+  await page.getByRole("button", { name: "Einrichten", exact: true }).first().click()
+  await page.getByRole("button", { name: /Neue Fokus-Periode/ }).click()
+
+  // Die 5/25-Regel: sammeln, zwei wählen, der Rest kommt auf „nicht jetzt".
+  await page.getByRole("button", { name: /5\/25-Regel/ }).click()
+  const sammelliste = page.locator("div.max-h-72")
+  for (const [i, text] of [
+    [0, "Bachelorarbeit abgeben"],
+    [1, "Halbmarathon laufen"],
+    [2, "Italienisch lernen"],
+  ]) {
+    await sammelliste.locator("input").nth(i).fill(text)
+  }
+  await page.getByRole("button", { name: "Weiter zum Wählen" }).click()
+  await page.getByRole("button", { name: /Bachelorarbeit abgeben/ }).click()
+  await page.getByRole("button", { name: /Halbmarathon laufen/ }).click()
+  await expect(page.locator("main")).toContainText("2 von 5 gewählt")
+  await page.getByRole("button", { name: "Als Periodenziele übernehmen" }).click()
+
+  // Die zwei Gewählten sind Ziele, das Übriggebliebene steht sichtbar da.
+  await expect(page.locator("main")).toContainText("Nicht jetzt · 1")
+  await expect(page.locator("main")).toContainText("Italienisch lernen")
+
+  // SMART: ein vages Ziel meldet, was fehlt.
+  await page.getByPlaceholder(/Neues Ziel/).fill("Mehr Sport")
+  await page.getByRole("button", { name: "Hinzufügen" }).click()
+  await page.getByRole("button", { name: "SMART", exact: true }).click()
+  await expect(page.locator("main")).toContainText("Noch zu vage")
+  await expect(page.locator("main")).toContainText(/Ohne Zahl oder klaren Endpunkt/)
+
+  // OKR: zwei Key Results, einer davon voll → 50 %.
+  await page.getByRole("button", { name: "OKR", exact: true }).click()
+  await page.getByRole("button", { name: "+ Key Result" }).click()
+  await page.getByRole("button", { name: "+ Key Result" }).click()
+  const krs = page.locator("main input[type=number]")
+  await krs.nth(1).fill("10") // erstes KR: Ziel 10
+  await krs.nth(2).fill("10") // erstes KR: aktuell 10
+  await krs.nth(4).fill("10") // zweites KR: Ziel 10
+  await expect(page.locator("main")).toContainText("100 %")
+  await expect(page.locator("main")).toContainText("0 %")
+
+  // WOOP: aus Hindernis und Plan wird ein Wenn-dann-Satz.
+  await page.getByRole("button", { name: "WOOP", exact: true }).click()
+  await page.getByPlaceholder(/zu müde/).fill("ich abends müde bin")
+  await page.getByPlaceholder(/Schuhe an/).fill("gehe ich zehn Minuten raus")
+  await expect(page.locator("main")).toContainText(
+    "Wenn ich abends müde bin, dann gehe ich zehn Minuten raus."
+  )
+  expect(fehler).toEqual([])
+})

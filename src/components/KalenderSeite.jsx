@@ -9,6 +9,7 @@ import Kalender, { TagesAnsicht } from "./Kalender"
 import Seitenkopf from "./Seitenkopf"
 import { TagesblockAuswahl } from "./Tagesbloecke"
 import { useTagesblockVorlagen } from "../lib/tagesbloecke"
+import { SEITE_RASTER } from "../lib/layout"
 
 // Kalender-Panel: vollständiger Kalender (Tag/Woche/Monat, Timestacking)
 // mit Termin-Erstellung. Wird im Dashboard eingebettet und auf der
@@ -22,6 +23,9 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
   const [bewerbungen] = useStored("beruf_bewerbungen", [])
 
   const [formOffen, setFormOffen] = useState(false)
+  // Ist gesetzt, wenn das Formular einen bestehenden Termin ändert statt
+  // einen neuen anzulegen – dasselbe Muster wie bei den Todos.
+  const [bearbeiteId, setBearbeiteId] = useState(null)
   const [formTitel, setFormTitel] = useState("")
   const [formDatum, setFormDatum] = useState(heute())
   const [formZeit, setFormZeit] = useState("")
@@ -88,6 +92,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
           bis: t.endeZeit,
           dauer: t.dauer,
           blockFarbe: tagesbloecke.find((b) => b.id === t.blockId)?.farbe,
+          onOeffnen: () => oeffneBearbeiten(t),
           onRemove: () => setTermine(termine.filter((x) => x.id !== t.id)),
         })),
       ...projekte
@@ -128,17 +133,14 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
     ].sort((a, b) => (a.zeit || "99:99").localeCompare(b.zeit || "99:99"))
   }
 
-  function addTermin(e) {
+  function speichereTermin(e) {
     e.preventDefault()
     if (!formTitel.trim()) return
     // Ende hat Vorrang: liegt eine Endzeit vor, ergibt sich die Dauer daraus.
     const ausEnde = minutenZwischen(formZeit, formEnde)
     const dauer = ausEnde ?? (formZeit && formDauer ? Number(formDauer) : null)
-    setTermine([
-      ...termine,
-      {
-        id: Date.now(),
-        titel: formTitel.trim(),
+    const felder = {
+      titel: formTitel.trim(),
         datum: formDatum,
         zeit: formGeburtstag ? "" : formZeit,
         endeZeit: !formGeburtstag && ausEnde ? formEnde : "",
@@ -152,9 +154,20 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
         art: formGeburtstag ? "geburtstag" : "",
         wiederholung: formGeburtstag ? "jaehrlich" : formWiederholung,
         bis: formGeburtstag ? "" : formBis,
-        blockId: formGeburtstag ? null : formBlockId || null,
-      },
-    ])
+      blockId: formGeburtstag ? null : formBlockId || null,
+    }
+    setTermine(
+      bearbeiteId
+        ? termine.map((x) => (x.id === bearbeiteId ? { ...x, ...felder } : x))
+        : [...termine, { id: Date.now(), ...felder }]
+    )
+    schliesseForm()
+  }
+
+  // Setzt das Formular zurück und schließt es – ein Weg für Abbrechen,
+  // Speichern und den Wechsel zwischen Anlegen und Bearbeiten.
+  function schliesseForm() {
+    setBearbeiteId(null)
     setFormTitel("")
     setFormZeit("")
     setFormEnde("")
@@ -165,7 +178,27 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
     setFormBis("")
     setFormGeburtstag(false)
     setFormBlockId("")
+    setFormDatum(heute())
     setFormOffen(false)
+  }
+
+  // Bestehenden Termin ins Formular holen. Ein Tippfehler im Titel oder eine
+  // verschobene Uhrzeit soll kein Löschen und Neutippen erzwingen.
+  function oeffneBearbeiten(termin) {
+    setBearbeiteId(termin.id)
+    setFormTitel(termin.titel ?? "")
+    setFormDatum(termin.datum ?? heute())
+    setFormZeit(termin.zeit ?? "")
+    setFormEnde(termin.endeZeit ?? "")
+    setFormDauer(String(termin.dauer ?? 60))
+    setFormFokus(Boolean(termin.fokus))
+    setFormProjektId(termin.projektId ? String(termin.projektId) : "")
+    setFormWiederholung(termin.wiederholung ?? "")
+    setFormBis(termin.bis ?? "")
+    setFormGeburtstag(termin.art === "geburtstag")
+    setFormBlockId(termin.blockId ? String(termin.blockId) : "")
+    setFormOffen(true)
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   // ICS-Export: .ics-Datei, die Google Kalender direkt importieren kann.
@@ -207,10 +240,12 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
   }
 
   function oeffneNeu(datum) {
+    setBearbeiteId(null)
     setFormDatum(datum)
     setFormOffen(true)
   }
   function oeffneNeuZeit(datum, zeit) {
+    setBearbeiteId(null)
     setFormDatum(datum)
     setFormZeit(zeit)
     setFormGeburtstag(false)
@@ -226,13 +261,13 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
     >
       {formOffen && (
         <form
-          onSubmit={addTermin}
+          onSubmit={speichereTermin}
           className="mb-4 rounded-lg border border-gray-200 p-4"
         >
           <input
             value={formTitel}
             onChange={(e) => setFormTitel(e.target.value)}
-            placeholder="Titel des Termins…"
+            placeholder={bearbeiteId ? "Titel ändern…" : "Titel des Termins…"}
             autoFocus
             className="w-full rounded-md border border-gray-200 px-4 py-3 text-lg font-medium text-gray-900 outline-none focus:border-gray-900"
           />
@@ -386,7 +421,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
             </button>
             <button
               type="button"
-              onClick={() => setFormOffen(false)}
+              onClick={schliesseForm}
               className="px-2 py-2 text-sm text-gray-400 hover:text-gray-900"
             >
               Abbrechen
@@ -463,7 +498,7 @@ export function KalenderPanel({ tagesdetail = false, nurHeute = false }) {
 
 export default function KalenderSeite() {
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_RASTER}>
       <Seitenkopf titel="Kalender" />
 
       <KalenderPanel tagesdetail />

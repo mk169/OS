@@ -23,7 +23,7 @@ import ProjektBoard from "./ProjektBoard"
 import BlockEditor from "./BlockEditor"
 import { bloeckeVon, neueBlockId } from "../lib/bloecke"
 import { VORLAGEN, vorlageZuBloecken } from "../lib/wissen"
-import { DeadlineChip, Fortschrittsbalken } from "./OrdnerSeite"
+import { DeadlineChip, Fortschrittsbalken } from "./Bausteine"
 import LoeschKnopf from "./LoeschKnopf"
 
 // Alle Bereiche, die ein Projekt enthalten kann. Beim Erstellen (und

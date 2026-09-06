@@ -13,7 +13,7 @@ import {
   aktivePhase,
   phaseStatus,
 } from "../lib/zyklen"
-import { Fortschrittsbalken } from "./OrdnerSeite"
+import { Fortschrittsbalken } from "./Bausteine"
 import { projektFortschrittWerte } from "../lib/projekte"
 import PhasenZeitstrahl from "./PhasenZeitstrahl"
 

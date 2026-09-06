@@ -5,6 +5,7 @@ import {
   disziplinAmTag,
   disziplinStreak,
   edgeScore,
+  erledigteTage,
   erledigtInWoche,
   tagNummer,
   wochenStreakVon,
@@ -171,5 +172,29 @@ describe("Wochenziele", () => {
   it("bricht die laufende, noch offene Woche die Serie nicht", () => {
     const h = habit({ wochenZiel: 1, erledigtAn: ["2026-08-25"] })
     expect(wochenStreakVon(h)).toBe(1)
+  })
+})
+
+describe("erledigteTage", () => {
+  it("gibt die abgehakten Tage zurück", () => {
+    expect(erledigteTage({ erledigtAn: ["2026-01-01"] })).toEqual(["2026-01-01"])
+  })
+
+  // Ein Habit aus einem alten Backup kann das Feld gar nicht haben. Früher
+  // hat das jedes .includes und damit die halbe App abgeräumt.
+  it("verträgt ein fehlendes Feld und ein fehlendes Habit", () => {
+    expect(erledigteTage({ id: 1, name: "Lesen" })).toEqual([])
+    expect(erledigteTage(undefined)).toEqual([])
+  })
+
+  it("wird von disziplinAmTag genutzt – kaputte Habits zählen als offen", () => {
+    const habits = [
+      { id: 1, name: "Lesen", erledigtAn: ["2026-03-02"] },
+      { id: 2, name: "Sport" },
+    ]
+    expect(disziplinAmTag(habits, new Date("2026-03-02T12:00:00"))).toMatchObject({
+      erledigt: 1,
+      gesamt: 2,
+    })
   })
 })

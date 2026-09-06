@@ -3,6 +3,7 @@ import useStored from "../lib/useStored"
 import { sammleTags } from "../lib/tags"
 import { Suchfeld } from "./ListenControls"
 import { NotizBearbeiten } from "./ProjektNotizen"
+import LeerHinweis from "./LeerHinweis"
 
 // Übersicht aller vergebenen Schlagworte (#tags) quer über Wissen,
 // Projekt-Notizen und Projekte. Ein Klick auf ein Schlagwort zeigt alles,
@@ -59,7 +60,14 @@ export default function TagsAnsicht({ onNavigate, startTag = null }) {
   }
 
   if (tags.length === 0) {
-    return null
+    return (
+      <LeerHinweis
+        klasse="mt-4"
+        emoji="🏷️"
+        titel="Noch keine Schlagworte"
+        text="Schreib #Thema irgendwo in eine Notiz – das Wort wird zum Schlagwort und sammelt hier alles, was dazugehört."
+      />
+    )
   }
 
   return (

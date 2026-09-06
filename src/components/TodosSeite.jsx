@@ -8,6 +8,8 @@ import Seitenkopf from "./Seitenkopf"
 import TodoErstellen from "./TodoErstellen"
 import { EINTEILUNGEN, einteilungVon } from "../lib/todos"
 import LoeschKnopf from "./LoeschKnopf"
+import { FristChip } from "./Bausteine"
+import { SEITE_LESEN } from "../lib/layout"
 
 const FONT_ARCADE = '"Press Start 2P", ui-monospace, monospace'
 const FONT_TERMINAL = '"VT323", ui-monospace, "SF Mono", Menlo, monospace'
@@ -55,29 +57,6 @@ export default function TodosSeite() {
  * Stil „Todo-Liste" – klare Karten, farbige Punkte (Todoist)
  * ════════════════════════════════════════════════════════════════════════ */
 
-// Frist mit Dringlichkeits-Ton: Überfälliges soll nicht als graues „vorbei"
-// zwischen den übrigen Zeilen untergehen.
-const FRIST_TON = {
-  vorbei: "bg-red-50 text-red-600",
-  heute: "bg-amber-50 text-amber-700",
-  bald: "bg-gray-100 text-gray-600",
-  fern: "text-gray-400",
-}
-
-export function FristChip({ datum, gedaempft = false }) {
-  const ton = fristTon(datum)
-  if (!ton) return null
-  return (
-    <span
-      className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${
-        gedaempft ? "text-gray-400" : FRIST_TON[ton]
-      }`}
-    >
-      {tageBis(datum)}
-    </span>
-  )
-}
-
 function TodoRow({ todo, onToggle, onRemove, zuordnungsName }) {
   const einteilung = einteilungVon(todo)
   const [bearbeiten, setBearbeiten] = useState(false)
@@ -97,17 +76,36 @@ function TodoRow({ todo, onToggle, onRemove, zuordnungsName }) {
     <li className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 shadow-sm shadow-gray-100 transition-colors hover:border-gray-300">
       <button
         onClick={() => onToggle(todo.id)}
-        title="Als erledigt markieren"
-        className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-current transition-colors ${einteilung.text}`}
+        title={todo.erledigt ? "Wieder öffnen" : "Als erledigt markieren"}
+        className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-current transition-colors ${
+          todo.erledigt ? "bg-gray-400 text-gray-400" : einteilung.text
+        }`}
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5 opacity-0 transition-opacity group-hover:opacity-100">
+        {/* Bei Erledigtem steht der Haken fest – nur bei offenen Zeilen ist er
+            eine Vorschau beim Überfahren, sonst sähe jede offene Aufgabe
+            abgehakt aus. */}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`h-2.5 w-2.5 transition-opacity ${
+            todo.erledigt
+              ? "text-white opacity-100"
+              : "opacity-0 group-hover:opacity-100"
+          }`}
+        >
           <path d="m5 12 5 5L20 7" />
         </svg>
       </button>
       <button
         onClick={() => setBearbeiten(true)}
         title="Bearbeiten"
-        className="min-w-0 flex-1 truncate text-left text-sm text-gray-800"
+        className={`min-w-0 flex-1 truncate text-left text-sm ${
+          todo.erledigt ? "text-gray-400 line-through" : "text-gray-800"
+        }`}
       >
         {todo.text}
       </button>
@@ -149,7 +147,7 @@ function TodosTodo({ _todos, offene, erledigte, toggle, remove, zuordnungsName }
   const erledigt = erledigte.length
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_LESEN}>
       <Seitenkopf titel="Todos" aktion={<TodoErstellen />} />
 
       <div className="mb-8 mt-8 flex gap-3">
@@ -682,7 +680,14 @@ function TodosGamified({ todos, offene, erledigte, toggle, remove, zuordnungsNam
           />
         </div>
 
-        {offene.length === 0 ? null : (
+        {offene.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-8 text-center">
+            <p className="text-sm font-semibold text-gray-900">Keine offenen Quests</p>
+            <p className="mt-1 text-xs text-gray-400">
+              Leg eine Aufgabe an – erledigte Quests bringen XP.
+            </p>
+          </div>
+        ) : (
           <div className="space-y-6">
             {EINTEILUNGEN.map((gruppe) => {
               const eintraege = offene

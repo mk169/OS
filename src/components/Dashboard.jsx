@@ -16,15 +16,17 @@ import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { KalenderPanel } from "./KalenderSeite"
 import TodoErstellen from "./TodoErstellen"
-import { FristChip } from "./TodosSeite"
+import { FristChip } from "./Bausteine"
 import { EINTEILUNGEN, einteilungVon } from "../lib/todos"
 import MentorBanner from "./MentorBanner"
+import { SEITE_LESEN } from "../lib/layout"
 import {
   useHabitDaten,
   nutzeHabitToggle,
   wochenStreakVon,
   wochenZielErreicht,
   disziplinAmTag,
+  erledigteTage,
 } from "../lib/habits"
 
 function begruessung() {
@@ -193,7 +195,7 @@ function HabitsPanel({ onNavigate }) {
       </button>
       <ul className="space-y-2">
         {habits.map((h) => {
-          const dran = h.erledigtAn.includes(heuteKey)
+          const dran = erledigteTage(h).includes(heuteKey)
           return (
             <li
               key={h.id}
@@ -357,7 +359,7 @@ function DashboardTodo({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate,
   const erledigt = todos.filter((t) => t.erledigt).length
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_LESEN}>
       <header className="mb-7">
         <p className="text-sm font-semibold text-accent-600">{datumLang(heute())}</p>
         <h1
@@ -528,7 +530,7 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
   const level = Math.floor(erledigtGesamt / 10) + 1
   const xpInLevel = erledigtGesamt % 10
 
-  const habitsHeute = habits.filter((h) => h.erledigtAn.includes(heuteKey)).length
+  const habitsHeute = habits.filter((h) => erledigteTage(h).includes(heuteKey)).length
   const habitsAmZiel = habits.filter((h) => wochenZielErreicht(h, wocheMontag)).length
   const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
 
@@ -610,7 +612,14 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
           />
         </div>
 
-        {todoKacheln.length === 0 && habits.length === 0 ? null : (
+        {todoKacheln.length === 0 && habits.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-8 text-center">
+            <p className="text-sm font-semibold text-gray-900">Noch keine Quests</p>
+            <p className="mt-1 text-xs text-gray-400">
+              Leg eine Aufgabe an – sie erscheint hier und bringt XP.
+            </p>
+          </div>
+        ) : (
           <div className="space-y-2.5">
             {todoKacheln.map((t) => (
               <AktionsKachel
@@ -623,7 +632,7 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
               />
             ))}
             {dashboard.habits && habits.map((h) => {
-              const dran = h.erledigtAn.includes(heuteKey)
+              const dran = erledigteTage(h).includes(heuteKey)
               const bereich = bereiche.find((b) => b.id === h.bereichId)
               return (
                 <AktionsKachel
@@ -769,7 +778,11 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
           </span>
         </TermSection>
 
-        {tasks.length === 0 && habits.length === 0 ? null : (
+        {tasks.length === 0 && habits.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-xs text-zinc-600">
+            no tasks queued — add one to begin
+          </p>
+        ) : (
           <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-white/10">
             {tasks.map((t) => (
               <TermRow
@@ -784,7 +797,7 @@ function DashboardArcade({ todos, offene, gruppen, ohneGruppe, toggle, onNavigat
               habits.map((h) => (
                 <TermRow
                   key={`h-${h.id}`}
-                  erledigt={h.erledigtAn.includes(heuteKey)}
+                  erledigt={erledigteTage(h).includes(heuteKey)}
                   onToggle={() => habitToggle(h)}
                   label={h.name}
                   meta={`habit · ${wochenStreakVon(h)}w`}
@@ -907,7 +920,7 @@ function DashboardCleanGirl({ todos, offene, gruppen, ohneGruppe, toggle, onNavi
             </button>
             <ul className="space-y-2">
               {habits.map((h) => {
-                const dran = h.erledigtAn.includes(heuteKey)
+                const dran = erledigteTage(h).includes(heuteKey)
                 return (
                   <li
                     key={h.id}

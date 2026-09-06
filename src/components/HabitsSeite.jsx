@@ -16,13 +16,16 @@ import {
   wochenZielErreicht,
   wochenStreakVon,
   nutzeHabitToggle,
+  erledigteTage,
 } from "../lib/habits"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import { levelVon, attributLevel } from "../lib/spiel"
-import { Fortschrittsbalken } from "./OrdnerSeite"
+import { Fortschrittsbalken } from "./Bausteine"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
+import LeerHinweis from "./LeerHinweis"
+import { SEITE_RASTER } from "../lib/layout"
 
 const TAG_LABELS = ["Mo", "", "Mi", "", "Fr", "", ""]
 const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
@@ -54,6 +57,7 @@ function HabitKarten({
   bereiche,
   onToggleHeute,
   onSetWochenZiel,
+  onUmbenennen,
   onRemove,
 }) {
   const ketten = alsKettenListe(habits)
@@ -71,6 +75,7 @@ function HabitKarten({
               bereiche={bereiche}
               onToggleHeute={onToggleHeute}
               onSetWochenZiel={onSetWochenZiel}
+              onUmbenennen={onUmbenennen}
               onRemove={onRemove}
               eingerueckt={i > 0}
             />
@@ -91,6 +96,7 @@ function HabitHeatmapKarte({
   wochenAnzahl = 26,
   onToggleHeute,
   onSetWochenZiel,
+  onUmbenennen,
   onRemove,
   eingerueckt,
 }) {
@@ -107,9 +113,15 @@ function HabitHeatmapKarte({
       <div className="flex items-center gap-2">
         {eingerueckt && <span className="-ml-4 text-xs text-gray-300">↳</span>}
         <span className={`h-2 w-2 shrink-0 rounded-full ${farbe.punkt}`} />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-          {habit.name}
-        </span>
+        {/* Name direkt änderbar – ein Habit hieß bisher für immer so, wie
+            man ihn im ersten Anlauf getippt hat. */}
+        <input
+          value={habit.name}
+          onChange={(e) => onUmbenennen?.(habit.id, e.target.value)}
+          readOnly={!onUmbenennen}
+          aria-label="Habit umbenennen"
+          className="min-w-0 flex-1 truncate rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm font-medium text-gray-900 outline-none transition-colors hover:border-gray-200 focus:border-gray-900 read-only:hover:border-transparent"
+        />
         {onRemove && (
           <LoeschKnopf
             onLoeschen={() => onRemove(habit.id)}
@@ -146,7 +158,7 @@ function HabitHeatmapKarte({
                   const tagDatum = new Date(montag)
                   tagDatum.setDate(tagDatum.getDate() + tagIndex)
                   const tagKey = schluessel(tagDatum)
-                  const erledigt = habit.erledigtAn.includes(tagKey)
+                  const erledigt = erledigteTage(habit).includes(tagKey)
                   if (tagKey > heuteKey) {
                     return <span key={tagIndex} className="h-3 w-3 sm:h-2.5 sm:w-2.5" />
                   }
@@ -382,6 +394,10 @@ export default function HabitsSeite() {
   const toggle = nutzeHabitToggle(habits, setHabits)
   const wocheAktuell = montagVon(new Date())
 
+  function umbenennen(id, name) {
+    setHabits(habits.map((h) => (h.id === id ? { ...h, name } : h)))
+  }
+
   function remove(id) {
     setHabits(
       habits
@@ -407,6 +423,7 @@ export default function HabitsSeite() {
     setBereiche,
     toggle,
     setWochenZiel,
+    umbenennen,
     remove,
     amZielCount,
   }
@@ -423,9 +440,9 @@ export default function HabitsSeite() {
 // Stil: Todo (Standard) – Klassische Heatmap-Ansicht
 // ──────────────────────────────────────────────────────────────
 
-function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWochenZiel, remove, amZielCount }) {
+function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWochenZiel, umbenennen, remove, amZielCount }) {
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_RASTER}>
       <Seitenkopf
         titel="Habits"
         aktion={
@@ -444,13 +461,21 @@ function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWoche
         </div>
       )}
 
-      {habits.length === 0 ? null : (
+      {habits.length === 0 ? (
+        <LeerHinweis
+          klasse="mt-6"
+          emoji="🔁"
+          titel="Noch keine Habits"
+          text="Habits sind die Dinge, die du regelmäßig tun willst – mit Wochenziel und Verlauf. Fang mit einer einzigen an, die du diese Woche wirklich schaffst."
+        />
+      ) : (
         <div className="mt-6 sm:mt-8">
           <HabitKarten
             habits={habits}
             bereiche={bereiche}
             onToggleHeute={toggle}
             onSetWochenZiel={setWochenZiel}
+            onUmbenennen={umbenennen}
             onRemove={remove}
           />
         </div>
@@ -485,7 +510,7 @@ function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWoche
 // ──────────────────────────────────────────────────────────────
 
 function HabitsArcade({ habits, _bereiche, toggle, _remove }) {
-  const completionsCount = habits.reduce((s, h) => s + h.erledigtAn.length, 0)
+  const completionsCount = habits.reduce((s, h) => s + erledigteTage(h).length, 0)
   const score = completionsCount * 50
   const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
 
@@ -513,7 +538,7 @@ function HabitsArcade({ habits, _bereiche, toggle, _remove }) {
                 className="flex w-full items-center gap-3 rounded border-2 border-cyan-600 bg-cyan-900/20 px-3 py-2 text-left transition-colors hover:border-cyan-300"
               >
                 <span className="text-[10px] font-bold text-cyan-400">
-                  {h.erledigtAn.includes(hoje()) ? "✓" : "○"}
+                  {erledigteTage(h).includes(hoje()) ? "✓" : "○"}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm text-cyan-300">{h.name}</span>
                 <span className="text-[10px] text-cyan-400">🔥{wochenStreakVon(h)}</span>
@@ -532,7 +557,7 @@ function HabitsArcade({ habits, _bereiche, toggle, _remove }) {
 
 function HabitsCleanGirl({ habits, _bereiche, toggle, remove }) {
   const completionsToday = habits.filter((h) =>
-    h.erledigtAn.includes(heute())
+    erledigteTage(h).includes(heute())
   ).length
 
   return (
@@ -553,7 +578,7 @@ function HabitsCleanGirl({ habits, _bereiche, toggle, remove }) {
       ) : (
         <ul className="space-y-3">
           {habits.map((h) => {
-            const dranHeute = h.erledigtAn.includes(heute())
+            const dranHeute = erledigteTage(h).includes(heute())
             return (
               <li
                 key={h.id}
@@ -627,7 +652,7 @@ function HabitsNotion({ habits, bereiche, setHabits, setBereiche, toggle, remove
         {habits.length > 0 && (
           <ul>
             {habits.map((h) => {
-              const dran = h.erledigtAn.includes(heute())
+              const dran = erledigteTage(h).includes(heute())
               return (
                 <li key={h.id} className="group flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-gray-50">
                   <input
@@ -680,7 +705,7 @@ function WochenRunen({ habit, farbe, onToggleHeute }) {
         const d = new Date(montag)
         d.setDate(d.getDate() + i)
         const key = schluessel(d)
-        const done = habit.erledigtAn.includes(key)
+        const done = erledigteTage(habit).includes(key)
         const future = key > heuteKey
         const istHeute = key === heuteKey
         return (
@@ -717,7 +742,7 @@ function HabitGamifiedKarte({
   eingerueckt,
 }) {
   const farbe = FARBEN[bereichVon(habit, bereiche).farbe] ?? FARBEN.gray
-  const dranHeute = habit.erledigtAn.includes(heute())
+  const dranHeute = erledigteTage(habit).includes(heute())
   const streak = wochenStreakVon(habit)
   const ziel = wochenZielVon(habit)
   const inWoche = erledigtInWoche(habit, montagVon(new Date()))
@@ -794,7 +819,7 @@ function HabitsGamified({
   setWochenZiel,
   remove,
 }) {
-  const totalCompletions = habits.reduce((s, h) => s + h.erledigtAn.length, 0)
+  const totalCompletions = habits.reduce((s, h) => s + erledigteTage(h).length, 0)
   const { level, xpInLevel, xpProLevel, fortschritt } = levelVon(totalCompletions * 5)
   const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
   const ketten = alsKettenListe(habits)
@@ -841,7 +866,7 @@ function HabitsGamified({
               const farbe = FARBEN[b.farbe] ?? FARBEN.gray
               const count = habits
                 .filter((h) => h.bereichId === b.id)
-                .reduce((s, h) => s + h.erledigtAn.length, 0)
+                .reduce((s, h) => s + erledigteTage(h).length, 0)
               const attr = attributLevel(count)
               return (
                 <div key={b.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
@@ -876,7 +901,11 @@ function HabitsGamified({
           />
         </div>
 
-        {habits.length === 0 ? null : (
+        {habits.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-violet-300/40 px-6 py-8 text-center text-sm text-violet-200/70">
+            Noch keine Fähigkeiten – leg deine erste an und sammle Streaks.
+          </p>
+        ) : (
           <div className="space-y-3">
             {ketten.map((kette) => (
               <div key={kette[0].id} className="space-y-2">
@@ -1305,7 +1334,7 @@ function HabitsLockedIn({
               </p>
               <ul>
                 {sortiert.map((h) => {
-                  const dran = h.erledigtAn.includes(heuteKey)
+                  const dran = erledigteTage(h).includes(heuteKey)
                   return (
                     <li
                       key={h.id}

@@ -19,6 +19,9 @@ import {
 } from "../lib/zyklen"
 import PhasenZeitstrahl from "./PhasenZeitstrahl"
 import LoeschKnopf from "./LoeschKnopf"
+import { MethodenFelder, MethodenWahl, SmartBadge } from "./Zielmethoden"
+import { methodeVon, nichtJetzt } from "../lib/zielmethoden"
+import Fuenf25, { NichtJetztListe } from "./Fuenf25"
 
 // Zwischenphasen chronologisch mit Anzeige-Label („Phase N" als Fallback für
 // titellose Phasen) – für die Zielphasen-Auswahl an den einzelnen Zielen.
@@ -222,12 +225,15 @@ function ProjektZiele({
 // das man aufklappt und in dem man konkrete Teilschritte abhakt (wie ein
 // Mini-Projekt für Vorhaben ohne eigenes Projekt).
 // ziele = [{ id, text, schritte: [{ id, text, erledigt }] }].
+// Ids für Ziele, Teilschritte und Key Results. Zeitstempel plus Zufall,
+// damit auch mehrere in derselben Millisekunde eindeutig bleiben.
+const neueZielId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+
 function EigeneZiele({ ziele, onChange, phasen = [] }) {
   const [entwurf, setEntwurf] = useState("")
   const [offenId, setOffenId] = useState(null)
 
-  const neueId = () =>
-    `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  const neueId = neueZielId
 
   function hinzufuegen() {
     const t = entwurf.trim()
@@ -276,6 +282,12 @@ function EigeneZiele({ ziele, onChange, phasen = [] }) {
                   fertig ? "text-gray-400 line-through" : "text-gray-800"
                 }`}
               />
+              {z.methode === "smart" && <SmartBadge ziel={z} />}
+              {z.methode && z.methode !== "smart" && (
+                <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium uppercase text-gray-500">
+                  {methodeVon(z.methode).label}
+                </span>
+              )}
               {gesamt > 0 && (
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
@@ -295,7 +307,7 @@ function EigeneZiele({ ziele, onChange, phasen = [] }) {
             </div>
 
             {offen && (
-              <div className="space-y-2 border-t border-gray-200 px-2.5 pb-2.5 pt-2">
+              <div className="space-y-2.5 border-t border-gray-200 px-2.5 pb-2.5 pt-2">
                 {phasen.length > 0 && (
                   <ZielphasenWahl
                     phasen={phasen}
@@ -303,6 +315,17 @@ function EigeneZiele({ ziele, onChange, phasen = [] }) {
                     onChange={(phaseId) => setZiel(z.id, { phaseId })}
                   />
                 )}
+                {/* Wie soll dieses Ziel formuliert sein? Vorgabe bleibt der
+                    freie Satz – die Methoden sind ein Angebot. */}
+                <MethodenWahl
+                  wert={z.methode}
+                  onChange={(methode) => setZiel(z.id, { methode })}
+                />
+                <MethodenFelder
+                  ziel={z}
+                  onChange={(patch) => setZiel(z.id, patch)}
+                  neueId={neueId}
+                />
                 <ZielSchritte
                   schritte={schritte}
                   onChange={(neu) => setSchritte(z.id, neu)}
@@ -589,6 +612,17 @@ function ZyklusKarte({ zyklus, projekte, onUpdate, onRemove }) {
         phasen={zyklusPhasen(zyklus)}
       />
 
+      {/* Was die 5/25-Regel aussortiert hat, bleibt sichtbar – genau darin
+          besteht ihr Nutzen. Löschen geht, aber nur bewusst. */}
+      <div className="mt-3">
+        <NichtJetztListe
+          eintraege={nichtJetzt(zyklus)}
+          onEntfernen={(i) =>
+            patch({ nichtJetzt: nichtJetzt(zyklus).filter((_, j) => j !== i) })
+          }
+        />
+      </div>
+
       <p className="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
         Zwischenphasen
       </p>
@@ -616,6 +650,10 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
   const [ende, setEnde] = useState("")
   const [projektZiele, setProjektZiele] = useState([])
   const [eigeneZiele, setEigeneZiele] = useState([])
+  // Die 5/25-Übung läuft als eigener Schritt vor der Zielliste – ihr
+  // Ergebnis füllt sie.
+  const [fuenf25Offen, setFuenf25Offen] = useState(false)
+  const [nichtJetzt, setNichtJetzt] = useState([])
   const [phasen, setPhasen] = useState([])
   const [fehler, setFehler] = useState("")
 
@@ -639,6 +677,7 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
       ende: endDatum,
       projekte: projektZiele,
       ziele: eigeneZiele,
+      nichtJetzt,
       phasen,
     })
   }
@@ -729,12 +768,53 @@ function ZyklusForm({ projekte, onSpeichern, onAbbrechen }) {
       </div>
 
       <div>
-        <p className="mb-1.5 text-xs text-gray-500">Eigene Ziele</p>
-        <EigeneZiele
-          ziele={eigeneZiele}
-          onChange={setEigeneZiele}
-          phasen={phasen}
-        />
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-gray-500">Eigene Ziele</p>
+          {!fuenf25Offen && (
+            <button
+              type="button"
+              onClick={() => setFuenf25Offen(true)}
+              title="25 Ziele sammeln, 5 wählen, 20 bewusst liegen lassen"
+              className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-900"
+            >
+              Mit der 5/25-Regel finden
+            </button>
+          )}
+        </div>
+        {fuenf25Offen ? (
+          <Fuenf25
+            neueId={neueZielId}
+            onAbbrechen={() => setFuenf25Offen(false)}
+            onUebernehmen={({ ziele: gewaehlt, nichtJetzt: rest }) => {
+              setEigeneZiele([
+                ...eigeneZiele,
+                ...gewaehlt.map((text) => ({
+                  id: neueZielId(),
+                  text,
+                  schritte: [],
+                })),
+              ])
+              setNichtJetzt([...nichtJetzt, ...rest])
+              setFuenf25Offen(false)
+            }}
+          />
+        ) : (
+          <>
+            <EigeneZiele
+              ziele={eigeneZiele}
+              onChange={setEigeneZiele}
+              phasen={phasen}
+            />
+            <div className="mt-2">
+              <NichtJetztListe
+                eintraege={nichtJetzt}
+                onEntfernen={(i) =>
+                  setNichtJetzt(nichtJetzt.filter((_, j) => j !== i))
+                }
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div>

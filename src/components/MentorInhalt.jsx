@@ -257,7 +257,10 @@ export default function MentorInhalt({ onNavigate }) {
   const infos = befunde.filter((b) => b.art === "info")
 
   return (
-    <div className="max-w-2xl">
+    // Keine eigene Breite: Der Mentor sitzt im Wochenrückblick unter der
+    // Wochen-Karte, und eine eigene max-w hat ihn dort sichtbar schmaler
+    // enden lassen als seinen Nachbarn.
+    <div>
       {/* Übergeordnet: die Gleichung */}
       <GleichungHero
         gleichung={gleichung}

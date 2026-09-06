@@ -1,4 +1,5 @@
-import { heute } from "./datum"
+import { heute, schluessel } from "./datum"
+import { okrErreicht } from "./zielmethoden"
 
 // Fokus-Perioden („Zyklen") nach dem Prinzip eines 90-Day-Year / 12-Week-Year:
 // ein klar begrenzter Zeitraum mit eigenem Ziel, in dem einige wenige Projekte
@@ -27,14 +28,10 @@ export function laengeLabel(key) {
   return ZYKLUS_LAENGEN.find((l) => l.key === key)?.kurz ?? "individuell"
 }
 
-function iso(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-}
-
 function verschiebe(datum, tage) {
   const d = new Date(datum)
   d.setDate(d.getDate() + tage)
-  return iso(d)
+  return schluessel(d)
 }
 
 // Der Kalendertag nach `datum` ("JJJJ-MM-TT"). Praktisch, um Zwischenphasen
@@ -124,8 +121,11 @@ export function zielFortschritt(ziel) {
   return { erledigt: s.filter((x) => x.erledigt).length, gesamt: s.length }
 }
 
-// Ein Ziel gilt als erreicht, wenn es Teilschritte hat und alle erledigt sind.
+// Ein Ziel gilt als erreicht, wenn es Teilschritte hat und alle erledigt
+// sind. Ein OKR-Ziel misst sich stattdessen an seinen Key Results: stehen
+// die auf 100 %, ist es erreicht – auch ohne Teilschritte.
 export function zielErreicht(ziel) {
+  if (ziel?.methode === "okr") return okrErreicht(ziel)
   const s = zielSchritte(ziel)
   return s.length > 0 && s.every((x) => x.erledigt)
 }
@@ -258,7 +258,7 @@ export function wochenFortschritt(woche) {
 export function montagKey(datum) {
   const d = new Date(datum)
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-  return iso(d)
+  return schluessel(d)
 }
 
 // Alle Wochen einer Periode, chronologisch: [{ nummer, start, ende }].

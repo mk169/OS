@@ -10,6 +10,7 @@
 //   dailyops_protokoll { "<routineId>": { "JJJJ-MM-TT": [schrittId, …] } }
 
 import { heute, inTagen } from "./datum"
+import { WOCHENTAGE } from "./datum"
 
 export const TAGESZEITEN = [
   { key: "morgen", label: "Morgen", emoji: "🌅" },
@@ -29,7 +30,9 @@ export const RHYTHMEN = [
 ]
 
 // Wochentage in der Reihenfolge der Anzeige; 0 = Montag.
-export const WOCHENTAGE_KURZ = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+// Dieselbe Liste wie in datum.js – hier nur unter dem Namen weitergereicht,
+// unter dem der Alltags-Bereich sie kennt.
+export const WOCHENTAGE_KURZ = WOCHENTAGE
 
 // Wochentag eines Datums als 0 (Montag) bis 6 (Sonntag).
 export function wochentagIndex(datum) {

@@ -1,6 +1,5 @@
 import { heute, inTagen } from "./datum"
 import { istFaellig } from "./spacedRepetition"
-import { gehoertZu } from "./lernplan"
 
 // Kennzahlen über einen Kartenstapel – im Stil von Ankis Statistik.
 
@@ -95,9 +94,4 @@ export function kartenNachProjekt(karten, projekte) {
         b.gesamt - a.gesamt ||
         (a.name ?? "").localeCompare(b.name ?? "")
     )
-}
-
-// Karten eines einzelnen Projekts (inkl. des alten `kursId`-Schlüssels).
-export function kartenVonProjekt(karten, projektId) {
-  return karten.filter((k) => gehoertZu(k, projektId))
 }

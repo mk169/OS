@@ -2,6 +2,14 @@
   "name": "os",
   "private": true,
   "version": "1.0.0",
+  "description": "Persönliches Betriebssystem für Studium und Projekte: Todos, Kalender, Habits, Projekte, Fokus-Perioden und Wochenrückblick in einer Oberfläche.",
+  "license": "MIT",
+  "author": "Matthias Kreuter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mk169/OS.git"
+  },
+  "homepage": "https://mk169.github.io/OS/",
   "type": "module",
   "scripts": {
     "dev": "vite",

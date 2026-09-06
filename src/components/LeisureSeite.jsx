@@ -2,11 +2,14 @@ import { useMemo, useState } from "react"
 import useStored from "../lib/useStored"
 import Seitenkopf from "./Seitenkopf"
 import LoeschKnopf from "./LoeschKnopf"
+import LeerHinweis from "./LeerHinweis"
+import { SEITE_LESEN } from "../lib/layout"
 
 // Lebensbereich „Leisure & Kultur": eine kleine Medienbibliothek – Filme,
 // Serien, Bücher, Podcasts & Spiele als Watch/Read-Later-Liste mit Status
 // (geplant → dabei → fertig). Store „medien" = [{ id, titel, typ, status,
-// link, erstelltAm }].
+// erstelltAm }]. Ältere Einträge tragen noch ein leeres `link` – es wurde
+// geschrieben, aber nie angezeigt oder befüllt, und wird nicht mehr gesetzt.
 
 const TYPEN = [
   { key: "film", label: "Film", emoji: "🎬" },
@@ -54,7 +57,6 @@ export default function LeisureSeite() {
         titel: titel.trim(),
         typ,
         status: "geplant",
-        link: "",
         erstelltAm: Date.now(),
       },
     ])
@@ -67,11 +69,14 @@ export default function LeisureSeite() {
   function entferne(id) {
     setMedien(medien.filter((m) => m.id !== id))
   }
+  function setTitelVon(id, titel) {
+    setMedien(medien.map((m) => (m.id === id ? { ...m, titel } : m)))
+  }
 
   const anzahlProTyp = (key) => medien.filter((m) => m.typ === key).length
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10">
+    <div className={SEITE_LESEN}>
       <Seitenkopf
         titel="Leisure & Kultur"
         unterzeile="Deine Medienbibliothek – Filme, Serien, Bücher & mehr."
@@ -122,6 +127,15 @@ export default function LeisureSeite() {
         </div>
       )}
 
+      {medien.length === 0 && (
+        <LeerHinweis
+          klasse="mt-6"
+          emoji="🎬"
+          titel="Noch nichts in der Bibliothek"
+          text="Filme, Serien, Bücher, Spiele, Podcasts – trag oben ein, was du sehen, lesen oder hören willst. Der Status wandert von „geplant“ über „läuft“ zu „fertig“."
+        />
+      )}
+
       {/* Liste, nach Status gruppiert */}
       <div className="mt-4 space-y-6">
         {gruppen.map(({ status, items }) => (
@@ -138,15 +152,18 @@ export default function LeisureSeite() {
                   <span className="text-lg leading-none">
                     {TYP[m.typ]?.emoji ?? "✨"}
                   </span>
-                  <span
-                    className={`min-w-0 flex-1 truncate text-sm ${
+                  {/* Titel direkt in der Zeile änderbar – ein Tippfehler
+                      soll kein Löschen und Neuanlegen erzwingen. */}
+                  <input
+                    value={m.titel}
+                    onChange={(e) => setTitelVon(m.id, e.target.value)}
+                    aria-label="Titel ändern"
+                    className={`min-w-0 flex-1 truncate rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm outline-none transition-colors hover:border-gray-200 focus:border-gray-900 ${
                       m.status === "fertig"
                         ? "text-gray-400 line-through"
                         : "text-gray-800"
                     }`}
-                  >
-                    {m.titel}
-                  </span>
+                  />
                   <select
                     value={m.status ?? "geplant"}
                     onChange={(e) => setStatus(m.id, e.target.value)}
