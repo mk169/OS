@@ -21,7 +21,7 @@ import PhasenZeitstrahl from "./PhasenZeitstrahl"
 // Restlaufzeit, verstrichenen Zeitanteil und die verknüpften Projekte mit
 // ihrem eigenen Periodenziel und Fortschritt. Projektziele lassen sich direkt
 // hier abhaken. Erscheint nur, wenn gerade ein Zyklus aktiv ist. „dunkel" für
-// dunkle Dashboard-Stile (Arcade).
+// dunkle Dashboard-Stile.
 export default function ZyklusWidget({ onNavigate, variant = "hell" }) {
   const [zyklen, setZyklen] = useStored("zyklen", [])
   const [projekte] = useStored("projekte", [])

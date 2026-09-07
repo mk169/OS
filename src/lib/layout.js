@@ -6,7 +6,7 @@
 //   SEITE_LESEN   eine Spalte: Listen, Formulare, Fließtext.
 //   SEITE_RASTER  mehrere Spalten: Karten, Kalender, Diagramme.
 //
-// Die Stil-Varianten der Startseite (Clean Girl, Notion, Arcade …) setzen
+// Die Stil-Varianten der Startseite (Notion, Life OS …) setzen
 // bewusst eigene, engere Breiten – dort ist die Breite Teil des Looks.
 
 export const SEITE_LESEN = "mx-auto max-w-3xl px-5 py-8 sm:px-6 sm:py-10"

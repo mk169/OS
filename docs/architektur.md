@@ -119,8 +119,8 @@ Nutzer ihn sehen, einen Eintrag in `AUTO_BEREICHE`.
 
 ## Stile
 
-Sieben Stile (`lib/stil.js`) verändern Start, Todos und Habits: `todo`,
-`gamified`, `arcade`, `cleangirl`, `notion`, `lifeos`, `lockedin`. Jede der
+Fünf Stile (`lib/stil.js`) verändern Start, Todos und Habits: `todo`,
+`gamified`, `notion`, `lifeos`, `lockedin`. Jede der
 drei Seiten enthält pro Stil eine eigene Komponente und reicht dieselben Daten
 hinein – die Fallunterscheidung steht jeweils am Ende der Datei.
 
@@ -143,8 +143,8 @@ monochrom, nicht nur die drei Stil-Seiten.
 `index.html` als Navigations-Fallback ausliefert. Das Manifest liegt von Hand
 in `public/manifest.webmanifest` – eine Quelle, kein Duplikat.
 
-Nicht im Cache: die dekorativen Google-Fonts der Stile Arcade, Clean Girl und
-Life OS.
+Nicht im Cache: die dekorativen Google-Fonts des Stils Life OS und des
+Mentors.
 Ohne Netz greifen dort die System-Schriften.
 
 ## Tests

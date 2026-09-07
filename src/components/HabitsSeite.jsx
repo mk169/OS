@@ -40,7 +40,6 @@ import { SEITE_RASTER } from "../lib/layout"
 const TAG_LABELS = ["Mo", "", "Mi", "", "Fr", "", ""]
 // Vollständige Kurzlabels – der Life-OS-Stil beschriftet jedes Kästchen.
 const WOCHENTAGE_KURZ = ["M", "D", "M", "D", "F", "S", "S"]
-const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
 
 function WochenZielAuswahl({ wert, onChange }) {
   return (
@@ -441,8 +440,6 @@ export default function HabitsSeite() {
   }
 
   if (stil === "gamified") return <HabitsGamified {...gemeinsam} />
-  if (stil === "arcade") return <HabitsArcade {...gemeinsam} />
-  if (stil === "cleangirl") return <HabitsCleanGirl {...gemeinsam} />
   if (stil === "notion") return <HabitsNotion {...gemeinsam} />
   if (stil === "lifeos") return <HabitsLifeOS {...gemeinsam} />
   if (stil === "lockedin") return <HabitsLockedIn {...gemeinsam} />
@@ -514,123 +511,6 @@ function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWoche
           })}
         </div>
       </section>
-    </div>
-  )
-}
-
-// ──────────────────────────────────────────────────────────────
-// Stil: Arcade – Retro Terminal
-// ──────────────────────────────────────────────────────────────
-
-function HabitsArcade({ habits, _bereiche, toggle, _remove }) {
-  const completionsCount = habits.reduce((s, h) => s + erledigteTage(h).length, 0)
-  const score = completionsCount * 50
-  const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
-
-  return (
-    <div className="min-h-screen bg-black px-4 py-6 text-white sm:px-6">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-6 text-center">
-          <p style={{ fontFamily: '"Press Start 2P"' }} className="text-[10px] text-yellow-300">
-            TRAINING MODE
-          </p>
-          <p className="mt-2 text-[12px] text-white/70">Score: {String(score).padStart(5, "0")}</p>
-          <p className="text-[10px] text-amber-400">🔥 Streak: {bestStreak}</p>
-        </div>
-
-        {habits.length === 0 ? (
-          <p className="rounded border-2 border-blue-800 py-8 text-center text-xl text-white/50">
-            NO HABITS LOADED
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {habits.map((h) => (
-              <button
-                key={h.id}
-                onClick={() => toggle(h)}
-                className="flex w-full items-center gap-3 rounded border-2 border-cyan-600 bg-cyan-900/20 px-3 py-2 text-left transition-colors hover:border-cyan-300"
-              >
-                <span className="text-[10px] font-bold text-cyan-400">
-                  {erledigteTage(h).includes(hoje()) ? "✓" : "○"}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm text-cyan-300">{h.name}</span>
-                <span className="text-[10px] text-cyan-400">🔥{wochenStreakVon(h)}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ──────────────────────────────────────────────────────────────
-// Stil: Clean Girl – Soft & elegant
-// ──────────────────────────────────────────────────────────────
-
-function HabitsCleanGirl({ habits, _bereiche, toggle, remove }) {
-  const completionsToday = habits.filter((h) =>
-    erledigteTage(h).includes(heute())
-  ).length
-
-  return (
-    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
-      <div className="mb-10">
-        <p style={{ fontFamily: FONT_SERIF_ELEGANT }} className="text-4xl text-rose-400">
-          daily rituals ♡
-        </p>
-        <p className="mt-2 text-sm text-rose-300">
-          {completionsToday}/{habits.length} today
-        </p>
-      </div>
-
-      {habits.length === 0 ? (
-        <p className="rounded-3xl bg-white/60 py-10 text-center text-sm text-rose-400">
-          start a new ritual ♡
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {habits.map((h) => {
-            const dranHeute = erledigteTage(h).includes(heute())
-            return (
-              <li
-                key={h.id}
-                className="group flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3 shadow-[0_10px_30px_-20px_rgba(219,112,147,0.6)] backdrop-blur-sm"
-              >
-                <button
-                  onClick={() => toggle(h)}
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-rose-300 text-rose-400 transition-colors hover:bg-rose-100"
-                  title="Heute trainieren"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={`h-3 w-3 ${dranHeute ? "opacity-100" : "opacity-0"}`}
-                  >
-                    <path d="m5 12 5 5L20 7" />
-                  </svg>
-                </button>
-                <span
-                  className={`min-w-0 flex-1 truncate text-[14px] ${
-                    dranHeute ? "text-rose-300/50 line-through" : "text-rose-700"
-                  }`}
-                >
-                  {h.name}
-                </span>
-                <span className="text-[11px] text-rose-300">🔥{wochenStreakVon(h)}</span>
-                <LoeschKnopf
-                  onLoeschen={() => remove(h.id)}
-                  klasse="text-rose-200 opacity-0 hover:text-rose-400 group-hover:opacity-100"
-                />
-              </li>
-            )
-          })}
-        </ul>
-      )}
     </div>
   )
 }
