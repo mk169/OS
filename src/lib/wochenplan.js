@@ -63,12 +63,11 @@ export function nachQuadranten(todos) {
   }))
 }
 
-// ── Wochenziel und Tages-Prioritäten ─────────────────────────────────────
+// ── Wochenziel ───────────────────────────────────────────────────────────
 //
-// Beide liegen als flache Zuordnung „Datum → Inhalt" in eigenen Stores:
-// `wochenziele` am Montag der Woche, `tagesprioritaeten` am Tag. Flach,
-// weil so weder eine Migration nötig ist noch etwas aufräumt werden muss –
-// wer nichts einträgt, erzeugt keinen Eintrag.
+// Das Wochenziel liegt als flache Zuordnung „Montag → Text" im Store
+// `wochenziele`. Flach, weil so weder eine Migration nötig ist noch etwas
+// aufgeräumt werden muss – wer nichts einträgt, erzeugt keinen Eintrag.
 //
 // Bewusst getrennt von den Wochenzielen einer Fokus-Periode (Store `zyklen`):
 // Die Periode ist ein Vorhaben über Wochen hinweg, der Wochenplan ist diese
@@ -86,24 +85,51 @@ export function setzeWochenziel(wochenziele, montagKey, text) {
   return naechste
 }
 
-// Drei Prioritäten je Tag, als Text mit Häkchen. Absichtlich kein Verweis
-// auf Todo-IDs: Die wichtigste Sache des Tages ist oft keine Aufgabe aus
-// der Liste („Gespräch führen", „nicht ausweichen") – und eine, die es ist,
-// steht ohnehin schon im Raster darunter.
-export const PRIORITAETEN_PRO_TAG = 3
+// ── Die drei Prioritäten eines Tages ─────────────────────────────────────
+//
+// Sie sind echte Aufgaben, keine zweite Liste daneben: Ein Todo trägt das
+// Feld `fokus` mit dem Tag, an dem es Priorität ist. Damit hakt man dieselbe
+// Sache nur einmal ab, und was hier oben steht, taucht unten in der Matrix
+// und im Wochenraster als dasselbe Todo auf.
+//
+// Drei Plätze, nicht mehr: Der Sinn der Übung ist das Weglassen.
+export const MAX_FOKUS = 3
 
-export function top3Von(prioritaeten, tagKey) {
-  const roh = prioritaeten?.[tagKey] ?? []
-  return Array.from({ length: PRIORITAETEN_PRO_TAG }, (_, i) => ({
-    text: roh[i]?.text ?? "",
-    erledigt: Boolean(roh[i]?.erledigt),
-  }))
+export function fokusTodos(todos, tag) {
+  return todos.filter((t) => t.fokus === tag).slice(0, MAX_FOKUS)
 }
 
-export function setzeTop3(prioritaeten, tagKey, eintraege) {
-  const naechste = { ...(prioritaeten ?? {}) }
-  const gefuellt = eintraege.filter((e) => e.text.trim())
-  if (gefuellt.length > 0) naechste[tagKey] = eintraege
-  else delete naechste[tagKey]
-  return naechste
+// Eine Aufgabe zur Priorität des Tages machen. Sind die drei Plätze belegt,
+// bleibt die Liste unverändert – lieber eine klare Grenze als ein stilles
+// Verdrängen dessen, was man sich vorgenommen hat.
+export function setzeFokus(todos, id, tag) {
+  if (fokusTodos(todos, tag).length >= MAX_FOKUS) return todos
+  return todos.map((t) => (t.id === id ? { ...t, fokus: tag } : t))
+}
+
+// Aus den Prioritäten nehmen – die Aufgabe selbst bleibt bestehen.
+export function loeseFokus(todos, id) {
+  return todos.map((t) => {
+    if (t.id !== id) return t
+    const { fokus: _weg, ...rest } = t
+    return rest
+  })
+}
+
+// Woraus man wählen kann: offene Aufgaben, die heute noch keine Priorität
+// sind. Was heute fällig oder überfällig ist, steht oben – danach der Rest
+// nach Eisenhower-Rang.
+export function fokusKandidaten(todos, tag) {
+  const rang = (t) => EINTEILUNGEN.findIndex((e) => e.passt(t))
+  return todos
+    .filter((t) => !t.erledigt && t.fokus !== tag)
+    .sort((a, b) => {
+      const aFaellig = a.datum && a.datum <= tag ? 0 : 1
+      const bFaellig = b.datum && b.datum <= tag ? 0 : 1
+      return (
+        aFaellig - bFaellig ||
+        rang(a) - rang(b) ||
+        (a.datum || "9999").localeCompare(b.datum || "9999")
+      )
+    })
 }

@@ -669,14 +669,15 @@ test("Zielmethoden: SMART prüft, OKR misst, 5/25 sortiert aus", async ({ page }
 // diese Woche aus, und was liegt auf welchem Tag. Beides muss zusammen
 // funktionieren – eine Aufgabe, die über eine Tagesspalte entsteht, gehört
 // danach in diesen Tag und nach dem Abhaken in „Diese Woche erledigt".
-test("Wochenplan: Ziel setzen, Aufgabe auf einen Tag legen, abhaken", async ({ page }) => {
+test("Wochenplan: Ziel setzen, Aufgabe auf einen Tag legen, priorisieren, abhaken", async ({ page }) => {
   const fehler = fehlerWaechter(page)
   await appMitAllenBereichen(page)
   await page.getByRole("button", { name: "Wochenplan", exact: true }).first().click()
 
   // Das Wochenziel wird beim Tippen gespeichert – nach dem Neuladen ist es da.
-  const zielFeld = page.getByPlaceholder("Was willst du bis Sonntag erreicht haben?")
-  await zielFeld.fill("Kapitel 3 abgeben")
+  await page
+    .getByPlaceholder("Was willst du bis Sonntag erreicht haben?")
+    .fill("Kapitel 3 abgeben")
   await page.reload({ waitUntil: "domcontentloaded" })
   await page.getByRole("button", { name: "Wochenplan", exact: true }).first().click()
   await expect(
@@ -689,19 +690,23 @@ test("Wochenplan: Ziel setzen, Aufgabe auf einen Tag legen, abhaken", async ({ p
   await page.getByRole("button", { name: "Erstellen" }).click()
   await expect(page.locator("main")).toContainText("Wochenplan-Aufgabe")
 
-  // Abhaken in der Tagesspalte – danach steht sie unter „Diese Woche erledigt".
-  await page.getByText("Wochenplan-Aufgabe").first().click()
+  // Im Tagesplan wird dieselbe Aufgabe zur Priorität – keine zweite Liste.
+  await page.getByRole("button", { name: "Tagesplan" }).click()
+  await page.getByRole("button", { name: "Das Wichtigste heute wählen" }).click()
+  await page.getByRole("button", { name: /Wochenplan-Aufgabe/ }).click()
+  const prioritaeten = page.locator("section").filter({ hasText: "Prioritäten heute" })
+  await expect(prioritaeten).toContainText("Wochenplan-Aufgabe")
+
+  // Abhaken in der Priorität hakt das Todo selbst ab: Es steht danach unter
+  // „Heute erledigt" und in der Wochensicht unter „Diese Woche erledigt".
+  await prioritaeten.getByTitle("Als erledigt markieren").click()
+  await expect(
+    page.locator("section").filter({ hasText: "Heute erledigt" })
+  ).toContainText("Wochenplan-Aufgabe")
+  await page.getByRole("button", { name: "Wochenplan", exact: true }).last().click()
   await expect(
     page.locator("section").filter({ hasText: "Diese Woche erledigt" })
   ).toContainText("Wochenplan-Aufgabe")
-
-  // Und der Tagesplan hält die drei Prioritäten fest – auch über den
-  // Reiterwechsel hinweg (dass sie gespeichert werden, prüft der Unit-Test).
-  await page.getByRole("button", { name: "Tagesplan" }).click()
-  await page.getByPlaceholder("Das Wichtigste heute").fill("Gespräch führen")
-  await page.getByRole("button", { name: "Wochenplan", exact: true }).last().click()
-  await page.getByRole("button", { name: "Tagesplan" }).click()
-  await expect(page.getByPlaceholder("Das Wichtigste heute")).toHaveValue("Gespräch führen")
 
   expect(fehler).toEqual([])
 })

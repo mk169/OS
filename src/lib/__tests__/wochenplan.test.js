@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest"
 import {
   aufgabenAmTag,
   erledigtImZeitraum,
+  MAX_FOKUS,
+  fokusKandidaten,
+  fokusTodos,
+  loeseFokus,
   montagMitVersatz,
   nachQuadranten,
   offeneDerWoche,
-  setzeTop3,
+  setzeFokus,
   setzeWochenziel,
-  top3Von,
   wochenTage,
   wochenzielVon,
 } from "../wochenplan"
@@ -135,34 +138,47 @@ describe("Wochenziel", () => {
 })
 
 describe("Tages-Prioritäten", () => {
-  it("liefert immer drei Plätze, auch wenn nichts gespeichert ist", () => {
-    expect(top3Von({}, "2026-09-07")).toEqual([
-      { text: "", erledigt: false },
-      { text: "", erledigt: false },
-      { text: "", erledigt: false },
-    ])
+  const tag = "2026-09-09"
+  const todos = [
+    { id: 1, text: "A", erledigt: false, fokus: tag },
+    { id: 2, text: "B", erledigt: false },
+    { id: 3, text: "C", erledigt: true },
+    { id: 4, text: "D", erledigt: false, fokus: "2026-09-08" },
+  ]
+
+  it("nimmt nur die Aufgaben, die heute Priorität sind", () => {
+    expect(fokusTodos(todos, tag).map((t) => t.id)).toEqual([1])
   })
 
-  it("speichert nur, was auch Text hat", () => {
-    const leer = [
-      { text: "  ", erledigt: false },
-      { text: "", erledigt: false },
-      { text: "", erledigt: false },
-    ]
-    expect(setzeTop3({ "2026-09-07": [] }, "2026-09-07", leer)).toEqual({})
+  it("macht eine offene Aufgabe zur Priorität", () => {
+    expect(fokusTodos(setzeFokus(todos, 2, tag), tag).map((t) => t.id)).toEqual([1, 2])
   })
 
-  it("behält Häkchen und Text der belegten Plätze", () => {
-    const eintraege = [
-      { text: "Gespräch führen", erledigt: true },
-      { text: "", erledigt: false },
-      { text: "", erledigt: false },
-    ]
-    const gespeichert = setzeTop3({}, "2026-09-07", eintraege)
-    expect(top3Von(gespeichert, "2026-09-07")[0]).toEqual({
-      text: "Gespräch führen",
-      erledigt: true,
-    })
+  it("lässt nicht mehr als drei Plätze zu", () => {
+    const voll = [1, 2, 3].map((id) => ({ id, erledigt: false, fokus: tag }))
+    const nachher = setzeFokus([...voll, { id: 9, erledigt: false }], 9, tag)
+    expect(fokusTodos(nachher, tag)).toHaveLength(MAX_FOKUS)
+    expect(nachher.find((t) => t.id === 9).fokus).toBeUndefined()
+  })
+
+  it("löst eine Priorität, ohne die Aufgabe zu löschen", () => {
+    const nachher = loeseFokus(todos, 1)
+    expect(fokusTodos(nachher, tag)).toEqual([])
+    expect(nachher.find((t) => t.id === 1).text).toBe("A")
+  })
+
+  it("schlägt offene Aufgaben vor – Fälliges zuerst, Erledigtes nie", () => {
+    const auswahl = fokusKandidaten(
+      [
+        { id: 1, erledigt: false, wichtig: false, dringend: false },
+        { id: 2, erledigt: false, wichtig: true, dringend: true },
+        { id: 3, erledigt: false, datum: "2026-09-08" },
+        { id: 4, erledigt: true },
+        { id: 5, erledigt: false, fokus: tag },
+      ],
+      tag
+    )
+    expect(auswahl.map((t) => t.id)).toEqual([3, 2, 1])
   })
 })
 

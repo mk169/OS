@@ -55,7 +55,6 @@ neu)` in denselben Speicher.
 | --- | --- |
 | `einstellungen` | Profil, sichtbare Bereiche, Startseite, Akzent, Stil, Migrations-Merker |
 | `wochenziele` | Ziel je Woche (Schlüssel = Montags-Datum) |
-| `tagesprioritaeten` | Die drei Prioritäten je Tag |
 | `todos` | Aufgaben mit Datum, Dauer, Eisenhower-Feldern, Projektbezug |
 | `termine` | Kalendereinträge inkl. Wiederholung, Tagesblock, Fokus-Bezug |
 | `tagesbloecke` | Benannte Tagesabschnitte mit Farbe |
@@ -130,6 +129,13 @@ Stores hat er nur für das, was es vorher nicht gab: `wochenziele`
 (Montags-Datum → Text) und `tagesprioritaeten` (Tag → drei Einträge). Ein
 Wochenziel aus einer laufenden Fokus-Periode (`zyklen`) wird zusätzlich
 angezeigt, nie überschrieben.
+
+Die drei Prioritäten eines Tages sind echte Aufgaben: Ein Todo trägt das Feld
+`fokus` mit dem Tag, an dem es Priorität ist (`fokusTodos`, `setzeFokus`,
+`loeseFokus`). Anfangs war das ein eigener Speicher mit freiem Text – daneben
+stand dieselbe Sache oft noch einmal als Todo, und man hakte sie zweimal ab.
+`migriereTagesprioritaeten` (App.jsx) überführt Getipptes einmalig in Aufgaben
+und leert den alten Store `tagesprioritaeten`.
 
 Damit „diese Woche erledigt" stimmt, hält `todoUmschalten` (`lib/todos.js`)
 beim Abhaken den Tag in `erledigtAm` fest; `erledigtTag` fällt für Altdaten

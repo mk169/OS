@@ -43,7 +43,7 @@ Cloud, Daten nur auf diesem Gerät.
 | **Locked In** | Kompromissloser Fokus-Modus: ein Ziel, eine Phase, nur das Nötigste – solange er läuft, ist die ganze App monochrom |
 | **Kalender** | Tages-, Wochen- und Monatsansicht, Tagesblöcke, ICS-Export |
 | **Todos** | Eisenhower-Matrix, Dauer, Deadlines, Projektzuordnung |
-| **Wochenplan** | Ziel der Woche, sieben Tagesspalten, offene Aufgaben nach Eisenhower – dazu ein Tagesplan mit den drei Prioritäten von heute |
+| **Wochenplan** | Ziel der Woche, sieben Tagesspalten, offene Aufgaben nach Eisenhower – dazu ein Tagesplan mit den drei Prioritäten von heute (echte Aufgaben, nicht daneben notiert) |
 | **Sammeln** | Notizen in Ordnern, Tags, `[[Wikilinks]]` und Graph-Ansicht |
 | **Habits** | Gewohnheiten mit Wochenzielen, Streaks, Bereichen und Habit-Stacking |
 | **Fokus** | Pomodoro-Timer mit Sessions-Protokoll |

@@ -2,22 +2,26 @@ import { useState } from "react"
 import useStored from "../lib/useStored"
 import { datumLang, heute } from "../lib/datum"
 import { kalenderwoche, wochenEndeVon } from "../lib/wochenbericht"
-import { todoUmschalten } from "../lib/todos"
+import { einteilungVon, todoUmschalten } from "../lib/todos"
 import {
+  MAX_FOKUS,
   aufgabenAmTag,
   erledigtImZeitraum,
+  fokusKandidaten,
+  fokusTodos,
+  loeseFokus,
   montagMitVersatz,
   nachQuadranten,
   offeneDerWoche,
-  setzeTop3,
+  setzeFokus,
   setzeWochenziel,
-  top3Von,
   wochenTage,
   wochenzielVon,
 } from "../lib/wochenplan"
 import Seitenkopf from "./Seitenkopf"
 import TodoErstellen from "./TodoErstellen"
 import LeerHinweis, { LeerZeile } from "./LeerHinweis"
+import { FristChip } from "./Bausteine"
 import { SEITE_RASTER } from "../lib/layout"
 
 // Wochenplan: erst die Woche, dann der Tag.
@@ -94,7 +98,6 @@ export default function WochenplanSeite() {
   const [projekte] = useStored("projekte", [])
   const [zyklen] = useStored("zyklen", [])
   const [wochenziele, setWochenziele] = useStored("wochenziele", {})
-  const [prioritaeten, setPrioritaeten] = useStored("tagesprioritaeten", {})
 
   const heuteKey = heute()
   const montag = montagMitVersatz(versatz)
@@ -120,6 +123,9 @@ export default function WochenplanSeite() {
     )
     .at(0)
 
+  // Für welchen Tag wird beim Anlegen aus der Wochensicht datiert? Heute,
+  // solange man in der laufenden Woche steht – sonst deren Montag.
+  const planungsTag = heuteKey >= montag && heuteKey <= sonntag ? heuteKey : montag
   const ziel = wochenzielVon(wochenziele, montag)
   const offen = offeneDerWoche(todos, montag)
   const erledigtWoche = erledigtImZeitraum(todos, montag, sonntag)
@@ -305,7 +311,17 @@ export default function WochenplanSeite() {
                       className={`mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest ${q.text}`}
                     >
                       <span className={`h-1.5 w-1.5 rounded-full ${q.punkt}`} />
-                      {q.label}
+                      <span className="min-w-0 flex-1 truncate">{q.label}</span>
+                      {/* Anlegen im richtigen Feld: Einteilung vorbelegt,
+                          Datum auf einen Tag dieser Woche. */}
+                      <TodoErstellen
+                        beschriftung={q.label}
+                        startWichtig={q.key === "wichtig-dringend" || q.key === "wichtig"}
+                        startDringend={q.key === "wichtig-dringend" || q.key === "dringend"}
+                        startDatum={planungsTag}
+                        knopfKlasse="shrink-0 rounded border border-gray-200 px-1.5 text-sm leading-5 font-normal text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-700"
+                        knopfInhalt="+"
+                      />
                     </p>
                     {q.todos.length === 0 ? (
                       <p className="py-1 text-xs text-gray-300">Leer</p>
@@ -347,9 +363,8 @@ export default function WochenplanSeite() {
       ) : (
         <Tagesplan
           todos={todos}
+          setTodos={setTodos}
           heuteKey={heuteKey}
-          prioritaeten={prioritaeten}
-          setPrioritaeten={setPrioritaeten}
           onToggle={toggle}
           zuordnungsName={zuordnungsName}
         />
@@ -360,59 +375,127 @@ export default function WochenplanSeite() {
 
 // ── Tagesplan ────────────────────────────────────────────────────────────
 
-function Tagesplan({
-  todos,
-  heuteKey,
-  prioritaeten,
-  setPrioritaeten,
-  onToggle,
-  zuordnungsName,
-}) {
-  const top3 = top3Von(prioritaeten, heuteKey)
+function Tagesplan({ todos, setTodos, heuteKey, onToggle, zuordnungsName }) {
+  // Welcher freie Platz sucht gerade eine Aufgabe? (Index des Slots)
+  const [waehlt, setWaehlt] = useState(null)
+  const fokus = fokusTodos(todos, heuteKey)
   const offen = todos.filter((t) => !t.erledigt)
   const quadranten = nachQuadranten(offen)
   const erledigtHeute = erledigtImZeitraum(todos, heuteKey)
-
-  function aendere(index, feld, wert) {
-    const naechste = top3.map((e, i) => (i === index ? { ...e, [feld]: wert } : e))
-    setPrioritaeten(setzeTop3(prioritaeten, heuteKey, naechste))
-  }
+  const kandidaten = fokusKandidaten(todos, heuteKey)
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-400">{datumLang(heuteKey)}</p>
 
-      {/* Die drei Prioritäten sind bewusst frei tippbar und nicht an Todos
-          gebunden: Das Wichtigste an einem Tag ist oft keine Listenzeile
-          („das Gespräch führen"), und was eine ist, steht unten ohnehin. */}
-      <Panel punkt="bg-accent-500" titel="Die 3 Prioritäten heute">
-        <ul className="space-y-2">
-          {top3.map((e, i) => (
-            <li key={i} className="flex items-center gap-2.5">
-              <input
-                type="checkbox"
-                checked={e.erledigt}
-                onChange={() => aendere(i, "erledigt", !e.erledigt)}
-                disabled={!e.text.trim()}
-                className="h-4 w-4 shrink-0 rounded accent-gray-900 disabled:opacity-30"
-                title="Erledigt"
-              />
-              <span className="w-4 shrink-0 text-xs font-semibold text-gray-300">
-                {i + 1}
-              </span>
-              <input
-                value={e.text}
-                onChange={(ev) => aendere(i, "text", ev.target.value)}
-                placeholder={
-                  i === 0 ? "Das Wichtigste heute" : "Was heute noch zählt"
-                }
-                className={`min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900 ${
-                  e.erledigt ? "text-gray-400 line-through" : "text-gray-900"
-                }`}
-              />
-            </li>
-          ))}
-        </ul>
+      {/* Die drei Prioritäten sind echte Aufgaben: Was hier oben steht, ist
+          dasselbe Todo wie unten in der Matrix – einmal abhaken genügt. */}
+      <Panel punkt="bg-accent-500" titel={`Die ${MAX_FOKUS} Prioritäten heute`}>
+        <ol className="space-y-2">
+          {Array.from({ length: MAX_FOKUS }, (_, i) => {
+            const todo = fokus[i]
+            return (
+              <li key={todo?.id ?? `leer-${i}`} className="flex items-start gap-2.5">
+                <span className="mt-1.5 w-4 shrink-0 text-xs font-semibold text-gray-300">
+                  {i + 1}
+                </span>
+                {todo ? (
+                  <span className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-gray-200 px-3 py-1.5">
+                    <button
+                      onClick={() => onToggle(todo.id)}
+                      title={todo.erledigt ? "Wieder öffnen" : "Als erledigt markieren"}
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                        todo.erledigt
+                          ? "border-emerald-500 bg-emerald-500 text-white"
+                          : "border-gray-300 text-transparent hover:border-gray-900 hover:text-gray-400"
+                      }`}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="h-2 w-2">
+                        <path d="m5 12 5 5L20 7" />
+                      </svg>
+                    </button>
+                    <span
+                      className={`min-w-0 flex-1 truncate text-sm ${
+                        todo.erledigt ? "text-gray-400 line-through" : "text-gray-900"
+                      }`}
+                    >
+                      {todo.text}
+                    </span>
+                    {zuordnungsName(todo) && (
+                      <span className="shrink-0 rounded-sm bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                        {zuordnungsName(todo)}
+                      </span>
+                    )}
+                    {/* Aus den Prioritäten nehmen – die Aufgabe bleibt. */}
+                    <button
+                      onClick={() => setTodos(loeseFokus(todos, todo.id))}
+                      title="Nicht mehr Priorität heute"
+                      className="shrink-0 text-gray-300 transition-colors hover:text-gray-700"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ) : waehlt === i ? (
+                  <div className="min-w-0 flex-1 rounded-md border border-gray-300 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-gray-500">
+                        Aufgabe wählen
+                      </p>
+                      <button
+                        onClick={() => setWaehlt(null)}
+                        className="text-xs text-gray-400 hover:text-gray-900"
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                    {kandidaten.length === 0 ? (
+                      <LeerZeile text="Keine offene Aufgabe übrig – leg unten eine neue an." />
+                    ) : (
+                      <ul className="max-h-48 space-y-0.5 overflow-y-auto">
+                        {kandidaten.map((k) => (
+                          <li key={k.id}>
+                            <button
+                              onClick={() => {
+                                setTodos(setzeFokus(todos, k.id, heuteKey))
+                                setWaehlt(null)
+                              }}
+                              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                            >
+                              <span
+                                className={`h-1.5 w-1.5 shrink-0 rounded-full ${einteilungVon(k).punkt}`}
+                              />
+                              <span className="min-w-0 flex-1 truncate">{k.text}</span>
+                              {k.datum && <FristChip datum={k.datum} />}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-2 border-t border-gray-100 pt-2">
+                      {/* Neu anlegen und sofort zur Priorität machen – der
+                          Anlass ist ja genau dieser freie Platz. */}
+                      <TodoErstellen
+                        beschriftung="Neue Priorität"
+                        startDatum={heuteKey}
+                        zusatzFelder={{ fokus: heuteKey }}
+                        onFertig={() => setWaehlt(null)}
+                        knopfKlasse="text-xs font-medium text-accent-600 hover:underline"
+                        knopfInhalt="+ Neue Aufgabe anlegen"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setWaehlt(i)}
+                    className="min-w-0 flex-1 rounded-md border border-dashed border-gray-200 px-3 py-1.5 text-left text-sm text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-700"
+                  >
+                    {i === 0 ? "Das Wichtigste heute wählen" : "Weitere Priorität wählen"}
+                  </button>
+                )}
+              </li>
+            )
+          })}
+        </ol>
       </Panel>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -421,6 +504,18 @@ function Tagesplan({
             key={q.key}
             punkt={q.punkt}
             titel={`${q.label} — ${ANWEISUNG[q.key]}`}
+            aktion={
+              /* Anlegen dort, wo die Lücke auffällt: mit der Einteilung
+                 dieses Feldes vorbelegt. */
+              <TodoErstellen
+                beschriftung={q.label}
+                startWichtig={q.key === "wichtig-dringend" || q.key === "wichtig"}
+                startDringend={q.key === "wichtig-dringend" || q.key === "dringend"}
+                startDatum={heuteKey}
+                knopfKlasse="shrink-0 rounded border border-gray-200 px-1.5 text-sm leading-5 text-gray-400 transition-colors hover:border-gray-400 hover:text-gray-700"
+                knopfInhalt="+"
+              />
+            }
           >
             {q.todos.length === 0 ? (
               <LeerZeile text="Leer." />

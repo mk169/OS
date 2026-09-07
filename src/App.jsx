@@ -213,6 +213,47 @@ function migriereBereiche() {
   }
 }
 
+// Die drei Tages-Prioritäten waren zuerst freier Text in einem eigenen
+// Speicher – daneben stand dieselbe Sache oft noch einmal als Todo. Jetzt
+// sind sie echte Aufgaben (Feld `fokus` am Todo). Was jemand schon getippt
+// hatte, wird einmalig zu Aufgaben; der alte Speicher wird danach geleert,
+// damit die Migration nicht zweimal läuft.
+function migriereTagesprioritaeten() {
+  const alt = lies("tagesprioritaeten", null)
+  if (!alt || typeof alt !== "object" || Array.isArray(alt)) return
+  const tage = Object.entries(alt)
+  if (tage.length === 0) return
+
+  try {
+    schreibeStore("todos", [], (todos) => {
+      const neue = []
+      let id = Date.now()
+      for (const [tag, eintraege] of tage) {
+        for (const e of Array.isArray(eintraege) ? eintraege : []) {
+          const text = typeof e?.text === "string" ? e.text.trim() : ""
+          if (!text) continue
+          neue.push({
+            id: id++,
+            text,
+            projektId: null,
+            dauer: null,
+            datum: tag,
+            wichtig: true,
+            dringend: false,
+            fokus: tag,
+            erledigt: Boolean(e.erledigt),
+            ...(e.erledigt ? { erledigtAm: tag } : {}),
+          })
+        }
+      }
+      return [...todos, ...neue]
+    })
+    schreibeStore("tagesprioritaeten", {}, {})
+  } catch {
+    /* defekte Altdaten – dann bleibt es beim leeren Tagesplan */
+  }
+}
+
 // Schlichtes Linien-Icon (24er-Raster, currentColor).
 function NavIcon({ children, className }) {
   return (
@@ -402,6 +443,7 @@ export default function App() {
     migriereMentor()
     migriereLernbereich()
     migriereVitalitaet()
+    migriereTagesprioritaeten()
   }, [])
 
   // Akzentfarbe live anwenden, wenn sie sich ändert (z. B. in den

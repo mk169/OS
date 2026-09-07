@@ -15,6 +15,9 @@ export default function TodoErstellen({
   todo = null,
   onFertig = null,
   startDatum = null,
+  startWichtig = false,
+  startDringend = false,
+  zusatzFelder = null,
   offenStart = false,
 }) {
   const [todos, setTodos] = useStored("todos", [])
@@ -38,8 +41,11 @@ export default function TodoErstellen({
   // Aufgabe direkt in eine Tagesspalte. Nach dem Speichern bleibt es stehen,
   // damit zwei Aufgaben für denselben Tag nicht zweimal datiert werden müssen.
   const [deadline, setDeadline] = useState(todo?.datum ?? startDatum ?? "")
-  const [wichtig, setWichtig] = useState(Boolean(todo?.wichtig))
-  const [dringend, setDringend] = useState(Boolean(todo?.dringend))
+  // `startWichtig`/`startDringend` belegen die Einteilung vor: Wer im
+  // Wochenplan im Feld „wichtig & dringend" auf „+" tippt, meint eine
+  // Aufgabe für genau dieses Feld.
+  const [wichtig, setWichtig] = useState(Boolean(todo?.wichtig ?? startWichtig))
+  const [dringend, setDringend] = useState(Boolean(todo?.dringend ?? startDringend))
 
   // Sekretär-Prinzip: Aus dem eingetippten Namen werden Deadline („morgen",
   // „in 2 Wochen") und ein bestehendes Projekt erkannt – aber nur als
@@ -86,13 +92,18 @@ export default function TodoErstellen({
       return
     }
 
-    setTodos([...todos, { id: Date.now(), ...felder, erledigt: false }])
+    // `zusatzFelder`: Felder, die nicht im Formular stehen, aber zum Anlass
+    // gehören – der Tagesplan legt eine neue Aufgabe direkt als Priorität an.
+    setTodos([
+      ...todos,
+      { id: Date.now(), ...felder, ...(zusatzFelder ?? {}), erledigt: false },
+    ])
     setName("")
     setZuordnung("")
     setDauer("")
     setDeadline(startDatum ?? "")
-    setWichtig(false)
-    setDringend(false)
+    setWichtig(Boolean(startWichtig))
+    setDringend(Boolean(startDringend))
     setOffen(false)
     onFertig?.()
   }
