@@ -31,6 +31,19 @@ describe("baueBericht", () => {
     expect(bericht.todos).toHaveLength(1)
   })
 
+  it("ordnet nach dem Tag des Abhakens ein, nicht nach dem geplanten Datum", () => {
+    // Eine Aufgabe, die für die Vorwoche geplant war, aber erst jetzt
+    // abgehakt wurde, gehört in den Bericht dieser Woche.
+    const bericht = baueBericht({
+      woche: WOCHE,
+      todos: [
+        { id: 1, text: "Nachzügler", datum: "2026-08-20", erledigt: true, erledigtAm: "2026-09-02" },
+        { id: 2, text: "Erst nächste Woche erledigt", datum: "2026-09-02", erledigt: true, erledigtAm: "2026-09-10" },
+      ],
+    })
+    expect(bericht.todos.map((t) => t.id)).toEqual([1])
+  })
+
   it("summiert die Fokuszeit der Woche", () => {
     const bericht = baueBericht({
       woche: WOCHE,

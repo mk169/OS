@@ -21,6 +21,7 @@ import { STANDARD_MODULE } from "./lib/projekte"
 // drei Seiten, die andere Seiten ohnehin einbinden (Kalender, Todos,
 // Projekte) – dort brächte ein Nachladen nichts.
 const HabitsSeite = lazy(() => import("./components/HabitsSeite"))
+const WochenplanSeite = lazy(() => import("./components/WochenplanSeite"))
 const LockedInSeite = lazy(() => import("./components/LockedInSeite"))
 const DeepWorkSeite = lazy(() => import("./components/DeepWorkSeite"))
 const PeriodeSeite = lazy(() => import("./components/PeriodeSeite"))
@@ -85,7 +86,14 @@ function migriereAlteKurse() {
 // Neu eingeführte Bereiche, die bestehenden Nutzern einmalig zur Navigation
 // hinzugefügt werden. Pro Schlüssel nur einmal (Merker `bereicheErgaenzt`),
 // damit ein späteres bewusstes Ausblenden erhalten bleibt.
-const AUTO_BEREICHE = ["finanzen", "beruf", "leisure", "dailyops", "lockedin"]
+const AUTO_BEREICHE = [
+  "finanzen",
+  "beruf",
+  "leisure",
+  "dailyops",
+  "lockedin",
+  "wochenplan",
+]
 
 // Der Mentor ist keine eigene Seite mehr – er steckt jetzt im
 // Wochenrückblick. Bei bestehenden Nutzern den alten Eintrag aus der
@@ -266,6 +274,16 @@ const NAV = [
       <>
         <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
         <path d="m8 12 3 3 5-6" />
+      </>
+    ),
+  },
+  {
+    key: "wochenplan",
+    label: "Wochenplan",
+    icon: (
+      <>
+        <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
+        <path d="M3.5 9.5h17M8 3v3M16 3v3M8.5 14h3" />
       </>
     ),
   },
@@ -758,6 +776,7 @@ export default function App() {
         {seite === "lockedin" && <LockedInSeite onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite />}
         {seite === "todos" && <TodosSeite />}
+        {seite === "wochenplan" && <WochenplanSeite />}
         {seite === "sammeln" && (
           <SammelnSeite
             onNavigate={navigiere}

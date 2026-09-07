@@ -14,9 +14,9 @@ async function appMitAllenBereichen(page) {
         onboardingAbgeschlossen: true,
         profil: "komplett",
         sichtbareSeiten: [
-          "dashboard", "lockedin", "kalender", "todos", "sammeln", "habits",
-          "vitalitaet", "deepwork", "projekte", "periode", "finanzen",
-          "beruf", "leisure", "dailyops",
+          "dashboard", "lockedin", "kalender", "todos", "wochenplan",
+          "sammeln", "habits", "vitalitaet", "deepwork", "projekte",
+          "periode", "finanzen", "beruf", "leisure", "dailyops",
         ],
         appName: "OS",
         startseite: "dashboard",
@@ -61,6 +61,7 @@ test("jeder Bereich lässt sich öffnen", async ({ page }) => {
     ["Locked In", /Locked In/],
     ["Kalender", /Kalender/],
     ["Todos", /offene Aufgaben/],
+    ["Wochenplan", /Ziel der Woche/],
     ["Sammeln", /Ordner/],
     ["Habits", /Habits/],
     ["Alltag", /Alltag/],
@@ -661,5 +662,46 @@ test("Zielmethoden: SMART prüft, OKR misst, 5/25 sortiert aus", async ({ page }
   await expect(page.locator("main")).toContainText(
     "Wenn ich abends müde bin, dann gehe ich zehn Minuten raus."
   )
+  expect(fehler).toEqual([])
+})
+
+// Der Wochenplan ist die Ebene zwischen Todo-Liste und Kalender: Was macht
+// diese Woche aus, und was liegt auf welchem Tag. Beides muss zusammen
+// funktionieren – eine Aufgabe, die über eine Tagesspalte entsteht, gehört
+// danach in diesen Tag und nach dem Abhaken in „Diese Woche erledigt".
+test("Wochenplan: Ziel setzen, Aufgabe auf einen Tag legen, abhaken", async ({ page }) => {
+  const fehler = fehlerWaechter(page)
+  await appMitAllenBereichen(page)
+  await page.getByRole("button", { name: "Wochenplan", exact: true }).first().click()
+
+  // Das Wochenziel wird beim Tippen gespeichert – nach dem Neuladen ist es da.
+  const zielFeld = page.getByPlaceholder("Was willst du bis Sonntag erreicht haben?")
+  await zielFeld.fill("Kapitel 3 abgeben")
+  await page.reload({ waitUntil: "domcontentloaded" })
+  await page.getByRole("button", { name: "Wochenplan", exact: true }).first().click()
+  await expect(
+    page.getByPlaceholder("Was willst du bis Sonntag erreicht haben?")
+  ).toHaveValue("Kapitel 3 abgeben")
+
+  // Das „+" der Montagsspalte legt eine Aufgabe mit diesem Datum an.
+  await page.getByTitle("Aufgabe für Mo anlegen").click()
+  await page.getByPlaceholder(/^Aufgabe am .* benennen$/).fill("Wochenplan-Aufgabe")
+  await page.getByRole("button", { name: "Erstellen" }).click()
+  await expect(page.locator("main")).toContainText("Wochenplan-Aufgabe")
+
+  // Abhaken in der Tagesspalte – danach steht sie unter „Diese Woche erledigt".
+  await page.getByText("Wochenplan-Aufgabe").first().click()
+  await expect(
+    page.locator("section").filter({ hasText: "Diese Woche erledigt" })
+  ).toContainText("Wochenplan-Aufgabe")
+
+  // Und der Tagesplan hält die drei Prioritäten fest – auch über den
+  // Reiterwechsel hinweg (dass sie gespeichert werden, prüft der Unit-Test).
+  await page.getByRole("button", { name: "Tagesplan" }).click()
+  await page.getByPlaceholder("Das Wichtigste heute").fill("Gespräch führen")
+  await page.getByRole("button", { name: "Wochenplan", exact: true }).last().click()
+  await page.getByRole("button", { name: "Tagesplan" }).click()
+  await expect(page.getByPlaceholder("Das Wichtigste heute")).toHaveValue("Gespräch führen")
+
   expect(fehler).toEqual([])
 })

@@ -14,6 +14,8 @@ export default function TodoErstellen({
   knopfInhalt = null,
   todo = null,
   onFertig = null,
+  startDatum = null,
+  offenStart = false,
 }) {
   const [todos, setTodos] = useStored("todos", [])
   const [projekte] = useStored("projekte", [])
@@ -23,13 +25,19 @@ export default function TodoErstellen({
   // es gibt keinen Plus-Knopf – die Zeile öffnet das Formular selbst.
   const bearbeiten = Boolean(todo)
 
-  const [offen, setOffen] = useState(bearbeiten)
+  // `offenStart`: Das Formular steht sofort offen, weil der Aufrufer den
+  // Anlass schon gesetzt hat – im Wochenplan öffnet das „+" einer Tagesspalte
+  // das Formular unterhalb des Rasters, wo es Platz hat.
+  const [offen, setOffen] = useState(bearbeiten || offenStart)
   const [name, setName] = useState(todo?.text ?? "")
   const [zuordnung, setZuordnung] = useState(
     todo?.projektId ?? todo?.kursId ? String(todo.projektId ?? todo.kursId) : ""
   )
   const [dauer, setDauer] = useState(todo?.dauer ? String(todo.dauer) : "")
-  const [deadline, setDeadline] = useState(todo?.datum ?? "")
+  // `startDatum` belegt das Datum vor – der Wochenplan legt darüber eine
+  // Aufgabe direkt in eine Tagesspalte. Nach dem Speichern bleibt es stehen,
+  // damit zwei Aufgaben für denselben Tag nicht zweimal datiert werden müssen.
+  const [deadline, setDeadline] = useState(todo?.datum ?? startDatum ?? "")
   const [wichtig, setWichtig] = useState(Boolean(todo?.wichtig))
   const [dringend, setDringend] = useState(Boolean(todo?.dringend))
 
@@ -82,10 +90,11 @@ export default function TodoErstellen({
     setName("")
     setZuordnung("")
     setDauer("")
-    setDeadline("")
+    setDeadline(startDatum ?? "")
     setWichtig(false)
     setDringend(false)
     setOffen(false)
+    onFertig?.()
   }
 
   function schliessen() {

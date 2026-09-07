@@ -1,7 +1,8 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
 import LoeschKnopf from "./LoeschKnopf"
-import { tageBis, tageBisZahl } from "../lib/datum"
+import { heute, tageBis, tageBisZahl } from "../lib/datum"
+import { todoUmschalten } from "../lib/todos"
 import { istFaellig } from "../lib/spacedRepetition"
 import {
   lernplanVon,
@@ -90,7 +91,7 @@ export default function ProjektLernen({ projekt, onModulWechsel, onNavigate }) {
   }
   function toggleErledigt(id) {
     setAlleTodos(
-      alleTodos.map((t) => (t.id === id ? { ...t, erledigt: !t.erledigt } : t))
+      todoUmschalten(alleTodos, id, heute())
     )
   }
   function entferne(id) {
