@@ -2,7 +2,7 @@
 //
 // Analog zur Akzentfarbe (lib/akzent.js) wählt der Nutzer in den
 // Einstellungen einen Stil. Anders als die Akzentfarbe ist der Stil keine
-// CSS-Variable, sondern schaltet auf der Startseite (Dashboard) zwischen drei
+// CSS-Variable, sondern schaltet auf der Startseite (Dashboard) zwischen mehreren
 // unterschiedlich gestalteten Layout-Varianten um. Diese Datei hält nur die
 // Metadaten und den Standardwert; die konkrete Darstellung liegt im Dashboard.
 
@@ -18,18 +18,6 @@ export const STILE = [
     name: "Gamified",
     beschreibung: "Level, Fortschritt & Belohnung – wie Habitica",
     emoji: "🎮",
-  },
-  {
-    id: "arcade",
-    name: "Terminal",
-    beschreibung: "Minimalistisches Cyberpunk-Retro-Terminal",
-    emoji: "🖥️",
-  },
-  {
-    id: "cleangirl",
-    name: "Clean Girl",
-    beschreibung: "Soft, pastellrosa & elegant",
-    emoji: "🎀",
   },
   {
     id: "notion",

@@ -1,7 +1,7 @@
 // Optionale Blöcke der Startseite, die sich in den Einstellungen ein- und
 // ausblenden lassen. Der Aufgaben-/Fokus-Kern bleibt immer sichtbar; hier
-// geht es um die ergänzenden Panels. Gilt stilübergreifend (Todo, Terminal,
-// Clean Girl, …), soweit ein Stil den jeweiligen Block überhaupt zeigt.
+// geht es um die ergänzenden Panels. Gilt stilübergreifend (Todo, Notion,
+// Life OS, …), soweit ein Stil den jeweiligen Block überhaupt zeigt.
 
 export const DASHBOARD_BLOECKE = [
   {
