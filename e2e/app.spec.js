@@ -195,6 +195,7 @@ const STILE = [
   { id: "arcade", start: /\/\/|guten/i, todos: /QUESTS|READY/i, habits: /HABIT|READY/i },
   { id: "cleangirl", start: /guten/i, todos: /to-do/i, habits: /rituals/i },
   { id: "notion", start: /Guten|Heute/i, todos: /Todos|Aufgaben/i, habits: /Habits/i },
+  { id: "lifeos", start: /Guten/i, todos: /Tagesplan/i, habits: /Habit Tracker/i },
   { id: "lockedin", start: /HEUTE|AUFTRAG/i, todos: /AUFTRAG/i, habits: /LOCKED/i },
 ]
 

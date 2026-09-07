@@ -38,6 +38,12 @@ export const STILE = [
     emoji: "📄",
   },
   {
+    id: "lifeos",
+    name: "Life OS",
+    beschreibung: "Dunkles Kommandopult – Gold, Serife & Mono",
+    emoji: "📟",
+  },
+  {
     id: "lockedin",
     name: "Locked In",
     beschreibung: "Kompromisslos & monochrom – Disziplin im Fokus",

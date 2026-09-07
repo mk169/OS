@@ -14,6 +14,17 @@ import {
 import ZyklusWidget from "./ZyklusWidget"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
+import {
+  LIFEOS_INHALT,
+  LIFEOS_KNOPF_GHOST,
+  LIFEOS_KNOPF_GOLD,
+  LIFEOS_MONO,
+  LIFEOS_PANEL,
+  LIFEOS_PUNKT,
+  LIFEOS_RUBRIK,
+  LIFEOS_SEITE,
+  LIFEOS_SERIF,
+} from "../lib/lifeos"
 import { KalenderPanel } from "./KalenderSeite"
 import TodoErstellen from "./TodoErstellen"
 import { FristChip } from "./Bausteine"
@@ -298,6 +309,7 @@ export default function Dashboard({ onNavigate }) {
   if (stil === "arcade") return <DashboardArcade {...gemeinsam} />
   if (stil === "cleangirl") return <DashboardCleanGirl {...gemeinsam} />
   if (stil === "notion") return <DashboardNotion {...gemeinsam} />
+  if (stil === "lifeos") return <DashboardLifeOS {...gemeinsam} />
   if (stil === "lockedin") return <DashboardLockedIn {...gemeinsam} />
   return <DashboardTodo {...gemeinsam} />
 }
@@ -1131,6 +1143,301 @@ function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard })
   )
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Stil „Life OS" – dunkles Kommandopult: fast schwarzer Grund, Panels mit
+ * feiner Kante, gesperrte Versalien als Rubriken, Gold als einzige Farbe.
+ * Zahlen und Titel stehen in der Serife, alles Sachliche in Mono.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+// Die Leitsätze der Kopfzeile. Bewusst eine feste, kleine Auswahl statt eines
+// Zitat-Speichers: Der Satz wechselt mit dem Tag, nicht mit jedem Rendern –
+// sonst flackerte er bei jedem Häkchen.
+const LIFEOS_LEITSAETZE = [
+  ["Disziplin ist, das zu tun, was du dir vorgenommen hast — lange nachdem die Stimmung weg ist.", "Grundsatz"],
+  ["Du steigst nicht auf das Niveau deiner Ziele, du fällst auf das Niveau deiner Systeme.", "James Clear"],
+  ["Der Preis der Konzentration ist alles, was du dafür nicht tust.", "Deep Work"],
+  ["Ein Tag ohne Plan gehört den Plänen anderer.", "Grundsatz"],
+  ["Nicht die Menge entscheidet, sondern die Wiederholung.", "Grundsatz"],
+  ["Was messbar ist, wird gemacht.", "Grundsatz"],
+  ["Anfangen schlägt vorbereiten.", "Grundsatz"],
+]
+
+function LifeOsRubrik({ punkt = "gold", children, aktion }) {
+  return (
+    <div className={`${LIFEOS_RUBRIK} mb-3`}>
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${LIFEOS_PUNKT[punkt]}`} />
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+      {aktion}
+    </div>
+  )
+}
+
+function LifeOsKennzahl({ wert, label }) {
+  return (
+    <div className="rounded border border-[#242628] bg-[#161719] px-3 py-3 text-center">
+      <p
+        style={{ fontFamily: LIFEOS_SERIF }}
+        className="text-2xl leading-none tabular-nums text-[#d4a84b]"
+      >
+        {wert}
+      </p>
+      <p className="mt-1.5 text-[10px] uppercase tracking-[0.15em] text-[#5a5f68]">
+        {label}
+      </p>
+    </div>
+  )
+}
+
+// Eine Zeile im Aufgaben-Panel: Häkchen, Text, Frist – ohne Farbfläche, die
+// Einteilung zeigt nur der Punkt links.
+function LifeOsZeile({ label, meta, erledigt, onToggle }) {
+  return (
+    <li className="group flex items-center gap-2.5 border-b border-[#242628] py-2 last:border-0">
+      <button
+        onClick={onToggle}
+        title="Als erledigt markieren"
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] border transition-colors ${
+          erledigt
+            ? "border-[#5aaa72] bg-[#5aaa72] text-[#080909]"
+            : "border-[#2e3133] text-transparent hover:border-[#b88830] group-hover:text-[#5a5f68]"
+        }`}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="h-2 w-2">
+          <path d="m5 12 5 5L20 7" />
+        </svg>
+      </button>
+      <span
+        className={`min-w-0 flex-1 truncate text-[12px] ${
+          erledigt ? "text-[#5a5f68] line-through" : "text-[#e2e4e8]"
+        }`}
+      >
+        {label}
+      </span>
+      {meta && (
+        <span className="shrink-0 text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">
+          {meta}
+        </span>
+      )}
+    </li>
+  )
+}
+
+function DashboardLifeOS({ todos, offene, gruppen, ohneGruppe, toggle, onNavigate, appName, dashboard }) {
+  const { habits, setHabits } = useHabitDaten()
+  const habitToggle = nutzeHabitToggle(habits, setHabits)
+  const [deepwork] = useStored("deepwork", [])
+  const [termine] = useStored("termine", [])
+  const heuteKey = heute()
+
+  const erledigt = todos.filter((t) => t.erledigt).length
+  const fokusHeute = deepwork
+    .filter((s) => s.datum === heuteKey)
+    .reduce((summe, s) => summe + (Number(s.minuten) || 0), 0)
+  const disziplin = disziplinAmTag(habits, new Date())
+  const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
+
+  const aufgaben = [...gruppen.flatMap((g) => g.todos), ...ohneGruppe].slice(0, 7)
+  const termineHeute = termine
+    .filter((t) => faelltAuf(t, heuteKey))
+    .sort((a, b) => (a.zeit || "99:99").localeCompare(b.zeit || "99:99"))
+
+  // Tagesindex – derselbe Satz für den ganzen Tag.
+  const [satz, quelle] =
+    LIFEOS_LEITSAETZE[
+      Math.floor(new Date(heuteKey).getTime() / 86400000) % LIFEOS_LEITSAETZE.length
+    ]
+
+  return (
+    <div style={{ fontFamily: LIFEOS_MONO }} className={LIFEOS_SEITE}>
+      <div className={LIFEOS_INHALT}>
+        {/* Kopf: Logo-Zeile, Begrüßung, Weg zum Tagesplan */}
+        <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#242628] pb-3">
+          <div className="min-w-0">
+            <p
+              style={{ fontFamily: LIFEOS_SERIF }}
+              className="text-[13px] italic text-[#d4a84b]"
+            >
+              {appName}
+              <span className="ml-2 text-[9px] not-italic uppercase tracking-[0.25em] text-[#5a5f68]">
+                System
+              </span>
+            </p>
+            <h1
+              style={{ fontFamily: LIFEOS_SERIF }}
+              className="mt-1 truncate text-[22px] font-normal text-[#e2e4e8]"
+            >
+              {begruessung()}.
+            </h1>
+            <p className="mt-0.5 text-[11px] text-[#5a5f68]">{datumLang(heuteKey)}</p>
+          </div>
+          {/* Rechter Rand: am Desktop schwebt dort das Zahnrad der App-Hülle –
+              der Knopf weicht ihm aus, statt sich mit ihm zu überlagern. */}
+          <button
+            onClick={() => onNavigate("todos")}
+            className={`${LIFEOS_KNOPF_GHOST} shrink-0 md:mr-9`}
+          >
+            → Tagesplan
+          </button>
+        </div>
+
+        {/* Leitsatz des Tages */}
+        <div
+          style={{ fontFamily: LIFEOS_SERIF }}
+          className="mb-4 rounded-r border-l-2 border-[#d4a84b] bg-[#161719] px-3.5 py-2.5 text-[13px] italic text-[#9ea3ab]"
+        >
+          {satz}
+          <span
+            style={{ fontFamily: LIFEOS_MONO }}
+            className="mt-1 block text-[10px] not-italic uppercase tracking-[0.15em] text-[#5a5f68]"
+          >
+            {quelle}
+          </span>
+        </div>
+
+        {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} variant="dunkel" />}
+        {dashboard.mentor && <MentorBanner onNavigate={onNavigate} variant="dunkel" />}
+        {dashboard.lernen && <LernBanner onNavigate={onNavigate} variant="dunkel" />}
+
+        {dashboard.kennzahlen && (
+          <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <LifeOsKennzahl wert={offene.length} label="Offen" />
+            <LifeOsKennzahl
+              wert={`${disziplin.erledigt}/${disziplin.gesamt}`}
+              label="Habits heute"
+            />
+            <LifeOsKennzahl wert={`${fokusHeute}m`} label="Fokus heute" />
+            <LifeOsKennzahl wert={`${bestStreak}w`} label="Beste Serie" />
+          </div>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-4">
+            {/* Offene Aufgaben */}
+            <section className={LIFEOS_PANEL}>
+              <LifeOsRubrik
+                punkt="gruen"
+                aktion={
+                  <TodoErstellen
+                    knopfKlasse="shrink-0 rounded border border-[#2e3133] px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-[#9ea3ab] transition-colors hover:border-[#b88830] hover:text-[#f0c870]"
+                    knopfInhalt="+ Task"
+                  />
+                }
+              >
+                Offene Tasks
+              </LifeOsRubrik>
+
+              {aufgaben.length === 0 ? (
+                <p className="rounded border border-dashed border-[#242628] py-6 text-center text-[11px] text-[#5a5f68]">
+                  Nichts offen – setz dir das Nächste.
+                </p>
+              ) : (
+                <ul>
+                  {aufgaben.map((t) => (
+                    <LifeOsZeile
+                      key={t.id}
+                      label={t.text}
+                      meta={t.datum ? tageBis(t.datum) : null}
+                      erledigt={false}
+                      onToggle={() => toggle(t.id)}
+                    />
+                  ))}
+                </ul>
+              )}
+              {erledigt > 0 && (
+                <p className="mt-2.5 text-[10px] uppercase tracking-[0.15em] text-[#5a5f68]">
+                  {erledigt} erledigt
+                </p>
+              )}
+            </section>
+
+            {/* Habits */}
+            {dashboard.habits && habits.length > 0 && (
+              <section className={LIFEOS_PANEL}>
+                <LifeOsRubrik punkt="gold">Habits — Heute</LifeOsRubrik>
+                <ul>
+                  {habits.map((h) => (
+                    <LifeOsZeile
+                      key={h.id}
+                      label={h.name}
+                      meta={`${wochenStreakVon(h)}w`}
+                      erledigt={erledigteTage(h).includes(heuteKey)}
+                      onToggle={() => habitToggle(h)}
+                    />
+                  ))}
+                </ul>
+                <button
+                  onClick={() => onNavigate("habits")}
+                  className={`${LIFEOS_KNOPF_GHOST} mt-3`}
+                >
+                  Alle Habits →
+                </button>
+              </section>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            {/* Termine heute – bewusst als eigene Liste statt des hellen
+                Kalender-Panels, das den dunklen Grund aufreißen würde. */}
+            {dashboard.kalender && (
+              <section className={LIFEOS_PANEL}>
+                <LifeOsRubrik punkt="blau">Heute im Kalender</LifeOsRubrik>
+                {termineHeute.length === 0 ? (
+                  <p className="text-[11px] text-[#5a5f68]">Keine Termine.</p>
+                ) : (
+                  <ul>
+                    {termineHeute.map((t) => (
+                      <li
+                        key={t.id}
+                        className="flex items-center gap-3 border-b border-[#242628] py-2 last:border-0"
+                      >
+                        <span className="w-11 shrink-0 text-[11px] tabular-nums text-[#d4a84b]">
+                          {t.zeit || "—"}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[12px]">
+                          {t.titel || t.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  onClick={() => onNavigate("kalender")}
+                  className={`${LIFEOS_KNOPF_GHOST} mt-3`}
+                >
+                  Kalender →
+                </button>
+              </section>
+            )}
+
+            {/* Fokus-Aufruf: die eine Hauptaktion des Pults */}
+            <section className={LIFEOS_PANEL}>
+              <LifeOsRubrik punkt="cyan">Deep Work</LifeOsRubrik>
+              <p
+                style={{ fontFamily: LIFEOS_SERIF }}
+                className="text-[15px] leading-snug text-[#e2e4e8]"
+              >
+                {fokusHeute > 0
+                  ? `${fokusHeute} Minuten Fokus heute.`
+                  : "Noch keine Fokuszeit heute."}
+              </p>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-[#5a5f68]">
+                Konzentration ist ein Muskel. Eine Einheit reicht, um den Tag zu
+                drehen.
+              </p>
+              <button
+                onClick={() => onNavigate("deepwork")}
+                className={`${LIFEOS_KNOPF_GOLD} mt-3`}
+              >
+                ⧖ Session starten
+              </button>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Stil „Locked In" – monochrom und knapp. Keine Farbe, keine Belohnung,

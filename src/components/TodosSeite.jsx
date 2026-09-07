@@ -3,6 +3,16 @@ import useStored from "../lib/useStored"
 import { fristTon, tageBis } from "../lib/datum"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
+import {
+  LIFEOS_INHALT,
+  LIFEOS_KNOPF_GOLD,
+  LIFEOS_MONO,
+  LIFEOS_PANEL,
+  LIFEOS_PUNKT,
+  LIFEOS_RUBRIK,
+  LIFEOS_SEITE,
+  LIFEOS_SERIF,
+} from "../lib/lifeos"
 import { rangVon, xpVonTodos, levelVon } from "../lib/spiel"
 import Seitenkopf from "./Seitenkopf"
 import TodoErstellen from "./TodoErstellen"
@@ -49,6 +59,7 @@ export default function TodosSeite() {
   if (stil === "arcade") return <TodosArcade {...gemeinsam} />
   if (stil === "cleangirl") return <TodosCleanGirl {...gemeinsam} />
   if (stil === "notion") return <TodosNotion {...gemeinsam} />
+  if (stil === "lifeos") return <TodosLifeOS {...gemeinsam} />
   if (stil === "lockedin") return <TodosLockedIn {...gemeinsam} />
   return <TodosTodo {...gemeinsam} />
 }
@@ -757,6 +768,189 @@ function TodosGamified({ todos, offene, erledigte, toggle, remove, zuordnungsNam
                 )
               })}
             </ul>
+          </section>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Stil „Life OS" – die Eisenhower-Matrix als vier Panels eines dunklen
+ * Kommandopults. Jedes Quadrant-Panel trägt seine Handlungsanweisung
+ * (SOFORT, PLANEN, DELEGIEREN, LÖSCHEN) statt einer bloßen Beschriftung.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+// Punktfarbe und Anweisung je Quadrant – dieselben Schlüssel wie EINTEILUNGEN.
+const LIFEOS_QUADRANTEN = {
+  "wichtig-dringend": { punkt: "rot", anweisung: "Sofort" },
+  wichtig: { punkt: "gold", anweisung: "Planen" },
+  dringend: { punkt: "amber", anweisung: "Delegieren" },
+  sonstige: { punkt: "grau", anweisung: "Löschen" },
+}
+
+function LifeOsTodoZeile({ todo, erledigt, zuordnung, onToggle, onRemove }) {
+  return (
+    <li className="group flex items-start gap-2.5 border-b border-[#242628] py-2 last:border-0">
+      <button
+        onClick={() => onToggle(todo.id)}
+        title={erledigt ? "Wieder öffnen" : "Als erledigt markieren"}
+        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] border transition-colors ${
+          erledigt
+            ? "border-[#5aaa72] bg-[#5aaa72] text-[#080909]"
+            : "border-[#2e3133] text-transparent hover:border-[#b88830] group-hover:text-[#5a5f68]"
+        }`}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="h-2 w-2">
+          <path d="m5 12 5 5L20 7" />
+        </svg>
+      </button>
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block truncate text-[12px] ${
+            erledigt ? "text-[#5a5f68] line-through" : "text-[#e2e4e8]"
+          }`}
+        >
+          {todo.text}
+        </span>
+        {(zuordnung || todo.datum || todo.dauer) && (
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-2.5 text-[10px] uppercase tracking-[0.1em] text-[#5a5f68]">
+            {zuordnung && <span className="truncate">{zuordnung}</span>}
+            {todo.datum && <span className="text-[#9ea3ab]">{tageBis(todo.datum)}</span>}
+            {todo.dauer && <span>{todo.dauer} min</span>}
+          </span>
+        )}
+      </span>
+      <LoeschKnopf
+        onLoeschen={() => onRemove(todo.id)}
+        titel="Löschen"
+        klasse="text-[#3a3d40] opacity-0 hover:text-[#c05050] group-hover:opacity-100 max-md:opacity-100"
+      />
+    </li>
+  )
+}
+
+function TodosLifeOS({ offene, erledigte, toggle, remove, zuordnungsName }) {
+  const [zeigeErledigte, setZeigeErledigte] = useState(false)
+  const gesamt = offene.length + erledigte.length
+  const quote = gesamt === 0 ? 0 : Math.round((erledigte.length / gesamt) * 100)
+
+  return (
+    <div style={{ fontFamily: LIFEOS_MONO }} className={LIFEOS_SEITE}>
+      <div className={LIFEOS_INHALT}>
+        {/* Kopf */}
+        <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#242628] pb-3">
+          <div className="min-w-0">
+            <h1
+              style={{ fontFamily: LIFEOS_SERIF }}
+              className="text-[22px] font-normal text-[#e2e4e8]"
+            >
+              Tagesplan
+            </h1>
+            <p className="mt-0.5 text-[11px] text-[#5a5f68]">
+              Nach Wichtigkeit sortiert, nicht nach Lautstärke.
+            </p>
+          </div>
+          <TodoErstellen
+            knopfKlasse={`${LIFEOS_KNOPF_GOLD} shrink-0`}
+            knopfInhalt="+ Task"
+          />
+        </div>
+
+        {/* Kennzahlen */}
+        <div className="mb-4 grid grid-cols-3 gap-2.5">
+          {[
+            { label: "Offen", wert: offene.length },
+            { label: "Erledigt", wert: erledigte.length },
+            { label: "Quote", wert: `${quote}%` },
+          ].map((k) => (
+            <div
+              key={k.label}
+              className="rounded border border-[#242628] bg-[#161719] px-3 py-3 text-center"
+            >
+              <p
+                style={{ fontFamily: LIFEOS_SERIF }}
+                className="text-2xl leading-none tabular-nums text-[#d4a84b]"
+              >
+                {k.wert}
+              </p>
+              <p className="mt-1.5 text-[10px] uppercase tracking-[0.15em] text-[#5a5f68]">
+                {k.label}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Die vier Quadranten */}
+        {offene.length === 0 ? (
+          <p className="rounded border border-dashed border-[#242628] py-10 text-center text-[11px] uppercase tracking-[0.2em] text-[#5a5f68]">
+            Nichts offen — setz dir das Nächste.
+          </p>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {EINTEILUNGEN.map((e) => {
+              const gruppe = offene
+                .filter((t) => e.passt(t))
+                .sort((a, b) => (a.datum || "9999").localeCompare(b.datum || "9999"))
+              if (gruppe.length === 0) return null
+              const q = LIFEOS_QUADRANTEN[e.key]
+              return (
+                <section key={e.key} className={LIFEOS_PANEL}>
+                  <div className={`${LIFEOS_RUBRIK} mb-3`}>
+                    <span
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${LIFEOS_PUNKT[q.punkt]}`}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {e.label} — {q.anweisung}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-[#9ea3ab]">
+                      {gruppe.length}
+                    </span>
+                  </div>
+                  <ul>
+                    {gruppe.map((t) => (
+                      <LifeOsTodoZeile
+                        key={t.id}
+                        todo={t}
+                        erledigt={false}
+                        zuordnung={zuordnungsName(t)}
+                        onToggle={toggle}
+                        onRemove={remove}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Erledigtes */}
+        {erledigte.length > 0 && (
+          <section className={`${LIFEOS_PANEL} mt-4`}>
+            <button
+              onClick={() => setZeigeErledigte((z) => !z)}
+              className={`${LIFEOS_RUBRIK} w-full transition-colors hover:text-[#9ea3ab]`}
+            >
+              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${LIFEOS_PUNKT.gruen}`} />
+              {zeigeErledigte
+                ? "Erledigte ausblenden"
+                : `Erledigte zeigen (${erledigte.length})`}
+            </button>
+            {zeigeErledigte && (
+              <ul className="mt-3">
+                {erledigte.map((t) => (
+                  <LifeOsTodoZeile
+                    key={t.id}
+                    todo={t}
+                    erledigt
+                    zuordnung={zuordnungsName(t)}
+                    onToggle={toggle}
+                    onRemove={remove}
+                  />
+                ))}
+              </ul>
+            )}
           </section>
         )}
       </div>
