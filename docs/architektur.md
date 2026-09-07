@@ -119,10 +119,17 @@ Nutzer ihn sehen, einen Eintrag in `AUTO_BEREICHE`.
 
 ## Stile
 
-Sechs Stile (`lib/stil.js`) verändern Start, Todos und Habits: `todo`,
-`gamified`, `arcade`, `cleangirl`, `notion`, `lockedin`. Jede der drei Seiten
-enthält pro Stil eine eigene Komponente und reicht dieselben Daten hinein –
-die Fallunterscheidung steht jeweils am Ende der Datei.
+Sieben Stile (`lib/stil.js`) verändern Start, Todos und Habits: `todo`,
+`gamified`, `arcade`, `cleangirl`, `notion`, `lifeos`, `lockedin`. Jede der
+drei Seiten enthält pro Stil eine eigene Komponente und reicht dieselben Daten
+hinein – die Fallunterscheidung steht jeweils am Ende der Datei.
+
+`lifeos` ist der einzige Stil mit gemeinsamen Bausteinen: Panel, Rubrik,
+Knöpfe und Palette liegen in `lib/lifeos.js`, weil dieselben Elemente auf
+allen drei Seiten auftauchen. Wie Locked In bekommt er die dunkle App-Hülle
+(Sidebar, Kopfzeile, Tab-Leiste) – dafür kennt `App.jsx` neben `dunkleSeite`
+auch `lifeOsSeite`, das über den Ton entscheidet (Anthrazit/Gold statt
+Schwarzweiß).
 
 Davon zu unterscheiden ist der **Locked-In-Modus**: Solange er läuft, setzt
 `lib/lockedin.js` `data-modus="lockedin"` auf das Wurzelelement, und
@@ -136,7 +143,8 @@ monochrom, nicht nur die drei Stil-Seiten.
 `index.html` als Navigations-Fallback ausliefert. Das Manifest liegt von Hand
 in `public/manifest.webmanifest` – eine Quelle, kein Duplikat.
 
-Nicht im Cache: die dekorativen Google-Fonts der Stile Arcade und Clean Girl.
+Nicht im Cache: die dekorativen Google-Fonts der Stile Arcade, Clean Girl und
+Life OS.
 Ohne Netz greifen dort die System-Schriften.
 
 ## Tests

@@ -504,17 +504,27 @@ export default function App() {
   //     Palette-Skin in index.css,
   //   • im Locked-In-Stil auf den drei Seiten, die eine eigene schwarze
   //     Fassung haben.
-  const LOCKED_IN_SEITEN = ["dashboard", "todos", "habits"]
-  const lockedInSeite =
+  // Dasselbe gilt für den Stil „Life OS": Auch er ist durch und durch dunkel
+  // (nur eben in Anthrazit mit Gold statt in Schwarzweiß) und braucht dieselbe
+  // dunkle Hülle auf denselben drei Seiten. `dunkleSeite` beantwortet die
+  // Frage „dunkles Chrome?", `lifeOsSeite` die Frage „welcher Ton?".
+  const STIL_SEITEN = ["dashboard", "todos", "habits"]
+  const aktiverStil = normalisiereStil(einstellungen?.stil)
+  const lifeOsSeite = aktiverStil === "lifeos" && STIL_SEITEN.includes(seite)
+  const dunkleSeite =
     seite === "lockedin" ||
     lockedInLaeuft ||
-    (normalisiereStil(einstellungen?.stil) === "lockedin" &&
-      LOCKED_IN_SEITEN.includes(seite))
+    (aktiverStil === "lockedin" && STIL_SEITEN.includes(seite)) ||
+    lifeOsSeite
 
   return (
     <div
       className={`min-h-screen ${
-        lockedInSeite ? "bg-black text-white" : "bg-gray-50 text-gray-900"
+        lifeOsSeite
+          ? "bg-[#080909] text-[#e2e4e8]"
+          : dunkleSeite
+            ? "bg-black text-white"
+            : "bg-gray-50 text-gray-900"
       }`}
     >
       {speicherVoll && (
@@ -535,9 +545,11 @@ export default function App() {
       {/* ── Desktop-Sidebar ─────────────────────────────────────── */}
       <aside
         className={`fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r px-3 py-5 md:flex ${
-          lockedInSeite
-            ? "border-white/10 bg-black"
-            : "border-gray-800 bg-gray-900"
+          lifeOsSeite
+            ? "border-[#242628] bg-[#0f1011]"
+            : dunkleSeite
+              ? "border-white/10 bg-black"
+              : "border-gray-800 bg-gray-900"
         }`}
       >
         {/* Logo / App-Name */}
@@ -545,7 +557,13 @@ export default function App() {
           onClick={() => navigiere("dashboard")}
           className="mb-5 flex items-center gap-2.5 px-2 text-sm font-semibold tracking-tight text-white"
         >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-500 text-[13px] font-bold text-white shadow-sm">
+          <span
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold shadow-sm ${
+              lifeOsSeite
+                ? "bg-[#d4a84b] text-[#080909]"
+                : "bg-accent-500 text-white"
+            }`}
+          >
             {appName[0]?.toUpperCase() ?? "O"}
           </span>
           <span className="truncate text-white/90">{appName}</span>
@@ -640,9 +658,11 @@ export default function App() {
       {/* ── Mobile-Kopfzeile ────────────────────────────────────── */}
       <header
         className={`sticky top-0 z-20 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md md:hidden ${
-          lockedInSeite
-            ? "border-white/10 bg-black/90"
-            : "border-gray-200 bg-white/90"
+          lifeOsSeite
+            ? "border-[#242628] bg-[#0f1011]/90"
+            : dunkleSeite
+              ? "border-white/10 bg-black/90"
+              : "border-gray-200 bg-white/90"
         }`}
         style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
       >
@@ -654,7 +674,11 @@ export default function App() {
         >
           <span
             className={`flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-bold ${
-              lockedInSeite ? "bg-white text-black" : "bg-accent-500 text-white"
+              lifeOsSeite
+                ? "bg-[#d4a84b] text-[#080909]"
+                : dunkleSeite
+                  ? "bg-white text-black"
+                  : "bg-accent-500 text-white"
             }`}
           >
             {appName[0]?.toUpperCase() ?? "O"}
@@ -667,14 +691,14 @@ export default function App() {
           aria-haspopup="dialog"
           aria-expanded={mehrOffen}
           className={`mx-2 flex min-w-0 flex-1 items-center gap-1 rounded-lg px-2 py-1 text-sm font-semibold tracking-tight transition-colors ${
-            lockedInSeite ? "hover:bg-white/10" : "hover:bg-gray-100"
+            dunkleSeite ? "hover:bg-white/10" : "hover:bg-gray-100"
           }`}
         >
           <span className="truncate">{aktuelleAnsicht}</span>
           <NavIcon
             className={`h-4 w-4 shrink-0 transition-transform ${
               mehrOffen ? "rotate-180" : ""
-            } ${lockedInSeite ? "text-white/40" : "text-gray-400"}`}
+            } ${dunkleSeite ? "text-white/40" : "text-gray-400"}`}
           >
             <path d="m6 9 6 6 6-6" />
           </NavIcon>
@@ -685,7 +709,7 @@ export default function App() {
             onClick={() => setSucheOffen(true)}
             title="Suchen"
             className={`rounded-lg p-1.5 transition-colors ${
-              lockedInSeite
+              dunkleSeite
                 ? "text-white/50 hover:bg-white/10 hover:text-white"
                 : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
             }`}
@@ -701,7 +725,7 @@ export default function App() {
               onClick={() => navigiere("einstellungen")}
               title="Einstellungen"
               className={`rounded-lg p-1.5 transition-colors ${
-                lockedInSeite
+                dunkleSeite
                   ? "text-white/50 hover:bg-white/10 hover:text-white"
                   : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
               }`}
@@ -721,7 +745,7 @@ export default function App() {
             onClick={() => navigiere("einstellungen")}
             title="Einstellungen"
             className={`absolute right-5 top-6 z-10 hidden rounded-lg p-2 transition-colors md:block ${
-              lockedInSeite
+              dunkleSeite
                 ? "text-white/40 hover:bg-white/10 hover:text-white"
                 : "text-gray-400 hover:bg-gray-200/70 hover:text-gray-700"
             }`}
@@ -729,7 +753,7 @@ export default function App() {
             <NavIcon className="h-[18px] w-[18px]">{ZAHNRAD}</NavIcon>
           </button>
         )}
-        <Suspense fallback={<Ladehinweis dunkel={lockedInSeite} />}>
+        <Suspense fallback={<Ladehinweis dunkel={dunkleSeite} />}>
         {seite === "dashboard" && <Dashboard onNavigate={navigiere} />}
         {seite === "lockedin" && <LockedInSeite onNavigate={navigiere} />}
         {seite === "kalender" && <KalenderSeite />}
@@ -841,7 +865,11 @@ export default function App() {
       {/* ── Mobile Tab-Leiste ───────────────────────────────────── */}
       <nav
         className={`fixed inset-x-0 bottom-0 z-30 grid border-t backdrop-blur md:hidden ${
-          lockedInSeite ? "border-white/10 bg-black/95" : "border-gray-200 bg-white/95"
+          lifeOsSeite
+            ? "border-[#242628] bg-[#0f1011]/95"
+            : dunkleSeite
+              ? "border-white/10 bg-black/95"
+              : "border-gray-200 bg-white/95"
         }`}
         style={{
           paddingBottom: "env(safe-area-inset-bottom)",
@@ -854,10 +882,10 @@ export default function App() {
             onClick={() => navigiere(item.key)}
             className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
               seite === item.key
-                ? lockedInSeite
-                  ? "font-medium text-white"
+                ? dunkleSeite
+                  ? `font-medium ${lifeOsSeite ? "text-[#f0c870]" : "text-white"}`
                   : "font-medium text-accent-600"
-                : lockedInSeite
+                : dunkleSeite
                   ? "text-white/40 hover:text-white/80"
                   : "text-gray-400 hover:text-gray-700"
             }`}
@@ -870,10 +898,10 @@ export default function App() {
           onClick={() => setMehrOffen(true)}
           className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
             mehrOffen || !primaereNav.some((n) => n.key === seite)
-              ? lockedInSeite
-                ? "font-medium text-white"
+              ? dunkleSeite
+                ? `font-medium ${lifeOsSeite ? "text-[#f0c870]" : "text-white"}`
                 : "font-medium text-accent-600"
-              : lockedInSeite
+              : dunkleSeite
                 ? "text-white/40 hover:text-white/80"
                 : "text-gray-400 hover:text-gray-700"
           }`}

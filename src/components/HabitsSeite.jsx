@@ -20,6 +20,16 @@ import {
 } from "../lib/habits"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
+import {
+  LIFEOS_INHALT,
+  LIFEOS_KNOPF_GOLD,
+  LIFEOS_MONO,
+  LIFEOS_PANEL,
+  LIFEOS_PUNKT,
+  LIFEOS_RUBRIK,
+  LIFEOS_SEITE,
+  LIFEOS_SERIF,
+} from "../lib/lifeos"
 import { levelVon, attributLevel } from "../lib/spiel"
 import { Fortschrittsbalken } from "./Bausteine"
 import Seitenkopf from "./Seitenkopf"
@@ -28,6 +38,8 @@ import LeerHinweis from "./LeerHinweis"
 import { SEITE_RASTER } from "../lib/layout"
 
 const TAG_LABELS = ["Mo", "", "Mi", "", "Fr", "", ""]
+// Vollständige Kurzlabels – der Life-OS-Stil beschriftet jedes Kästchen.
+const WOCHENTAGE_KURZ = ["M", "D", "M", "D", "F", "S", "S"]
 const FONT_SERIF_ELEGANT = '"Playfair Display", ui-serif, Georgia, serif'
 
 function WochenZielAuswahl({ wert, onChange }) {
@@ -432,6 +444,7 @@ export default function HabitsSeite() {
   if (stil === "arcade") return <HabitsArcade {...gemeinsam} />
   if (stil === "cleangirl") return <HabitsCleanGirl {...gemeinsam} />
   if (stil === "notion") return <HabitsNotion {...gemeinsam} />
+  if (stil === "lifeos") return <HabitsLifeOS {...gemeinsam} />
   if (stil === "lockedin") return <HabitsLockedIn {...gemeinsam} />
   return <HabitsTodo {...gemeinsam} />
 }
@@ -1127,6 +1140,249 @@ function VerlaufAnsicht({ habits, gefroren }) {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Stil: Life OS – dunkles Kommandopult mit Gold-Akzent
+//
+// Zwei Ansichten in einem Panel-Raster: „Heute" hakt ab, „Woche" zeigt die
+// sieben Kästchen je Habit – dieselbe Logik wie die Standardansicht, nur in
+// der Sprache des Stils (Versalien-Rubriken, feine Kanten, Serifen-Zahlen).
+// ──────────────────────────────────────────────────────────────
+
+function LifeOsWochenKaesten({ habit, onToggleHeute }) {
+  const heuteKey = heute()
+  const montag = montagVon(new Date())
+  const tage = erledigteTage(habit)
+  return (
+    <div className="flex gap-1">
+      {WOCHENTAGE_KURZ.map((label, i) => {
+        const d = new Date(montag)
+        d.setDate(d.getDate() + i)
+        const key = schluessel(d)
+        const erledigt = tage.includes(key)
+        const zukunft = key > heuteKey
+        const istHeute = key === heuteKey
+        return (
+          <button
+            key={key}
+            type="button"
+            disabled={zukunft}
+            title={`${label} · ${d.toLocaleDateString("de-DE")}`}
+            onClick={istHeute ? () => onToggleHeute(habit) : undefined}
+            className={`flex h-[22px] w-[22px] items-center justify-center rounded-[3px] border text-[9px] transition-colors ${
+              erledigt
+                ? "border-[#5aaa72] bg-[#5aaa72] text-[#080909]"
+                : zukunft
+                  ? "border-[#242628] text-[#33373d]"
+                  : istHeute
+                    ? "border-[#b88830] text-[#5a5f68] hover:bg-[#b88830]/15"
+                    : "border-[#2e3133] text-[#33373d]"
+            }`}
+          >
+            {erledigt ? "✓" : label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function HabitsLifeOS({
+  habits,
+  bereiche,
+  setHabits,
+  setBereiche,
+  toggle,
+  remove,
+  amZielCount,
+}) {
+  const [tab, setTab] = useState("heute") // heute | woche
+  const heuteKey = heute()
+  const montag = montagVon(new Date())
+  const disziplin = disziplinAmTag(habits, new Date())
+  const bestStreak = habits.reduce((m, h) => Math.max(m, wochenStreakVon(h)), 0)
+
+  return (
+    <div style={{ fontFamily: LIFEOS_MONO }} className={LIFEOS_SEITE}>
+      <div className={LIFEOS_INHALT}>
+        {/* Kopf mit Reitern */}
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[#242628] pb-3">
+          <div className="min-w-0">
+            <h1
+              style={{ fontFamily: LIFEOS_SERIF }}
+              className="text-[22px] font-normal text-[#e2e4e8]"
+            >
+              Habit Tracker
+            </h1>
+            <p className="mt-0.5 text-[11px] text-[#5a5f68]">
+              Identität durch Wiederholung.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            {[
+              { id: "heute", label: "Heute" },
+              { id: "woche", label: "Woche" },
+            ].map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setTab(r.id)}
+                aria-pressed={tab === r.id}
+                className={`rounded border px-2.5 py-1.5 text-[11px] transition-colors ${
+                  tab === r.id
+                    ? "border-[#b88830] bg-[#d4a84b]/10 text-[#f0c870]"
+                    : "border-[#2e3133] text-[#9ea3ab] hover:border-[#3a3d40] hover:text-[#e2e4e8]"
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+            <HabitErstellen
+              habits={habits}
+              setHabits={setHabits}
+              bereiche={bereiche}
+              setBereiche={setBereiche}
+              knopfKlasse={LIFEOS_KNOPF_GOLD}
+              knopfInhalt="+ Habit"
+            />
+          </div>
+        </div>
+
+        {/* Kennzahlen */}
+        <div className="mb-4 grid grid-cols-3 gap-2.5">
+          {[
+            { label: "Heute", wert: `${disziplin.erledigt}/${disziplin.gesamt}` },
+            { label: "Am Wochenziel", wert: `${amZielCount}/${habits.length}` },
+            { label: "Beste Serie", wert: `${bestStreak}w` },
+          ].map((k) => (
+            <div
+              key={k.label}
+              className="rounded border border-[#242628] bg-[#161719] px-3 py-3 text-center"
+            >
+              <p
+                style={{ fontFamily: LIFEOS_SERIF }}
+                className="text-2xl leading-none tabular-nums text-[#d4a84b]"
+              >
+                {k.wert}
+              </p>
+              <p className="mt-1.5 text-[10px] uppercase tracking-[0.15em] text-[#5a5f68]">
+                {k.label}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {habits.length === 0 ? (
+          <p className="rounded border border-dashed border-[#242628] py-10 text-center text-[11px] uppercase tracking-[0.2em] text-[#5a5f68]">
+            Noch keine Habits — fang mit einem an.
+          </p>
+        ) : tab === "heute" ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className={LIFEOS_PANEL}>
+              <div className={`${LIFEOS_RUBRIK} mb-3`}>
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${LIFEOS_PUNKT.gruen}`} />
+                Heute
+              </div>
+              <ul>
+                {habits.map((h) => {
+                  const dran = erledigteTage(h).includes(heuteKey)
+                  return (
+                    <li
+                      key={h.id}
+                      className="group flex items-center gap-2.5 border-b border-[#242628] py-2 last:border-0"
+                    >
+                      <button
+                        onClick={() => toggle(h)}
+                        title="Heute abhaken"
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] border transition-colors ${
+                          dran
+                            ? "border-[#5aaa72] bg-[#5aaa72] text-[#080909]"
+                            : "border-[#2e3133] text-transparent hover:border-[#b88830] group-hover:text-[#5a5f68]"
+                        }`}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="h-2 w-2">
+                          <path d="m5 12 5 5L20 7" />
+                        </svg>
+                      </button>
+                      <span
+                        className={`min-w-0 flex-1 truncate text-[12px] ${
+                          dran ? "text-[#5a5f68] line-through" : "text-[#e2e4e8]"
+                        }`}
+                      >
+                        {h.name}
+                      </span>
+                      <span className="shrink-0 text-[10px] uppercase tracking-[0.1em] text-[#d4a84b]">
+                        {wochenStreakVon(h)}w
+                      </span>
+                      <LoeschKnopf
+                        onLoeschen={() => remove(h.id)}
+                        klasse="text-[#3a3d40] opacity-0 hover:text-[#c05050] group-hover:opacity-100 max-md:opacity-100"
+                      />
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+
+            <section className={LIFEOS_PANEL}>
+              <div className={`${LIFEOS_RUBRIK} mb-3`}>
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${LIFEOS_PUNKT.gold}`} />
+                Bereiche & Serien
+              </div>
+              <ul>
+                {habits.map((h) => {
+                  const bereich = bereichVon(h, bereiche)
+                  const ziel = wochenZielVon(h)
+                  const inWoche = erledigtInWoche(h, montag)
+                  const anteil = ziel > 0 ? Math.min(100, (inWoche / ziel) * 100) : 0
+                  return (
+                    <li key={h.id} className="border-b border-[#242628] py-2.5 last:border-0">
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span className="min-w-0 flex-1 truncate text-[#9ea3ab]">
+                          {bereich?.name ? `${bereich.name} · ` : ""}
+                          <span className="text-[#e2e4e8]">{h.name}</span>
+                        </span>
+                        <span className="shrink-0 tabular-nums text-[#5a5f68]">
+                          {inWoche}/{ziel}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-[5px] overflow-hidden rounded-sm bg-[#242628]">
+                        <div
+                          className="h-full rounded-sm bg-[#d4a84b] transition-[width] duration-300"
+                          style={{ width: `${anteil}%` }}
+                        />
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          </div>
+        ) : (
+          <section className={LIFEOS_PANEL}>
+            <div className={`${LIFEOS_RUBRIK} mb-3`}>
+              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${LIFEOS_PUNKT.lila}`} />
+              Wochensicht
+            </div>
+            <ul>
+              {habits.map((h) => (
+                <li
+                  key={h.id}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#242628] py-2.5 last:border-0"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[12px]">{h.name}</span>
+                  <LifeOsWochenKaesten habit={h} onToggleHeute={toggle} />
+                  <span className="w-9 shrink-0 text-right text-[10px] uppercase tracking-[0.1em] text-[#d4a84b]">
+                    {wochenStreakVon(h)}w
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </div>
   )
 }
