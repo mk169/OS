@@ -39,7 +39,7 @@ Cloud, Daten nur auf diesem Gerät.
 
 | Bereich | Inhalt |
 | --- | --- |
-| **Start** | Tagesüberblick in fünf wählbaren Stilen (Todo-Liste, Gamified, Notion, Life OS, Locked In) – der Stil prägt Start, Todos und Habits |
+| **Start** | Tagesüberblick in vier wählbaren Stilen (Standard, Gamified, Life OS, Locked In) – der Stil prägt Start, Todos und Habits |
 | **Locked In** | Kompromissloser Fokus-Modus: ein Ziel, eine Phase, nur das Nötigste – solange er läuft, ist die ganze App monochrom |
 | **Kalender** | Tages-, Wochen- und Monatsansicht, Tagesblöcke, ICS-Export |
 | **Todos** | Eisenhower-Matrix, Dauer, Deadlines, Projektzuordnung |
@@ -119,11 +119,11 @@ Zielmethoden (SMART-Prüfung, OKR-Fortschritt, 5/25-Aufteilung) und den
 Wochenplan (Wochenraster, Eisenhower-Verteilung, Wochenziel, Erledigt-Tag).
 
 `npm run test:e2e` fährt zusätzlich den Produktions-Build hoch und klickt ihn
-mit Playwright durch (28 Tests): Einrichtung, alle Bereiche öffnen, Todo mit
+mit Playwright durch (27 Tests): Einrichtung, alle Bereiche öffnen, Todo mit
 Datums-Erkennung anlegen und nachträglich ändern, Routine abhaken (inklusive
 Startseite und Neuladen), Termin, Bewerbung und Buchung nachträglich ändern,
 Bewerbung durch die Pipeline schieben, die Zielmethoden durchspielen, jeden
-der fünf Stile auf Start, Todos und Habits – dazu ein Start mit absichtlich
+der vier Stile auf Start, Todos und Habits – dazu ein Start mit absichtlich
 kaputten Altdaten und ein Durchlauf mit abgeschaltetem Netz.
 
 `.github/workflows/ci.yml` führt Lint, Tests, Oberflächen-Tests und Build auf

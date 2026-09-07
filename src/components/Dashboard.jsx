@@ -181,7 +181,7 @@ function RoutinenPanel({ onNavigate }) {
 }
 
 // Heutige Habits als abhakbare Liste – für die Startseiten-Stile, die keine
-// eigene Habit-Darstellung haben (Todo, Notion). Nutzt dieselbe
+// eigene Habit-Darstellung haben (Standard). Nutzt dieselbe
 // Habit-Logik wie die Habits-Seite. Nichts anzeigen, wenn keine Habits da sind.
 function HabitsPanel({ onNavigate }) {
   const { habits, setHabits } = useHabitDaten()
@@ -300,14 +300,13 @@ export default function Dashboard({ onNavigate }) {
   const gemeinsam = { todos, ...daten, toggle, onNavigate, appName, dashboard }
 
   if (stil === "gamified") return <DashboardGamified {...gemeinsam} />
-  if (stil === "notion") return <DashboardNotion {...gemeinsam} />
   if (stil === "lifeos") return <DashboardLifeOS {...gemeinsam} />
   if (stil === "lockedin") return <DashboardLockedIn {...gemeinsam} />
   return <DashboardTodo {...gemeinsam} />
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Stil „Todo-Liste" – klare Karten, farbige Punkte, Zähler-Badges (Todoist)
+ * Stil „Standard" – klare Karten, farbige Punkte, Zähler-Badges
  * ════════════════════════════════════════════════════════════════════════ */
 
 function TodoRow({ todo, onToggle }) {
@@ -668,119 +667,6 @@ function DashboardGamified({ todos, offene, ohneGruppe, gruppen, toggle, onNavig
     </div>
   )
 }
-
-/* ══════════════════════════════════════════════════════════════════════════
- * Stil „Notion" – ruhig, minimal, Emoji-Seitenkopf, Haarlinien statt Karten
- * ════════════════════════════════════════════════════════════════════════ */
-
-function NotionZeile({ todo, onToggle }) {
-  return (
-    <li className="group flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-gray-50">
-      <input
-        type="checkbox"
-        checked={false}
-        onChange={() => onToggle(todo.id)}
-        className="h-[15px] w-[15px] shrink-0 rounded accent-gray-800"
-      />
-      <span className="min-w-0 flex-1 truncate text-[15px] text-gray-700">
-        {todo.text}
-      </span>
-      {todo.datum && (
-        <span className="shrink-0 text-xs text-gray-400">{tageBis(todo.datum)}</span>
-      )}
-    </li>
-  )
-}
-
-function DashboardNotion({ gruppen, ohneGruppe, toggle, onNavigate, dashboard }) {
-  return (
-    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
-      {/* Seitenkopf mit Emoji-„Cover" */}
-      <div className="mb-10">
-        <div className="text-5xl">🏠</div>
-        <h1
-          style={{ fontFamily: "var(--font-sans)" }}
-          className="mt-3 text-4xl font-bold tracking-tight text-gray-900"
-        >
-          {begruessung()}
-        </h1>
-        <p className="mt-1.5 text-sm text-gray-400">{datumLang(heute())}</p>
-      </div>
-
-      {dashboard.fokusPeriode && <ZyklusWidget onNavigate={onNavigate} />}
-      {dashboard.mentor && <MentorBanner onNavigate={onNavigate} />}
-      {dashboard.lernen && <LernBanner onNavigate={onNavigate} />}
-
-      {/* Aufgaben */}
-      <section className="mb-12">
-        <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-1.5">
-          <button
-            onClick={() => onNavigate("todos")}
-            className="text-xs font-semibold uppercase tracking-widest text-gray-400 transition-colors hover:text-gray-700"
-          >
-            Aufgaben
-          </button>
-          <TodoErstellen
-            knopfKlasse="text-sm text-gray-400 transition-colors hover:text-gray-800"
-            knopfInhalt="+ Neu"
-          />
-        </div>
-
-        {gruppen.length === 0 && ohneGruppe.length === 0 ? (
-          <p className="px-2 py-3 text-sm text-gray-300">Keine offenen Aufgaben.</p>
-        ) : (
-          <div className="space-y-6">
-            {gruppen.map(({ projekt, todos: projektTodos }) => (
-              <div key={projekt.id}>
-                <p className="mb-1 px-2 text-[13px] font-semibold text-gray-500">
-                  {projekt.name}
-                </p>
-                <ul>
-                  {projektTodos.slice(0, 6).map((t) => (
-                    <NotionZeile key={t.id} todo={t} onToggle={toggle} />
-                  ))}
-                </ul>
-              </div>
-            ))}
-            {ohneGruppe.length > 0 && (
-              <div>
-                {gruppen.length > 0 && (
-                  <p className="mb-1 px-2 text-[13px] font-semibold text-gray-500">
-                    Weiteres
-                  </p>
-                )}
-                <ul>
-                  {ohneGruppe.slice(0, 8).map((t) => (
-                    <NotionZeile key={t.id} todo={t} onToggle={toggle} />
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      {dashboard.habits && <HabitsPanel onNavigate={onNavigate} />}
-      {dashboard.routinen && <RoutinenPanel onNavigate={onNavigate} />}
-
-      {/* Kalender */}
-      {dashboard.kalender && (
-        <section>
-          <div className="mb-2 border-b border-gray-100 pb-1.5">
-            <button
-              onClick={() => onNavigate("kalender")}
-              className="text-xs font-semibold uppercase tracking-widest text-gray-400 transition-colors hover:text-gray-700"
-            >
-              Heute
-            </button>
-          </div>
-          <KalenderPanel nurHeute />
-        </section>
-      )}
-    </div>
-  )
-}
-
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Stil „Life OS" – dunkles Kommandopult: fast schwarzer Grund, Panels mit
