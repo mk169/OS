@@ -28,7 +28,7 @@ import {
 import { KalenderPanel } from "./KalenderSeite"
 import TodoErstellen from "./TodoErstellen"
 import { FristChip } from "./Bausteine"
-import { EINTEILUNGEN, einteilungVon } from "../lib/todos"
+import { EINTEILUNGEN, einteilungVon, todoUmschalten } from "../lib/todos"
 import MentorBanner from "./MentorBanner"
 import { SEITE_LESEN } from "../lib/layout"
 import {
@@ -292,9 +292,7 @@ export default function Dashboard({ onNavigate }) {
   const appName = einstellungen?.appName || "OS"
 
   function toggle(id) {
-    setTodos(
-      todos.map((t) => (t.id === id ? { ...t, erledigt: !t.erledigt } : t))
-    )
+    setTodos(todoUmschalten(todos, id, heute()))
   }
 
   const daten = todoGruppen(todos, projekte)

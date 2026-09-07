@@ -4,8 +4,11 @@ import {
   MODUL_GRUPPEN,
   NEUES_PROJEKT_MODULE,
   moduleDerGruppe,
+  nachZugehoerigkeit,
+  ordnerPfad,
   projektFortschrittWerte,
   sammleTermine,
+  zugehoerigkeitVon,
 } from "../projekte"
 
 describe("projektFortschrittWerte", () => {
@@ -109,5 +112,89 @@ describe("Bereiche eines Projekts", () => {
     for (const key of NEUES_PROJEKT_MODULE) {
       expect(MODULE.some((m) => m.key === key)).toBe(true)
     }
+  })
+})
+
+describe("ordnerPfad", () => {
+  const ordner = [
+    { id: 1, name: "Uni", parentId: null },
+    { id: 2, name: "4. Semester", parentId: 1 },
+  ]
+
+  it("läuft von unten nach oben durch den Baum", () => {
+    expect(ordnerPfad(2, ordner)).toEqual(["Uni", "4. Semester"])
+  })
+
+  it("bleibt leer ohne Ordner oder bei unbekannter ID", () => {
+    expect(ordnerPfad(null, ordner)).toEqual([])
+    expect(ordnerPfad(99, ordner)).toEqual([])
+  })
+
+  it("bricht bei im Kreis zeigenden Altdaten ab, statt hängen zu bleiben", () => {
+    const kaputt = [
+      { id: 1, name: "A", parentId: 2 },
+      { id: 2, name: "B", parentId: 1 },
+    ]
+    expect(ordnerPfad(1, kaputt)).toEqual(["B", "A"])
+  })
+})
+
+describe("zugehoerigkeitVon", () => {
+  const projekte = [{ id: 10, name: "Gesundheit", typ: "area" }]
+  const ordner = [{ id: 1, name: "Uni", parentId: null }]
+
+  it("nimmt zuerst die Area", () => {
+    const p = { id: 1, areaId: 10, ordnerId: 1 }
+    expect(zugehoerigkeitVon(p, { projekte, ordner })).toMatchObject({
+      label: "Gesundheit",
+      art: "area",
+    })
+  })
+
+  it("nimmt sonst den Ordnerpfad", () => {
+    expect(zugehoerigkeitVon({ id: 2, ordnerId: 1 }, { projekte, ordner })).toMatchObject({
+      label: "Uni",
+      art: "ordner",
+    })
+  })
+
+  it("fällt auf 'Ohne Zuordnung' zurück – auch bei gelöschter Area", () => {
+    expect(zugehoerigkeitVon({ id: 3 }, { projekte, ordner }).art).toBe("ohne")
+    expect(zugehoerigkeitVon({ id: 4, areaId: 999 }, { projekte, ordner }).art).toBe("ohne")
+  })
+})
+
+describe("nachZugehoerigkeit", () => {
+  const alle = [
+    { id: 10, name: "Gesundheit", typ: "area" },
+    { id: 11, name: "Karriere", typ: "area" },
+  ]
+  const ordner = [{ id: 1, name: "Uni", parentId: null }]
+  const projekte = [
+    { id: 1, name: "Ohne alles" },
+    { id: 2, name: "Statistik", ordnerId: 1 },
+    { id: 3, name: "Laufen", areaId: 10 },
+    { id: 4, name: "Bewerbung", areaId: 11 },
+    { id: 5, name: "Analysis", ordnerId: 1 },
+  ]
+
+  it("stellt Areas voran, dann Ordner, 'Ohne Zuordnung' zuletzt", () => {
+    const gruppen = nachZugehoerigkeit(projekte, { alle, ordner })
+    expect(gruppen.map((g) => g.label)).toEqual([
+      "Gesundheit",
+      "Karriere",
+      "Uni",
+      "Ohne Zuordnung",
+    ])
+  })
+
+  it("bündelt die Projekte einer Gruppe und verliert keines", () => {
+    const gruppen = nachZugehoerigkeit(projekte, { alle, ordner })
+    expect(gruppen.find((g) => g.label === "Uni").projekte.map((p) => p.id)).toEqual([2, 5])
+    expect(gruppen.flatMap((g) => g.projekte)).toHaveLength(projekte.length)
+  })
+
+  it("erzeugt keine leeren Gruppen", () => {
+    expect(nachZugehoerigkeit([], { alle, ordner })).toEqual([])
   })
 })

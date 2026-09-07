@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import useStored from "../lib/useStored"
 import { heute } from "../lib/datum"
+import { todoUmschalten } from "../lib/todos"
 import { faelltAuf } from "../lib/wiederholung"
 import Kalender from "./Kalender"
 import {
@@ -10,6 +11,7 @@ import {
   STANDARD_MODULE,
   PRIORITAETEN,
   STATUS_OPTIONEN,
+  ordnerPfad,
   projektFortschrittWerte,
 } from "../lib/projekte"
 import TodoErstellen from "./TodoErstellen"
@@ -119,18 +121,11 @@ export default function ProjektDetail({
   // Vorgemerkte Seiten-Änderungen (siehe „Unterseiten" weiter unten).
   const vorgemerkt = useRef({ neu: [], weg: [] })
 
-  // Ordnerpfad als Eyebrow – zeigt, wo das Projekt liegt. Läuft von der
-  // Projekt-Zuordnung über parentId nach oben (wie in OrdnerSeite).
-  const ordnerPfad = []
-  let pfadZeiger = projekt.ordnerId ?? null
-  while (pfadZeiger != null) {
-    const o = ordner.find((x) => x.id === pfadZeiger)
-    if (!o) break
-    ordnerPfad.unshift(o.name)
-    pfadZeiger = o.parentId ?? null
-  }
+  // Ordnerpfad als Eyebrow – zeigt, wo das Projekt liegt. Dieselbe Rechnung
+  // wie in der Übersicht, deshalb aus lib/projekte.js.
+  const pfad = ordnerPfad(projekt.ordnerId, ordner)
   const eyebrow =
-    ordnerPfad.length > 0 ? ordnerPfad.join(" / ") : istArea ? "Area" : "Projekt"
+    pfad.length > 0 ? pfad.join(" / ") : istArea ? "Area" : "Projekt"
 
   function modulInfo(key) {
     return (
@@ -1422,7 +1417,7 @@ function TodosModul({ projekt }) {
 
   function toggle(id) {
     setAlleTodos(
-      alleTodos.map((t) => (t.id === id ? { ...t, erledigt: !t.erledigt } : t))
+      todoUmschalten(alleTodos, id, heute())
     )
   }
 

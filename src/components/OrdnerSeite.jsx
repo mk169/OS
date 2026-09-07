@@ -3,6 +3,7 @@ import useStored from "../lib/useStored"
 import { tageBisZahl } from "../lib/datum"
 import { DeadlineChip, Fortschrittsbalken } from "./Bausteine"
 import ProjektDetail from "./ProjektDetail"
+import ProjektUebersicht from "./ProjektUebersicht"
 import {
   STATUS_OPTIONEN,
   PRIORITAETEN,
@@ -65,7 +66,10 @@ export default function OrdnerSeite({
   // Formular für neue Projekte/Areas: der Wert ist zugleich der Starttyp.
   const [projektFormOffen, setProjektFormOffen] = useState(false)
   const [formTyp, setFormTyp] = useState("projekt")
-  const [ansicht, setAnsicht] = useState("ordner")
+  // Einstieg ist die Übersicht: was es gibt, wozu es gehört, wie weit es
+  // ist. Die Ordner-Ansicht bleibt einen Reiter weiter für alle, die ihre
+  // Ablage im Kopf haben.
+  const [ansicht, setAnsicht] = useState("uebersicht")
   const [ordnerSort, setOrdnerSort] = useStored("projekteOrdnerSort", "name")
   const [ordnerLayout, setOrdnerLayout] = useStored("projekteOrdnerLayout", "raster")
 
@@ -244,6 +248,19 @@ export default function OrdnerSeite({
         />
       )}
 
+      {ansicht === "uebersicht" && (
+        <ProjektUebersicht
+          projekte={aktiveProjekte}
+          alleProjekte={projekte}
+          ordner={ordner}
+          todos={todos}
+          onOeffnen={setOffenesProjektId}
+          onNeuesProjekt={() => {
+            setFormTyp("projekt")
+            setProjektFormOffen(true)
+          }}
+        />
+      )}
       {ansicht === "alle" && (
         <AlleAnsicht
           projekte={aktiveProjekte}
@@ -441,6 +458,7 @@ export default function OrdnerSeite({
 }
 
 const ANSICHTEN = [
+  { key: "uebersicht", label: "Übersicht" },
   { key: "ordner", label: "Ordner" },
   { key: "alle", label: "Alle" },
   { key: "backlog", label: "Backlog" },

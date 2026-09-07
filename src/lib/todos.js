@@ -38,3 +38,32 @@ export const EINTEILUNGEN = [
 export function einteilungVon(todo) {
   return EINTEILUNGEN.find((e) => e.passt(todo))
 }
+
+// Eine Aufgabe abhaken oder wieder öffnen.
+//
+// Bis hierher stand in jeder Seite dieselbe Zeile `{...t, erledigt: !t.erledigt}`
+// – sechsmal dasselbe. Das reichte, solange niemand wissen wollte, *wann*
+// etwas erledigt wurde. Der Wochenplan will genau das („diese Woche
+// erledigt", „heute erledigt"), also hält diese Funktion zusätzlich den Tag
+// fest. Beim Wiederöffnen fällt er weg, damit keine falsche Spur bleibt.
+//
+// Altdaten haben kein `erledigtAm`; wer danach filtert, braucht einen
+// Rückfall auf `datum` (siehe lib/wochenplan.js).
+export function todoUmschalten(todos, id, tag) {
+  return todos.map((t) => {
+    if (t.id !== id) return t
+    if (t.erledigt) {
+      const { erledigtAm: _weg, ...rest } = t
+      return { ...rest, erledigt: false }
+    }
+    return { ...t, erledigt: true, erledigtAm: tag }
+  })
+}
+
+// Wann gilt eine Aufgabe als erledigt? Seit dem Wochenplan hält
+// `todoUmschalten` den Tag in `erledigtAm` fest. Altdaten haben das Feld
+// nicht – dort bleibt das geplante Datum als beste Schätzung, und wo auch
+// das fehlt, gibt es keine Antwort (null).
+export function erledigtTag(todo) {
+  return todo.erledigtAm ?? todo.datum ?? null
+}

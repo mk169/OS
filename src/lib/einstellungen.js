@@ -15,6 +15,7 @@ export const STANDARD_SEITEN = [
   "lockedin",
   "kalender",
   "todos",
+  "wochenplan",
   "sammeln",
   "habits",
   "deepwork",

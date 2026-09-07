@@ -43,10 +43,11 @@ Cloud, Daten nur auf diesem Gerät.
 | **Locked In** | Kompromissloser Fokus-Modus: ein Ziel, eine Phase, nur das Nötigste – solange er läuft, ist die ganze App monochrom |
 | **Kalender** | Tages-, Wochen- und Monatsansicht, Tagesblöcke, ICS-Export |
 | **Todos** | Eisenhower-Matrix, Dauer, Deadlines, Projektzuordnung |
+| **Wochenplan** | Ziel der Woche, sieben Tagesspalten, offene Aufgaben nach Eisenhower – dazu ein Tagesplan mit den drei Prioritäten von heute |
 | **Sammeln** | Notizen in Ordnern, Tags, `[[Wikilinks]]` und Graph-Ansicht |
 | **Habits** | Gewohnheiten mit Wochenzielen, Streaks, Bereichen und Habit-Stacking |
 | **Fokus** | Pomodoro-Timer mit Sessions-Protokoll |
-| **Projekte** | Ordner, Areas, Board, Blatt-Ansicht mit Blöcken, Workflow, Vorlagen |
+| **Projekte** | Übersicht nach Zugehörigkeit (Area/Ordner) mit Fortschritt, dazu Ordner, Areas, Board, Blatt-Ansicht mit Blöcken, Workflow, Vorlagen |
 | **Lernen** | Lernpläne und Karteikarten mit Spaced Repetition |
 | **Periode** | Fokus-Perioden (14/30/90 Tage, Halbjahr, Jahr) mit Wochenzielen, Zwischenphasen und Zielmethoden (SMART, OKR, WOOP, 5/25-Regel) |
 | **Finanzen** | Konten, Budgets, Ausgaben, Sparziele, CSV-Import |
@@ -109,15 +110,16 @@ Google Fonts – ohne Netz greifen dort die System-Schriften.
 
 ## Tests
 
-`npm test` prüft die Logik in `src/lib` mit Vitest (16 Dateien) – Datums-
+`npm test` prüft die Logik in `src/lib` mit Vitest (17 Dateien) – Datums-
 rechnung, Habit-Streaks und Disziplin, Spaced Repetition, Wochenbericht,
 Finanz-Auswertungen, Projekt-Fortschritt, Eisenhower-Einteilung, Termin-
 Wiederholungen, Routinen-Rhythmus und -Serie, Bewerbungs-Pipeline, Tags und
 Wikilinks, Navigation, Locked-In-Zeitfenster, Datums-Erkennung sowie die
-Zielmethoden (SMART-Prüfung, OKR-Fortschritt, 5/25-Aufteilung).
+Zielmethoden (SMART-Prüfung, OKR-Fortschritt, 5/25-Aufteilung) und den
+Wochenplan (Wochenraster, Eisenhower-Verteilung, Wochenziel, Erledigt-Tag).
 
 `npm run test:e2e` fährt zusätzlich den Produktions-Build hoch und klickt ihn
-mit Playwright durch (27 Tests): Einrichtung, alle Bereiche öffnen, Todo mit
+mit Playwright durch (28 Tests): Einrichtung, alle Bereiche öffnen, Todo mit
 Datums-Erkennung anlegen und nachträglich ändern, Routine abhaken (inklusive
 Startseite und Neuladen), Termin, Bewerbung und Buchung nachträglich ändern,
 Bewerbung durch die Pipeline schieben, die Zielmethoden durchspielen, jeden

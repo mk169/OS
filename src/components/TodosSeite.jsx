@@ -1,6 +1,6 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
-import { fristTon, tageBis } from "../lib/datum"
+import { fristTon, heute, tageBis } from "../lib/datum"
 import { FARBEN } from "../lib/farben"
 import { normalisiereStil, STIL_STANDARD } from "../lib/stil"
 import {
@@ -16,7 +16,7 @@ import {
 import { rangVon, xpVonTodos, levelVon } from "../lib/spiel"
 import Seitenkopf from "./Seitenkopf"
 import TodoErstellen from "./TodoErstellen"
-import { EINTEILUNGEN, einteilungVon } from "../lib/todos"
+import { EINTEILUNGEN, einteilungVon, todoUmschalten } from "../lib/todos"
 import LoeschKnopf from "./LoeschKnopf"
 import { FristChip } from "./Bausteine"
 import { SEITE_LESEN } from "../lib/layout"
@@ -33,7 +33,7 @@ export default function TodosSeite() {
   }
 
   function toggle(id) {
-    setTodos(todos.map((t) => (t.id === id ? { ...t, erledigt: !t.erledigt } : t)))
+    setTodos(todoUmschalten(todos, id, heute()))
   }
 
   function remove(id) {

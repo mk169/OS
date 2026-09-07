@@ -1,7 +1,7 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
 import { heute, tageBis, tageBisZahl } from "../lib/datum"
-import { EINTEILUNGEN } from "../lib/todos"
+import { EINTEILUNGEN, todoUmschalten } from "../lib/todos"
 import { lockedInAktiv } from "../lib/lockedin"
 import TodoErstellen from "./TodoErstellen"
 import {
@@ -393,7 +393,7 @@ export default function LockedInSeite({ onNavigate }) {
       ? null
       : Math.round((auftragErledigt / relevanteAlle.length) * 100)
   function todoToggle(id) {
-    setTodos(todos.map((t) => (t.id === id ? { ...t, erledigt: !t.erledigt } : t)))
+    setTodos(todoUmschalten(todos, id, heute()))
   }
 
   // ── Fokus ──────────────────────────────────────────────────
