@@ -156,3 +156,68 @@ export function sammleTermine(projekte, todos) {
   }
   return eintraege
 }
+
+// ── Zugehörigkeit ────────────────────────────────────────────────────────
+//
+// Wo gehört ein Projekt hin? Die App kennt dafür zwei Strukturen: Areas
+// (Dauerbereiche wie „Gesundheit", als Projekt mit typ "area") und den
+// Ordnerbaum (Uni → 4. Semester). Beide sind gewachsen und werden
+// nebeneinander benutzt. Für die Übersicht braucht es daraus eine einzige
+// Antwort – erst die Area, sonst der Ordnerpfad, sonst „Ohne Zuordnung".
+//
+// Der Pfad läuft über `parentId` nach oben; ein Ordner, der auf sich selbst
+// oder im Kreis zeigt (kaputte Altdaten), würde die Schleife sonst nie
+// verlassen – deshalb die Besuchsliste.
+export function ordnerPfad(ordnerId, ordner = []) {
+  const teile = []
+  const gesehen = new Set()
+  let zeiger = ordnerId ?? null
+  while (zeiger != null && !gesehen.has(zeiger)) {
+    gesehen.add(zeiger)
+    const o = ordner.find((x) => x.id === zeiger)
+    if (!o) break
+    teile.unshift(o.name)
+    zeiger = o.parentId ?? null
+  }
+  return teile
+}
+
+// Die Zugehörigkeit eines Projekts als Gruppen-Schlüssel plus Beschriftung.
+// `key` ist stabil (Area-ID bzw. Ordner-ID), damit sich danach gruppieren
+// lässt, ohne über gleichnamige Ordner zu stolpern.
+export function zugehoerigkeitVon(projekt, { projekte = [], ordner = [] } = {}) {
+  const area = projekt.areaId
+    ? projekte.find((p) => p.id === projekt.areaId)
+    : null
+  if (area) return { key: `area-${area.id}`, label: area.name, art: "area" }
+
+  const pfad = ordnerPfad(projekt.ordnerId, ordner)
+  if (pfad.length > 0) {
+    return {
+      key: `ordner-${projekt.ordnerId}`,
+      label: pfad.join(" / "),
+      art: "ordner",
+    }
+  }
+  return { key: "ohne", label: "Ohne Zuordnung", art: "ohne" }
+}
+
+// Projekte nach Zugehörigkeit bündeln – Areas zuerst, dann Ordner
+// (alphabetisch), „Ohne Zuordnung" ans Ende. Innerhalb einer Gruppe bleibt
+// die übergebene Reihenfolge erhalten, damit der Aufrufer über die
+// Sortierung entscheidet.
+const ART_RANG = { area: 0, ordner: 1, ohne: 2 }
+
+export function nachZugehoerigkeit(projekte, { alle = [], ordner = [] } = {}) {
+  const gruppen = new Map()
+  for (const p of projekte) {
+    const z = zugehoerigkeitVon(p, { projekte: alle, ordner })
+    if (!gruppen.has(z.key)) gruppen.set(z.key, { ...z, projekte: [] })
+    gruppen.get(z.key).projekte.push(p)
+  }
+  return [...gruppen.values()].sort(
+    (a, b) =>
+      ART_RANG[a.art] - ART_RANG[b.art] ||
+      a.label.localeCompare(b.label, "de")
+  )
+}

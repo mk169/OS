@@ -44,8 +44,10 @@ export function DeadlineChip({ datum }) {
   )
 }
 
-// Schlanker Fortschrittsbalken mit erledigt/gesamt-Beschriftung.
-export function Fortschrittsbalken({ erledigt, gesamt }) {
+// Schlanker Fortschrittsbalken. `beschriftung="prozent"` zeigt statt „3/7"
+// den Anteil – auf der Projekt-Übersicht sagt „43 %" mehr als eine Zahl,
+// deren Bezugsgröße erst auf der Karte daneben steht.
+export function Fortschrittsbalken({ erledigt, gesamt, beschriftung = "anteil" }) {
   if (gesamt === 0) {
     return <span className="text-xs text-gray-300">Noch keine Aufgaben</span>
   }
@@ -59,7 +61,7 @@ export function Fortschrittsbalken({ erledigt, gesamt }) {
         />
       </div>
       <span className="shrink-0 text-xs tabular-nums text-gray-400">
-        {erledigt}/{gesamt}
+        {beschriftung === "prozent" ? `${prozent} %` : `${erledigt}/${gesamt}`}
       </span>
     </div>
   )

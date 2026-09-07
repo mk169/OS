@@ -54,6 +54,8 @@ neu)` in denselben Speicher.
 | Schlüssel | Inhalt |
 | --- | --- |
 | `einstellungen` | Profil, sichtbare Bereiche, Startseite, Akzent, Stil, Migrations-Merker |
+| `wochenziele` | Ziel je Woche (Schlüssel = Montags-Datum) |
+| `tagesprioritaeten` | Die drei Prioritäten je Tag |
 | `todos` | Aufgaben mit Datum, Dauer, Eisenhower-Feldern, Projektbezug |
 | `termine` | Kalendereinträge inkl. Wiederholung, Tagesblock, Fokus-Bezug |
 | `tagesbloecke` | Benannte Tagesabschnitte mit Farbe |
@@ -116,6 +118,30 @@ Seiten werden per `lazy()` nachgeladen.
 Ein neuer Bereich braucht also: einen Eintrag in `STANDARD_SEITEN`, eine
 Gruppe in `navigation.js`, den Eintrag in `App.jsx` – und, damit bestehende
 Nutzer ihn sehen, einen Eintrag in `AUTO_BEREICHE`.
+
+## Wochenplan und Projekt-Übersicht
+
+Der Wochenplan (`components/WochenplanSeite.jsx`, Rechnung in
+`lib/wochenplan.js`) legt keine eigene Aufgabenwelt an: Er ordnet den Store
+`todos` nach Woche, Tag und Eisenhower-Feld. Die Tages-Zuordnung ist das
+vorhandene Feld `datum` – ein zweites Feld („geplant für") würde die Wahrheit
+spalten, an der Kalender, Fristen-Chips und Wochenbericht alle hängen. Eigene
+Stores hat er nur für das, was es vorher nicht gab: `wochenziele`
+(Montags-Datum → Text) und `tagesprioritaeten` (Tag → drei Einträge). Ein
+Wochenziel aus einer laufenden Fokus-Periode (`zyklen`) wird zusätzlich
+angezeigt, nie überschrieben.
+
+Damit „diese Woche erledigt" stimmt, hält `todoUmschalten` (`lib/todos.js`)
+beim Abhaken den Tag in `erledigtAm` fest; `erledigtTag` fällt für Altdaten
+auf das geplante Datum zurück. Alle sechs Stellen, die Todos umschalten,
+gehen über diesen Helfer – auch der Wochenbericht ordnet damit nach dem Tag
+des Abhakens ein.
+
+Die Projekt-Übersicht (`components/ProjektUebersicht.jsx`) ist die
+Einstiegsansicht der Projektseite: Karten mit Zugehörigkeit, Name und
+Fortschritt, gruppiert nach Area, sonst nach Ordnerpfad
+(`zugehoerigkeitVon`/`nachZugehoerigkeit` in `lib/projekte.js`). Die
+Gruppenfarbe wird aus dem Gruppen-Schlüssel abgeleitet statt gespeichert.
 
 ## Stile
 

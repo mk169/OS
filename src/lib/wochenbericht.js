@@ -1,6 +1,7 @@
 import { montagVon, schluessel, wochenSchluessel } from "./datum"
 import { faelltAuf } from "./wiederholung"
 import { wochenZielErreicht } from "./habits"
+import { erledigtTag } from "./todos"
 import { tagesBilanz } from "./dailyops"
 
 // Wochenabschluss: Am Ende einer Woche wird festgehalten, was sie enthielt –
@@ -65,12 +66,15 @@ export function baueBericht({
   const von = woche
   const bis = wochenEndeVon(woche)
 
-  // Erledigte Todos der Woche: alles, was ein Datum in der Woche hat, plus
-  // erledigte ohne Datum (die sonst nie in einem Bericht landen würden).
+  // Erledigte Todos der Woche: maßgeblich ist der Tag des Abhakens
+  // (`erledigtAm`, seit dem Wochenplan mitgeschrieben). Altdaten haben ihn
+  // nicht – dort bleibt es beim geplanten Datum, und Erledigtes ganz ohne
+  // Datum zählt weiterhin mit, weil es sonst in keinem Bericht landete.
   const erledigt = todos.filter((t) => t.erledigt)
-  const derWoche = erledigt.filter(
-    (t) => !t.datum || imZeitraum(t.datum, von, bis)
-  )
+  const derWoche = erledigt.filter((t) => {
+    const tag = erledigtTag(t)
+    return !tag || imZeitraum(tag, von, bis)
+  })
 
   const sessions = deepwork.filter((s) => imZeitraum(s.datum, von, bis))
   const fokusMinuten = sessions.reduce(

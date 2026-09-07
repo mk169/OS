@@ -1,6 +1,7 @@
 import { useState } from "react"
 import useStored from "../lib/useStored"
 import { heute, inTagen, montagVon, tageBisZahl, wochenSchluessel } from "../lib/datum"
+import { todoUmschalten } from "../lib/todos"
 import {
   baueBericht,
   wochenEndeVon,
@@ -60,7 +61,7 @@ export default function ReviewSeite({ onNavigate }) {
 
   function toggle(id) {
     setTodos(
-      todos.map((t) => (t.id === id ? { ...t, erledigt: !t.erledigt } : t))
+      todoUmschalten(todos, id, heute())
     )
   }
 

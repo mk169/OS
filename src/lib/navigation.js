@@ -13,7 +13,15 @@ export const STANDARD_GRUPPEN = [
   {
     id: "taeglich",
     label: "Täglich",
-    keys: ["dashboard", "lockedin", "kalender", "todos", "habits", "dailyops"],
+    keys: [
+      "dashboard",
+      "lockedin",
+      "kalender",
+      "todos",
+      "wochenplan",
+      "habits",
+      "dailyops",
+    ],
     sekundaer: false,
   },
   {
