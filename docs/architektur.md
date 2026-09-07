@@ -119,8 +119,8 @@ Nutzer ihn sehen, einen Eintrag in `AUTO_BEREICHE`.
 
 ## Stile
 
-Fünf Stile (`lib/stil.js`) verändern Start, Todos und Habits: `todo`,
-`gamified`, `notion`, `lifeos`, `lockedin`. Jede der
+Vier Stile (`lib/stil.js`) verändern Start, Todos und Habits: `todo`
+(„Standard"), `gamified`, `lifeos`, `lockedin`. Jede der
 drei Seiten enthält pro Stil eine eigene Komponente und reicht dieselben Daten
 hinein – die Fallunterscheidung steht jeweils am Ende der Datei.
 

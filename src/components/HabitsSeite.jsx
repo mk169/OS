@@ -440,14 +440,13 @@ export default function HabitsSeite() {
   }
 
   if (stil === "gamified") return <HabitsGamified {...gemeinsam} />
-  if (stil === "notion") return <HabitsNotion {...gemeinsam} />
   if (stil === "lifeos") return <HabitsLifeOS {...gemeinsam} />
   if (stil === "lockedin") return <HabitsLockedIn {...gemeinsam} />
   return <HabitsTodo {...gemeinsam} />
 }
 
 // ──────────────────────────────────────────────────────────────
-// Stil: Todo (Standard) – Klassische Heatmap-Ansicht
+// Stil: Standard – Klassische Heatmap-Ansicht
 // ──────────────────────────────────────────────────────────────
 
 function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWochenZiel, umbenennen, remove, amZielCount }) {
@@ -510,63 +509,6 @@ function HabitsTodo({ habits, bereiche, setHabits, setBereiche, toggle, setWoche
             )
           })}
         </div>
-      </section>
-    </div>
-  )
-}
-
-// ──────────────────────────────────────────────────────────────
-// Stil: Notion – Minimal & subtil
-// ──────────────────────────────────────────────────────────────
-
-function HabitsNotion({ habits, bereiche, setHabits, setBereiche, toggle, remove }) {
-  return (
-    <div className="mx-auto max-w-2xl px-5 py-8 sm:px-6 sm:py-10">
-      <div className="mb-10">
-        <div className="text-5xl">💪</div>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight text-gray-900">Habits</h1>
-      </div>
-
-      <section className="mb-12">
-        <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-1.5">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-            Deine Fähigkeiten
-          </p>
-          <HabitErstellen
-            habits={habits}
-            setHabits={setHabits}
-            bereiche={bereiche}
-            setBereiche={setBereiche}
-            knopfKlasse="text-sm text-gray-400 transition-colors hover:text-gray-800"
-            knopfInhalt="+ Neu"
-          />
-        </div>
-
-        {habits.length > 0 && (
-          <ul>
-            {habits.map((h) => {
-              const dran = erledigteTage(h).includes(heute())
-              return (
-                <li key={h.id} className="group flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={dran}
-                    onChange={() => toggle(h)}
-                    className="h-[15px] w-[15px] shrink-0 rounded accent-gray-800"
-                  />
-                  <span className={`min-w-0 flex-1 truncate text-[15px] ${dran ? "text-gray-400 line-through" : "text-gray-700"}`}>
-                    {h.name}
-                  </span>
-                  <span className="text-[11px] text-gray-400">🔥{wochenStreakVon(h)}</span>
-                  <LoeschKnopf
-                    onLoeschen={() => remove(h.id)}
-                    klasse="text-gray-300 opacity-0 hover:text-gray-500 group-hover:opacity-100"
-                  />
-                </li>
-              )
-            })}
-          </ul>
-        )}
       </section>
     </div>
   )

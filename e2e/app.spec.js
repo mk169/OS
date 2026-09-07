@@ -192,7 +192,6 @@ test("läuft nach dem ersten Besuch auch ohne Netz", async ({ page, context }) =
 const STILE = [
   { id: "todo", start: /Guten/, todos: /Todos/, habits: /Habits/ },
   { id: "gamified", start: /Level|XP/i, todos: /Quest/i, habits: /Training|Attribut/i },
-  { id: "notion", start: /Guten|Heute/i, todos: /Todos|Aufgaben/i, habits: /Habits/i },
   { id: "lifeos", start: /Guten/i, todos: /Tagesplan/i, habits: /Habit Tracker/i },
   { id: "lockedin", start: /HEUTE|AUFTRAG/i, todos: /AUFTRAG/i, habits: /LOCKED/i },
 ]

@@ -9,8 +9,8 @@
 export const STILE = [
   {
     id: "todo",
-    name: "Todo-Liste",
-    beschreibung: "Klar & farbige Akzente – wie Todoist",
+    name: "Standard",
+    beschreibung: "Klare Karten, farbige Akzente",
     emoji: "✅",
   },
   {
@@ -18,12 +18,6 @@ export const STILE = [
     name: "Gamified",
     beschreibung: "Level, Fortschritt & Belohnung – wie Habitica",
     emoji: "🎮",
-  },
-  {
-    id: "notion",
-    name: "Notion",
-    beschreibung: "Ruhig, minimal, viel Weißraum",
-    emoji: "📄",
   },
   {
     id: "lifeos",
